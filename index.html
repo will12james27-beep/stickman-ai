@@ -75,7 +75,11 @@ canvas{
 <script>
 const c=document.getElementById('c');
 const ctx=c.getContext('2d');
-let x=180,y=400,action='stand';
+let x=180, y=400;
+let action='stand';
+let actions=[];
+let actionIndex=0;
+let frame=0;
 
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
@@ -105,6 +109,15 @@ function draw(){
 }
 
 function animate(){
+  frame++;
+
+if(actions.length>1 && frame%120===0){
+  actionIndex++;
+  if(actionIndex<actions.length){
+    action=actions[actionIndex];
+  }
+}
+
   if(action==='run') x+=1.5;
   if(action==='fall') y+=1;
   if(action==='jump') y-=2;
@@ -118,16 +131,22 @@ function animate(){
 
 function run(){
   const t=document.getElementById('text').value.toLowerCase();
-  document.getElementById('status').innerText='AI analiz qilmoqda...';
+  document.getElementById('status').innerText='AI is thinking...';
+
+  actions=[];
+  actionIndex=0;
+
+  if(t.includes('run')) actions.push('run');
+  if(t.includes('jump')) actions.push('jump');
+  if(t.includes('fall')) actions.push('fall');
+
+  if(actions.length===0) actions.push('stand');
+
+  action=actions[0];
 
   setTimeout(()=>{
-    if(t.includes('yugur')) action='run';
-    else if(t.includes('yiqil')) action='fall';
-    else if(t.includes('sakra')) action='jump';
-    else action='stand';
-
-    document.getElementById('status').innerText='Tayyor ✅';
-  },800);
+    document.getElementById('status').innerText='Done ✅';
+  },500);
 }
 
 animate();
