@@ -75,7 +75,15 @@ canvas{
 <script>
 const c=document.getElementById('c');
 const ctx=c.getContext('2d');
-let x=180, y=400;
+
+let x = 180;
+let y = 400;
+
+let action = 'stand';
+let actions = [];
+let actionIndex = 0;
+let frame = 0;
+
 let action='stand';
 let actions=[];
 let actionIndex=0;
@@ -130,23 +138,24 @@ if(actions.length>1 && frame%120===0){
 }
 
 function run(){
-  const t=document.getElementById('text').value.toLowerCase();
-  document.getElementById('status').innerText='AI is thinking...';
+  const t = document.getElementById('text').value.toLowerCase();
+  document.getElementById('status').innerText = 'AI is thinking...';
 
-  actions=[];
-  actionIndex=0;
+  actions = [];
+  actionIndex = 0;
+  frame = 0;
 
   if(t.includes('run')) actions.push('run');
   if(t.includes('jump')) actions.push('jump');
   if(t.includes('fall')) actions.push('fall');
 
-  if(actions.length===0) actions.push('stand');
+  if(actions.length === 0) actions.push('stand');
 
-  action=actions[0];
+  action = actions[0];
 
   setTimeout(()=>{
-    document.getElementById('status').innerText='Done ✅';
-  },500);
+    document.getElementById('status').innerText = 'Done ✅';
+  }, 500);
 }
 
 animate();
