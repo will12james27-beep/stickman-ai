@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Stickman AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #111;
+      color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      background: #222;
+      border: 2px solid #555;
+      margin-top: 20px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Stickman AI (bepul)</h2>
+<p>Yoz: <b>yugurdi</b>, <b>sakradi</b>, <b>yiqildi</b></p>
+
+<input id="text" placeholder="stickman yugurdi">
+<button onclick="run()">Yuborish</button>
+
+<br>
+<canvas id="c" width="300" height="200"></canvas>
+
+<script>
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+let x = 150, y = 120;
+let action = 'stand';
+
+function drawStickman() {
+  ctx.clearRect(0,0,c.width,c.height);
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 3;
+
+  // head
+  ctx.beginPath();
+  ctx.arc(x, y-40, 10, 0, Math.PI*2);
+  ctx.stroke();
+
+  // body
+  ctx.beginPath();
+  ctx.moveTo(x, y-30);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+
+  // arms
+  ctx.beginPath();
+  ctx.moveTo(x-15, y-20);
+  ctx.lineTo(x+15, y-20);
+  ctx.stroke();
+
+  // legs
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x-10, y+20);
+  ctx.moveTo(x, y);
+  ctx.lineTo(x+10, y+20);
+  ctx.stroke();
+}
+
+function animate() {
+  if(action === 'run') x += 1;
+  if(action === 'fall') y += 1;
+  if(action === 'jump') y -= 2;
+
+  if(y < 120 && action === 'jump') y += 2;
+  if(x > c.width) x = -10;
+  if(y > 150) y = 120;
+
+  drawStickman();
+  requestAnimationFrame(animate);
+}
+
+function run() {
+  const t = document.getElementById('text').value.toLowerCase();
+  if(t.includes('yugur')) action = 'run';
+  else if(t.includes('yiqil')) action = 'fall';
+  else if(t.includes('sakra')) action = 'jump';
+  else action = 'stand';
+}
+
+animate();
+</script>
+
+</body>
+</html>
