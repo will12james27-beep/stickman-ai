@@ -1,3 +1,74 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<title>Stickman AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  font-family:Arial,sans-serif;
+  color:white;
+}
+
+.box{
+  background:rgba(0,0,0,0.6);
+  padding:16px;
+  border-radius:12px;
+  width:320px;
+  height:90vh;
+  max-height:700px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  box-shadow:0 0 20px rgba(0,255,255,0.3);
+}
+
+canvas{
+  background:#111;
+  border-radius:8px;
+  margin-top:10px;
+}
+
+input,button{
+  width:90%;
+  padding:10px;
+  margin:8px 0;
+  border:none;
+  border-radius:6px;
+  font-size:16px;
+}
+
+button{
+  background:cyan;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#00ffffaa;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>🤖 Stickman AI</h2>
+  <p>Matn yoz → harakat chiqadi</p>
+
+  <input id="text" placeholder="run jump">
+  <button onclick="run()">Generate</button>
+
+  <canvas id="c" width="280" height="400"></canvas>
+</div>
+
 <script>
 const c = document.getElementById('c');
 const ctx = c.getContext('2d');
@@ -14,27 +85,28 @@ let frame = 0;
 
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle='white';
-  ctx.lineWidth=3;
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 3;
 
-  // swing OLDIN
-  let swing = action === 'run' ? Math.sin(frame * 0.15) * 12 : 0;
+  let swing = action === 'run'
+    ? Math.sin(frame * 0.2) * 12
+    : 0;
 
   // head
   ctx.beginPath();
-  ctx.arc(x, y-35, 10, 0, Math.PI*2);
+  ctx.arc(x, y - 35, 10, 0, Math.PI * 2);
   ctx.stroke();
 
   // body
   ctx.beginPath();
-  ctx.moveTo(x, y-25);
+  ctx.moveTo(x, y - 25);
   ctx.lineTo(x, y);
   ctx.stroke();
 
-  // arms (teskari)
+  // arms
   ctx.beginPath();
-  ctx.moveTo(x + swing, y - 15);
-  ctx.lineTo(x - swing, y - 15);
+  ctx.moveTo(x - swing, y - 15);
+  ctx.lineTo(x + swing, y - 15);
   ctx.stroke();
 
   // legs
@@ -56,24 +128,24 @@ function animate(){
     }
   }
 
-  if (action === 'run') x += 1.5;
+  if(action === 'run') x += 1.5;
 
-  if (action === 'jump') {
+  if(action === 'jump'){
     velocityY = -10;
     action = 'fall';
   }
 
-  if (action === 'fall') {
+  if(action === 'fall'){
     velocityY += gravity;
     y += velocityY;
   }
 
-  if (x > c.width + 20) x = -20;
+  if(x > c.width + 20) x = -20;
 
-  if (y > c.height - 80) {
+  if(y > c.height - 80){
     y = c.height - 80;
     velocityY = 0;
-    if (action === 'fall') action = 'stand';
+    if(action === 'fall') action = 'stand';
   }
 
   draw();
@@ -82,24 +154,23 @@ function animate(){
 
 function run(){
   const t = document.getElementById('text').value.toLowerCase();
-  document.getElementById('status').innerText = 'AI is thinking...';
 
   actions = [];
   actionIndex = 0;
   frame = 0;
 
-  if (t.match(/run|running|runs/)) actions.push('run');
-  if (t.match(/jump|jumps|jumping/)) actions.push('jump');
-  if (t.match(/fall|falls|falling/)) actions.push('fall');
+  if(t.includes('run')) actions.push('run');
+  if(t.includes('jump')) actions.push('jump');
+  if(t.includes('fall')) actions.push('fall');
 
-  if (actions.length === 0) actions.push('stand');
+  if(actions.length === 0) actions.push('stand');
   action = actions[0];
-
-  setTimeout(()=>{
-    document.getElementById('status').innerText = 'Done ✅';
-  },500);
 }
 
 animate();
 </script>
+
+</body>
+</html>
+
 
