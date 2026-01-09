@@ -109,8 +109,8 @@ function draw(){
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(x-12,y-15);
-  ctx.lineTo(x+12,y-15);
+  ctx.moveTo(x + swing, y - 15);
+  ctx.lineTo(x - swing, y - 15);
   ctx.stroke();
 
  let swing = action === 'run' ? Math.sin(frame * 0.15) * 12 : 0;
