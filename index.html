@@ -84,7 +84,7 @@ const c=document.getElementById('c');
 const ctx=c.getContext('2d');
 
 let x = 180;
-let y = 400;
+let y = c.height - 80;
 
 let action = 'stand';
 let actions = [];
@@ -134,7 +134,9 @@ if(actions.length>1 && frame%120===0){
   if(action==='jump') y-=2;
 
   if(x>c.width+20) x=-20;
-  if(y>500) y=400;
+  if (y > c.height - 80) {
+  y = c.height - 80;
+}
 
   draw();
   requestAnimationFrame(animate);
