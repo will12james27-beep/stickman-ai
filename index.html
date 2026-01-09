@@ -113,13 +113,14 @@ function draw(){
   ctx.lineTo(x+12,y-15);
   ctx.stroke();
 
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x-8,y+18);
-  ctx.moveTo(x,y);
-  ctx.lineTo(x+8,y+18);
-  ctx.stroke();
-}
+ let swing = action === 'run' ? Math.sin(frame * 0.15) * 12 : 0;
+
+ctx.beginPath();
+ctx.moveTo(x, y);
+ctx.lineTo(x - swing, y + 18);
+ctx.moveTo(x, y);
+ctx.lineTo(x + swing, y + 18);
+ctx.stroke();
 
 function animate(){
   frame++;
