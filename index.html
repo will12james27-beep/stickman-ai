@@ -85,6 +85,8 @@ const ctx=c.getContext('2d');
 
 let x = c.width / 2;
 let y = c.height - 80;
+let velocityY = 0;
+let gravity = 0.6;
 
 let action = 'stand';
 let actions = [];
@@ -129,13 +131,25 @@ if(actions.length>1 && frame%120===0){
   }
 }
 
-  if(action==='run') x+=1.5;
-  if(action==='fall') y+=1;
-  if(action==='jump') y-=2;
+if (action === 'run') {
+  x += 1.5;
+}
+
+if (action === 'jump') {
+  velocityY = -10;
+  action = 'fall';
+}
+
+if (action === 'fall') {
+  velocityY += gravity;
+  y += velocityY;
+}
 
   if(x>c.width+20) x=-20;
   if (y > c.height - 80) {
   y = c.height - 80;
+    velocityY = 0;
+  if (action === 'fall') action = 'stand';
 }
 
   draw();
