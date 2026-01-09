@@ -17,10 +17,14 @@ body{
 }
 .box{
   background:rgba(0,0,0,0.6);
-  padding:20px;
+  padding:16px;
   border-radius:12px;
   width:320px;
-  text-align:center;
+  height:90vh;
+  max-height:700px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
   box-shadow:0 0 20px rgba(0,255,255,0.3);
 }
 h2{
@@ -69,7 +73,7 @@ canvas{
   <button onclick="run()">Generate</button>
 
   <div id="status"></div>
-  <canvas id="c" width="360" height="640"></canvas>
+  <canvas id="c" width="300" height="420"></canvas>
 </div>
 
 <script>
