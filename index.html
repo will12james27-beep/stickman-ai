@@ -1,87 +1,6 @@
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-<meta charset="UTF-8">
-<title>Stickman AI Studio</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{
-  margin:0;
-  height:100vh;
-  overflow: hidden;
-  display:flex;
-  justify-content:center;
-  align-items:flex-start;
-  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  font-family:Arial,sans-serif;
-  color:white;
-}
-.box{
-  background:rgba(0,0,0,0.6);
-  padding:16px;
-  border-radius:12px;
-  width:320px;
-  max-height: 90vh;
-  overflow: hidden;
-  height:90vh;
-  max-height:700px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  box-shadow:0 0 20px rgba(0,255,255,0.3);
-}
-h2{
-  margin-top:0;
-  animation:glow 2s infinite alternate;
-}
-@keyframes glow{
-  from{ text-shadow:0 0 5px cyan; }
-  to{ text-shadow:0 0 20px cyan; }
-}
-input,button{
-  width:90%;
-  padding:10px;
-  margin:8px 0;
-  border:none;
-  border-radius:6px;
-  font-size:16px;
-}
-button{
-  background:cyan;
-  cursor:pointer;
-  font-weight:bold;
-}
-button:hover{
-  background:#00ffffaa;
-}
-#status{
-  font-size:14px;
-  opacity:0.8;
-  height:20px;
-}
-canvas{
-  background:#111;
-  border-radius:8px;
-  margin-top:10px;
-}
-</style>
-</head>
-<body>
-
-<div class="box">
-  <h2>🤖 Stickman AI</h2>
-  <p>Matn yoz → video chiqadi</p>
-
-  <input id="text" placeholder="stickman yugurdi">
-  <button onclick="run()">Generate</button>
-
-  <div id="status"></div>
-  <canvas id="c" width="280" height="400"></canvas>
-</div>
-
 <script>
-const c=document.getElementById('c');
-const ctx=c.getContext('2d');
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
 
 let x = c.width / 2;
 let y = c.height - 80;
@@ -93,65 +12,69 @@ let actions = [];
 let actionIndex = 0;
 let frame = 0;
 
-
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
   ctx.strokeStyle='white';
   ctx.lineWidth=3;
 
+  // swing OLDIN
+  let swing = action === 'run' ? Math.sin(frame * 0.15) * 12 : 0;
+
+  // head
   ctx.beginPath();
-  ctx.arc(x,y-35,10,0,Math.PI*2);
+  ctx.arc(x, y-35, 10, 0, Math.PI*2);
   ctx.stroke();
 
+  // body
   ctx.beginPath();
-  ctx.moveTo(x,y-25);
-  ctx.lineTo(x,y);
+  ctx.moveTo(x, y-25);
+  ctx.lineTo(x, y);
   ctx.stroke();
 
+  // arms (teskari)
   ctx.beginPath();
   ctx.moveTo(x + swing, y - 15);
   ctx.lineTo(x - swing, y - 15);
   ctx.stroke();
 
- let swing = action === 'run' ? Math.sin(frame * 0.15) * 12 : 0;
-
-ctx.beginPath();
-ctx.moveTo(x, y);
-ctx.lineTo(x - swing, y + 18);
-ctx.moveTo(x, y);
-ctx.lineTo(x + swing, y + 18);
-ctx.stroke();
+  // legs
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - swing, y + 18);
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + swing, y + 18);
+  ctx.stroke();
+}
 
 function animate(){
   frame++;
 
-if(actions.length>1 && frame%120===0){
-  actionIndex++;
-  if(actionIndex<actions.length){
-    action=actions[actionIndex];
+  if(actions.length > 1 && frame % 120 === 0){
+    actionIndex++;
+    if(actionIndex < actions.length){
+      action = actions[actionIndex];
+    }
   }
-}
 
-if (action === 'run') {
-  x += 1.5;
-}
+  if (action === 'run') x += 1.5;
 
-if (action === 'jump') {
-  velocityY = -10;
-  action = 'fall';
-}
+  if (action === 'jump') {
+    velocityY = -10;
+    action = 'fall';
+  }
 
-if (action === 'fall') {
-  velocityY += gravity;
-  y += velocityY;
-}
+  if (action === 'fall') {
+    velocityY += gravity;
+    y += velocityY;
+  }
 
-  if(x>c.width+20) x=-20;
+  if (x > c.width + 20) x = -20;
+
   if (y > c.height - 80) {
-  y = c.height - 80;
+    y = c.height - 80;
     velocityY = 0;
-  if (action === 'fall') action = 'stand';
-}
+    if (action === 'fall') action = 'stand';
+  }
 
   draw();
   requestAnimationFrame(animate);
@@ -165,21 +88,18 @@ function run(){
   actionIndex = 0;
   frame = 0;
 
-  if(t.includes('run')) actions.push('run');
-  if(t.includes('jump')) actions.push('jump');
-  if(t.includes('fall')) actions.push('fall');
+  if (t.match(/run|running|runs/)) actions.push('run');
+  if (t.match(/jump|jumps|jumping/)) actions.push('jump');
+  if (t.match(/fall|falls|falling/)) actions.push('fall');
 
-  if(actions.length === 0) actions.push('stand');
-
+  if (actions.length === 0) actions.push('stand');
   action = actions[0];
 
   setTimeout(()=>{
     document.getElementById('status').innerText = 'Done ✅';
-  }, 500);
+  },500);
 }
 
 animate();
 </script>
 
-</body>
-</html>
