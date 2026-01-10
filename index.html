@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman RESET — Base Render</title>
+<title>Stickman v7.6.1 — Pose Test</title>
 <style>
 body{
  margin:0;
@@ -25,39 +25,59 @@ canvas{
 <script>
 const c = document.getElementById("c");
 const ctx = c.getContext("2d");
-
 ctx.lineWidth = 4;
 ctx.lineCap = "round";
-ctx.strokeStyle = "#000";
 
 const ground = 520;
 
 // ===== JOINT =====
 class Joint{
- constructor(x,y){
-  this.x=x;
-  this.y=y;
+ constructor(x,y){ this.x=x; this.y=y; }
+ clone(){ return new Joint(this.x,this.y); }
+}
+
+// ===== MAN =====
+function createMan(){
+ return {
+  head:new Joint(210,300),
+  neck:new Joint(210,340),
+  hip:new Joint(210,400),
+
+  kneeL:new Joint(190,460),
+  footL:new Joint(190,ground),
+
+  kneeR:new Joint(230,460),
+  footR:new Joint(230,ground),
+
+  elbowL:new Joint(180,360),
+  handL:new Joint(160,380),
+
+  elbowR:new Joint(240,360),
+  handR:new Joint(260,380),
+ };
+}
+
+const man = createMan();
+const basePose = clonePose(man);
+
+// ===== POSE =====
+function clonePose(m){
+ const p={};
+ for(let k in m) p[k]=m[k].clone();
+ return p;
+}
+
+function applyPose(m,p){
+ for(let k in p){
+  m[k].x=p[k].x;
+  m[k].y=p[k].y;
  }
 }
 
-// ===== SIMPLE MAN =====
-const man = {
- head: new Joint(210, 300),
- neck: new Joint(210, 340),
- hip:  new Joint(210, 400),
-
- kneeL: new Joint(190, 460),
- footL: new Joint(190, ground),
-
- kneeR: new Joint(230, 460),
- footR: new Joint(230, ground),
-
- elbowL: new Joint(180, 360),
- handL:  new Joint(160, 380),
-
- elbowR: new Joint(240, 360),
- handR:  new Joint(260, 380),
-};
+// test pose (qo‘l ko‘tarilgan)
+const testPose = clonePose(basePose);
+testPose.handL.y -= 60;
+testPose.elbowL.y -= 30;
 
 // ===== DRAW =====
 function line(a,b){
@@ -78,6 +98,9 @@ function draw(){
  ctx.stroke();
 
  ctx.strokeStyle="#000";
+
+ // apply pose
+ applyPose(man, testPose);
 
  // head
  ctx.beginPath();
