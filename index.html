@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v34.0 (GIF Export)</title>
+<title>Stickman AI – STUDIO v35.0 (Crowd)</title>
 <style>
 body{
   margin:0;
@@ -16,13 +16,8 @@ body{
 }
 #studio{display:flex;flex-direction:column;gap:10px;align-items:center}
 canvas{background:#fff;border-radius:16px}
-.panel{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-button{
-  padding:6px 12px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
+.panel{display:flex;gap:6px;flex-wrap:wrap}
+button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer}
 .small{font-size:12px;opacity:.7}
 </style>
 </head>
@@ -31,16 +26,12 @@ button{
 <div id="studio">
   <div class="panel">
     <button onclick="state='run'">Run</button>
-    <button onclick="jump()">Jump</button>
     <button onclick="state='idle'">Idle</button>
-    <button onclick="recordGIF()">🎞️ Export GIF</button>
+    <button onclick="jumpAll()">Jump</button>
   </div>
-  <div class="small">v34.0 — canvas → frames → GIF (stable)</div>
+  <div class="small">v35.0 — multi character engine</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
-
-<!-- GIF encoder (STABLE) -->
-<script src="https://unpkg.com/gif-capture/dist/gif-capture.min.js"></script>
 
 <script>
 const c=document.getElementById("c");
@@ -54,24 +45,35 @@ let time=0,state="run",camX=0;
 // ===== JOINT =====
 class Joint{constructor(x,y){this.x=x;this.y=y;}}
 
-// ===== MAN =====
-const man={
- hip:new Joint(210,ground-85),
- neck:new Joint(210,ground-155),
- head:new Joint(210,ground-195),
+// ===== CREATE MAN =====
+function createMan(x,phase){
+ return{
+  hip:new Joint(x,ground-85),
+  neck:new Joint(x,ground-155),
+  head:new Joint(x,ground-195),
 
- kneeL:new Joint(190,ground-45),
- kneeR:new Joint(230,ground-45),
- footL:new Joint(190,ground),
- footR:new Joint(230,ground),
+  kneeL:new Joint(x-18,ground-45),
+  kneeR:new Joint(x+18,ground-45),
+  footL:new Joint(x-18,ground),
+  footR:new Joint(x+18,ground),
 
- elbowL:new Joint(170,ground-135),
- elbowR:new Joint(250,ground-135),
- handL:new Joint(155,ground-115),
- handR:new Joint(265,ground-115),
+  elbowL:new Joint(x-40,ground-135),
+  elbowR:new Joint(x+40,ground-135),
+  handL:new Joint(x-55,ground-115),
+  handR:new Joint(x+55,ground-115),
 
- phase:0,vy:0,onGround:true
-};
+  phase:phase,
+  vy:0,
+  onGround:true,
+  speed:1+Math.random()*0.3
+ };
+}
+
+// ===== CROWD =====
+const men=[];
+for(let i=0;i<5;i++){
+ men.push(createMan(200+i*80,i*0.6));
+}
 
 // ===== IK =====
 function stick(a,b,l){
@@ -81,77 +83,78 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== STATES =====
-function jump(){
- if(man.onGround){
-  man.vy=-15;
-  man.onGround=false;
-  state="jump";
- }
+// ===== ACTIONS =====
+function jumpAll(){
+ men.forEach(m=>{
+  if(m.onGround){
+   m.vy=-14;
+   m.onGround=false;
+  }
+ });
+ state="jump";
 }
 
-function run(){
- man.phase+=0.12;
- const s=Math.sin(man.phase);
- const stride=30;
+function run(m){
+ m.phase+=0.1*m.speed;
+ const s=Math.sin(m.phase);
+ const stride=26;
 
- man.footL.x=man.hip.x-stride;
- man.footR.x=man.hip.x+stride;
- man.footL.y=ground-Math.max(0,s)*30;
- man.footR.y=ground-Math.max(0,-s)*30;
+ m.footL.x=m.hip.x-stride;
+ m.footR.x=m.hip.x+stride;
+ m.footL.y=ground-Math.max(0,s)*28;
+ m.footR.y=ground-Math.max(0,-s)*28;
 
- man.hip.y=ground-85-Math.abs(s)*8;
+ m.hip.x+=m.speed;
+ m.hip.y=ground-85-Math.abs(s)*8;
 
- man.neck.x=man.hip.x;
- man.neck.y=man.hip.y-70;
- man.head.x=man.neck.x;
- man.head.y=man.neck.y-40;
+ m.neck.x=m.hip.x;
+ m.neck.y=m.hip.y-70;
+ m.head.x=m.neck.x;
+ m.head.y=m.neck.y-40;
 
- man.handL.x=man.neck.x-50-s*25;
- man.handR.x=man.neck.x+50+s*25;
- man.handL.y=man.neck.y+20;
- man.handR.y=man.neck.y+20;
-
- camX+=(man.hip.x-W/2-camX)*0.1;
+ m.handL.x=m.neck.x-45-s*22;
+ m.handR.x=m.neck.x+45+s*22;
+ m.handL.y=m.neck.y+20;
+ m.handR.y=m.neck.y+20;
 }
 
-function jumpState(){
- man.vy+=0.9;
- man.hip.y+=man.vy;
- if(man.hip.y>=ground-85){
-  man.hip.y=ground-85;
-  man.vy=0;
-  man.onGround=true;
+function jump(m){
+ m.vy+=0.8;
+ m.hip.y+=m.vy;
+ if(m.hip.y>=ground-85){
+  m.hip.y=ground-85;
+  m.vy=0;
+  m.onGround=true;
   state="run";
  }
- man.neck.y=man.hip.y-70;
- man.head.y=man.neck.y-40;
+ m.neck.y=m.hip.y-70;
+ m.head.y=m.neck.y-40;
 }
 
-function idle(){
- const b=Math.sin(time*0.05);
- man.hip.y=ground-85+b*4;
- man.neck.y=man.hip.y-70;
- man.head.y=man.neck.y-40;
+function idle(m){
+ const b=Math.sin(time*0.05+m.phase);
+ m.hip.y=ground-85+b*4;
+ m.neck.y=m.hip.y-70;
+ m.head.y=m.neck.y-40;
 }
 
 // ===== SOLVE =====
-function solve(){
+function solve(m){
  for(let i=0;i<6;i++){
-  stick(man.neck,man.hip,70);
-  stick(man.head,man.neck,40);
+  stick(m.neck,m.hip,70);
+  stick(m.head,m.neck,40);
 
-  stick(man.hip,man.kneeL,40);
-  stick(man.kneeL,man.footL,40);
+  stick(m.hip,m.kneeL,40);
+  stick(m.kneeL,m.footL,40);
 
-  stick(man.hip,man.kneeR,40);
-  stick(man.kneeR,man.footR,40);
+  stick(m.hip,m.kneeR,40);
+  stick(m.kneeR,m.footR,40);
 
-  stick(man.neck,man.elbowL,35);
-  stick(man.elbowL,man.handL,35);
+  stick(m.neck,m.elbowL,35);
+  stick(m.elbowL,m.handL,35);
 
-  stick(man.neck,man.elbowR,35);
-  stick(man.elbowR,man.handR,35);
+  stick(m.neck,m.elbowR,35);
+  stick(m.elbowR,m.handR,35);
  }
 }
 
@@ -163,7 +166,40 @@ function line(a,b){
  ctx.stroke();
 }
 
-function draw(){
+function drawMan(m){
+ ctx.beginPath();
+ ctx.arc(m.head.x,m.head.y,16,0,Math.PI*2);
+ ctx.stroke();
+
+ line(m.head,m.neck);
+ line(m.neck,m.hip);
+
+ line(m.hip,m.kneeL);
+ line(m.kneeL,m.footL);
+
+ line(m.hip,m.kneeR);
+ line(m.kneeR,m.footR);
+
+ line(m.neck,m.elbowL);
+ line(m.elbowL,m.handL);
+
+ line(m.neck,m.elbowR);
+ line(m.elbowR,m.handR);
+}
+
+// ===== LOOP =====
+function loop(){
+ time++;
+
+ men.forEach(m=>{
+  if(state==="run") run(m);
+  if(state==="jump") jump(m);
+  if(state==="idle") idle(m);
+  solve(m);
+ });
+
+ camX+=(men[0].hip.x-W/2-camX)*0.08;
+
  ctx.clearRect(0,0,W,H);
  ctx.save();
  ctx.translate(-camX,0);
@@ -175,62 +211,9 @@ function draw(){
  ctx.stroke();
 
  ctx.strokeStyle="#000";
- ctx.beginPath();
- ctx.arc(man.head.x,man.head.y,16,0,Math.PI*2);
- ctx.stroke();
-
- line(man.head,man.neck);
- line(man.neck,man.hip);
- line(man.hip,man.kneeL);
- line(man.kneeL,man.footL);
- line(man.hip,man.kneeR);
- line(man.kneeR,man.footR);
- line(man.neck,man.elbowL);
- line(man.elbowL,man.handL);
- line(man.neck,man.elbowR);
- line(man.elbowR,man.handR);
+ men.forEach(drawMan);
 
  ctx.restore();
-}
-
-// ===== GIF RECORD =====
-function recordGIF(){
- const gif=new GIFCapture({
-  workers:2,
-  quality:10,
-  width:W,
-  height:H
- });
-
- let frames=0;
- const maxFrames=90;
-
- function capture(){
-  gif.addFrame(c,{copy:true,delay:33});
-  frames++;
-  if(frames<maxFrames){
-   requestAnimationFrame(capture);
-  }else{
-   gif.render();
-   gif.on('finished',blob=>{
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download="stickman.gif";
-    a.click();
-   });
-  }
- }
- capture();
-}
-
-// ===== LOOP =====
-function loop(){
- time++;
- if(state==="run")run();
- if(state==="jump")jumpState();
- if(state==="idle")idle();
- solve();
- draw();
  requestAnimationFrame(loop);
 }
 loop();
