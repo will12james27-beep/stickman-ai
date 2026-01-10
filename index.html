@@ -71,6 +71,8 @@ let actions = [];
 let actionIndex = 0;
 let frame = 0;
 
+let facing = 1; // 1 = o‘ngga, -1 = chapga
+
 // ===== VIDEO RECORD =====
 let recorder;
 let chunks = [];
@@ -91,7 +93,7 @@ function startRecord() {
 }
 
 function stopRecord() {
-  recorder.stop();
+  if (recorder) recorder.stop();
 }
 
 // ===== EASING =====
@@ -107,20 +109,20 @@ function draw() {
   let t = (Math.sin(frame * 0.08) + 1) / 2;
   let smooth = easeInOut(t);
 
-  let lean = action === 'run' ? (smooth - 0.5) * 16 : 0;
+  let lean = action === 'run' ? (smooth - 0.5) * 16 * facing : 0;
 
   // ===== HEAD =====
   ctx.beginPath();
   ctx.arc(x + lean * 0.4, y - 50, 14, 0, Math.PI * 2);
   ctx.stroke();
 
-  // ===== HAIR =====
+  // ===== HAIR (YO‘NALISHGA MOS) =====
   ctx.beginPath();
-  ctx.moveTo(x + lean * 0.4 + 6, y - 64);
+  ctx.moveTo(x + lean * 0.4 + facing * 6, y - 64);
   ctx.quadraticCurveTo(
-    x + lean * 0.4 + 40,
+    x + lean * 0.4 + facing * 40,
     y - 55,
-    x + lean * 0.4 + 28,
+    x + lean * 0.4 + facing * 28,
     y - 30
   );
   ctx.stroke();
@@ -209,7 +211,12 @@ function animate() {
     if (actionIndex < actions.length) action = actions[actionIndex];
   }
 
-  if (action === 'run') x += 1.4;
+  if (action === 'run') x += 1.4 * facing;
+
+  // devorga tegsa buriladi
+  if (x > c.width - 30) facing = -1;
+  if (x < 30) facing = 1;
+
   if (action === 'jump' && y === ground) velocityY = -12;
 
   velocityY += gravity;
@@ -219,8 +226,6 @@ function animate() {
     y = ground;
     velocityY = 0;
   }
-
-  if (x > c.width + 30) x = -30;
 
   draw();
   requestAnimationFrame(animate);
