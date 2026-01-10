@@ -123,6 +123,7 @@ if (action === 'jump') {
   ctx.moveTo(x - swing, y - 15);
   ctx.lineTo(x + swing, y - 15);
 } 
+  ctx.stroke();
   
 // NEW LEGS
 if (action === 'jump') {
@@ -133,8 +134,6 @@ if (action === 'jump') {
   drawLeg(x + 6, y, Math.PI);
 }
 
-ctx.stroke();
-}
 
 
 function drawLeg(hipX, hipY, dir) {
