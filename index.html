@@ -2,27 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – LEVEL 5 PRO</title>
+<title>Stickman AI – LEVEL 6 ALL-IN-ONE</title>
 <style>
 body{
   margin:0;
   background:#06161b;
   display:flex;
   justify-content:center;
-  align-items:flex-start;
-  min-height:100vh;
   font-family:Arial;
   color:#fff;
   padding:10px;
 }
 .box{
-  width:460px;
+  width:480px;
   padding:14px;
   border-radius:18px;
   background:#0b1f26;
   box-shadow:0 0 30px #00ffff55;
 }
-h3{text-align:center}
+h3{text-align:center;margin:6px}
 input,select,button{
   width:100%;
   padding:8px;
@@ -40,14 +38,24 @@ canvas{
 .row{display:flex;gap:6px}
 .row>*{flex:1}
 small{opacity:.7;display:block;text-align:center;margin-top:6px}
+.hidden{display:none}
 </style>
 </head>
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – LEVEL 5 PRO</h3>
 
-<input id="aiText" placeholder="girl run 2 jump 1 | boy stand 3 | background street">
+<h3>🎬 Stickman AI – LEVEL 6</h3>
+
+<!-- LOGIN -->
+<div id="loginBox">
+<input id="username" placeholder="Username">
+<button onclick="login()">🔐 Login</button>
+</div>
+
+<div id="app" class="hidden">
+
+<input id="aiText" placeholder="girl run 2 jump 1 | boy stand 3 | background image">
 
 <div class="row">
 <button onclick="parseAI()">🧠 AI Generate</button>
@@ -56,127 +64,124 @@ small{opacity:.7;display:block;text-align:center;margin-top:6px}
 </div>
 
 <div class="row">
-<select id="bgSelect" onchange="background=this.value">
+<select id="bgSelect" onchange="setBG(this.value)">
 <option value="street">Street</option>
 <option value="room">Room</option>
 <option value="sky">Sky</option>
+<option value="image">Image</option>
 </select>
+<input type="file" accept="image/*" onchange="loadBG(event)">
+</div>
+
+<div class="row">
+<select onchange="girl.color=this.value">
+<option value="#000">Girl Black</option>
+<option value="#e91e63">Girl Pink</option>
+<option value="#3f51b5">Girl Blue</option>
+</select>
+<select onchange="boy.color=this.value">
+<option value="#000">Boy Black</option>
+<option value="#4caf50">Boy Green</option>
+<option value="#ff9800">Boy Orange</option>
+</select>
+</div>
+
+<div class="row">
 <button onclick="togglePlay()">⏯ Pause</button>
 <button onclick="resetScene()">🔄 Reset</button>
 </div>
 
 <div class="row">
 <button onclick="startRecord()">🎥 Start</button>
-<button onclick="stopRecord()">⏹ Save Video</button>
+<button onclick="stopRecord()">💾 Save Video</button>
 </div>
 
 <canvas id="c" width="360" height="560"></canvas>
-<small>AI → Scene → Character → Video</small>
+<small>Login → AI → Character → Scene → Video</small>
+
+</div>
 </div>
 
 <script>
 const c=document.getElementById('c');
 const ctx=c.getContext('2d');
 ctx.lineCap="round";ctx.lineJoin="round";
-
 const ground=c.height-90;
+
 let playing=true;
-let background="street";
 let camX=0;
+let background="street";
+let bgImage=null;
+
+// ===== LOGIN =====
+function login(){
+  localStorage.setItem('user',username.value);
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+}
+if(localStorage.getItem('user')) login();
 
 // ===== CHARACTER =====
 class Stickman{
-  constructor(x,type,color){
+  constructor(x,type){
     this.baseX=x;
     this.x=x;
     this.y=ground;
     this.vy=0;
-    this.action='stand';
     this.type=type;
-    this.color=color;
+    this.color="#000";
+    this.action='stand';
     this.timeline=[];
     this.ti=0;
     this.tf=0;
   }
 }
 
-const girl=new Stickman(120,'girl','#000');
-const boy=new Stickman(220,'boy','#000');
+const girl=new Stickman(120,'girl');
+const boy=new Stickman(220,'boy');
 const characters=[girl,boy];
 
-// ===== VIDEO =====
-let recorder,chunks=[];
-function startRecord(){
-  recorder=new MediaRecorder(c.captureStream(60));
-  chunks=[];
-  recorder.ondataavailable=e=>chunks.push(e.data);
-  recorder.onstop=()=>{
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
-    a.download='stickman_pro.webm';
-    a.click();
-  };
-  recorder.start();
-}
-function stopRecord(){recorder&&recorder.stop();}
-
 // ===== BACKGROUND =====
-function drawBackground(){
-  if(background==='street'){
-    ctx.fillStyle="#eaeaea";
-    ctx.fillRect(0,0,c.width,c.height);
-    ctx.fillStyle="#999";
-    ctx.fillRect(0,ground+30,c.width,40);
+function setBG(v){background=v;}
+function loadBG(e){
+  const img=new Image();
+  img.src=URL.createObjectURL(e.target.files[0]);
+  img.onload=()=>bgImage=img;
+}
+function drawBG(){
+  if(background==='image' && bgImage){
+    ctx.drawImage(bgImage,0,0,c.width,c.height);
+    return;
   }
-  if(background==='room'){
-    ctx.fillStyle="#fff4e6";
-    ctx.fillRect(0,0,c.width,c.height);
-  }
-  if(background==='sky'){
-    ctx.fillStyle="#bde7ff";
-    ctx.fillRect(0,0,c.width,c.height);
-  }
+  ctx.fillStyle=background==='sky'?'#bde7ff':
+                background==='room'?'#fff4e6':'#eaeaea';
+  ctx.fillRect(0,0,c.width,c.height);
 }
 
-// ===== DRAW STICKMAN =====
+// ===== DRAW =====
 function drawStickman(ch){
   ctx.strokeStyle=ch.color;
-  let walk=Math.sin(Date.now()*0.01);
-  let px=ch.x-camX;
+  let p=Math.sin(Date.now()*0.01);
+  let x=ch.x-camX;
 
-  ctx.beginPath();
-  ctx.arc(px,ch.y-40,12,0,Math.PI*2);
-  ctx.stroke();
-
+  ctx.beginPath();ctx.arc(x,ch.y-40,12,0,Math.PI*2);ctx.stroke();
   if(ch.type==='girl'){
     ctx.beginPath();
-    ctx.moveTo(px+6,ch.y-52);
-    ctx.quadraticCurveTo(px+26,ch.y-44,px+18,ch.y-26);
+    ctx.moveTo(x+6,ch.y-52);
+    ctx.quadraticCurveTo(x+26,ch.y-44,x+18,ch.y-26);
     ctx.stroke();
   }
-
-  ctx.beginPath();
-  ctx.moveTo(px,ch.y-28);
-  ctx.lineTo(px,ch.y+20);
-  ctx.stroke();
-
-  limb(px,ch.y-24,walk);
-  limb(px,ch.y-24,walk+Math.PI);
-  leg(px-6,ch.y+20,walk);
-  leg(px+6,ch.y+20,walk+Math.PI);
+  ctx.beginPath();ctx.moveTo(x,ch.y-28);ctx.lineTo(x,ch.y+20);ctx.stroke();
+  limb(x,ch.y-24,p); limb(x,ch.y-24,p+Math.PI);
+  leg(x-6,ch.y+20,p); leg(x+6,ch.y+20,p+Math.PI);
 }
-
 function limb(x,y,p){
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(p)*16,y+Math.cos(p)*16);
-  ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x,y);
+  ctx.lineTo(x+Math.sin(p)*16,y+Math.cos(p)*16);ctx.stroke();
 }
 function leg(x,y,p){
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(p)*14,y+28);
-  ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x,y);
+  ctx.lineTo(x+Math.sin(p)*14,y+28);ctx.stroke();
 }
 
 // ===== ENGINE =====
@@ -191,63 +196,72 @@ function animate(){
       }
       if(ch.action==='run') ch.x+=1;
       if(ch.action==='jump'&&ch.y===ground) ch.vy=-11;
-      ch.vy+=0.6;
-      ch.y+=ch.vy;
+      ch.vy+=0.6; ch.y+=ch.vy;
       if(ch.y>ground){ch.y=ground;ch.vy=0;}
     });
   }
-
   camX+=((girl.x+boy.x)/2-camX-c.width/2)*0.05;
-
-  drawBackground();
+  drawBG();
   characters.forEach(drawStickman);
   requestAnimationFrame(animate);
 }
 
 // ===== AI PARSER =====
 function parseAI(){
-  characters.forEach(ch=>{ch.timeline=[];ch.ti=0;ch.tf=0;});
-  let blocks=document.getElementById('aiText').value.toLowerCase().split('|');
+  characters.forEach(c=>{c.timeline=[];c.ti=0;c.tf=0;});
+  let blocks=aiText.value.toLowerCase().split('|');
   blocks.forEach(b=>{
     b=b.trim();
-    if(b.startsWith('background')){
-      background=b.split(' ')[1]||background;
-      document.getElementById('bgSelect').value=background;
-    }else{
-      let parts=b.split(' ');
-      let ch=parts[0]==='girl'?girl:boy;
-      for(let i=1;i<parts.length;i+=2){
-        ch.timeline.push({action:parts[i],frames:(parts[i+1]||1)*60});
-      }
+    if(b.startsWith('background')) setBG(b.split(' ')[1]);
+    else{
+      let p=b.split(' ');
+      let ch=p[0]==='girl'?girl:boy;
+      for(let i=1;i<p.length;i+=2)
+        ch.timeline.push({action:p[i],frames:(p[i+1]||1)*60});
     }
   });
 }
 
 // ===== SAVE / LOAD =====
 function saveProject(){
-  localStorage.setItem('stickmanProject',JSON.stringify({
-    background,
+  localStorage.setItem('project',JSON.stringify({
+    bg:background,
     girl:girl.timeline,
     boy:boy.timeline
   }));
   alert('Saved!');
 }
 function loadProject(){
-  let p=JSON.parse(localStorage.getItem('stickmanProject'));
+  let p=JSON.parse(localStorage.getItem('project'));
   if(!p) return;
-  background=p.background;
+  background=p.bg;
   girl.timeline=p.girl;
   boy.timeline=p.boy;
-  document.getElementById('bgSelect').value=background;
 }
 
 // ===== CONTROLS =====
 function togglePlay(){playing=!playing;}
 function resetScene(){
-  characters.forEach(ch=>{
-    ch.x=ch.baseX;ch.y=ground;ch.vy=0;ch.ti=0;ch.tf=0;
+  characters.forEach(c=>{
+    c.x=c.baseX;c.y=ground;c.vy=0;c.ti=0;c.tf=0;
   });
 }
+
+// ===== VIDEO =====
+let rec,chunks=[];
+function startRecord(){
+  rec=new MediaRecorder(c.captureStream(60));
+  chunks=[];
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=()=>{
+    let a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
+    a.download='stickman_ai.webm';
+    a.click();
+  };
+  rec.start();
+}
+function stopRecord(){rec&&rec.stop();}
 
 animate();
 </script>
