@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v35.0 (Crowd)</title>
+<title>Stickman AI – STUDIO v36.0 (Timeline)</title>
 <style>
 body{
   margin:0;
@@ -16,7 +16,7 @@ body{
 }
 #studio{display:flex;flex-direction:column;gap:10px;align-items:center}
 canvas{background:#fff;border-radius:16px}
-.panel{display:flex;gap:6px;flex-wrap:wrap}
+.panel{display:flex;gap:6px}
 button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer}
 .small{font-size:12px;opacity:.7}
 </style>
@@ -25,11 +25,10 @@ button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer}
 
 <div id="studio">
   <div class="panel">
-    <button onclick="state='run'">Run</button>
-    <button onclick="state='idle'">Idle</button>
-    <button onclick="jumpAll()">Jump</button>
+    <button onclick="playing=!playing">Play / Pause</button>
+    <button onclick="timeline.time=0">Reset</button>
   </div>
-  <div class="small">v35.0 — multi character engine</div>
+  <div class="small">v36.0 — Timeline engine (J bosqich)</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -40,39 +39,65 @@ ctx.lineCap="round";
 ctx.lineWidth=4;
 
 const W=420,H=640,ground=520;
-let time=0,state="run",camX=0;
 
 // ===== JOINT =====
 class Joint{constructor(x,y){this.x=x;this.y=y;}}
 
-// ===== CREATE MAN =====
-function createMan(x,phase){
- return{
-  hip:new Joint(x,ground-85),
-  neck:new Joint(x,ground-155),
-  head:new Joint(x,ground-195),
+// ===== STICKMAN =====
+const man={
+ hip:new Joint(210,ground-85),
+ neck:new Joint(210,ground-155),
+ head:new Joint(210,ground-195),
 
-  kneeL:new Joint(x-18,ground-45),
-  kneeR:new Joint(x+18,ground-45),
-  footL:new Joint(x-18,ground),
-  footR:new Joint(x+18,ground),
+ kneeL:new Joint(190,ground-45),
+ kneeR:new Joint(230,ground-45),
+ footL:new Joint(190,ground),
+ footR:new Joint(230,ground),
 
-  elbowL:new Joint(x-40,ground-135),
-  elbowR:new Joint(x+40,ground-135),
-  handL:new Joint(x-55,ground-115),
-  handR:new Joint(x+55,ground-115),
+ elbowL:new Joint(170,ground-135),
+ elbowR:new Joint(250,ground-135),
+ handL:new Joint(150,ground-115),
+ handR:new Joint(270,ground-115),
+};
 
-  phase:phase,
-  vy:0,
-  onGround:true,
-  speed:1+Math.random()*0.3
- };
-}
+// ===== TIMELINE =====
+const timeline={
+ fps:24,
+ duration:2,
+ time:0,
+ tracks:{
+  hipY:[
+   {t:0,v:ground-85},
+   {t:1,v:ground-95},
+   {t:2,v:ground-85}
+  ],
+  legSwing:[
+   {t:0,v:-1},
+   {t:1,v:1},
+   {t:2,v:-1}
+  ],
+  armSwing:[
+   {t:0,v:1},
+   {t:1,v:-1},
+   {t:2,v:1}
+  ]
+ }
+};
 
-// ===== CROWD =====
-const men=[];
-for(let i=0;i<5;i++){
- men.push(createMan(200+i*80,i*0.6));
+let playing=true;
+
+// ===== INTERPOLATION =====
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function sample(track,time){
+ let a=track[0],b=track[track.length-1];
+ for(let i=0;i<track.length-1;i++){
+  if(time>=track[i].t && time<=track[i+1].t){
+   a=track[i]; b=track[i+1]; break;
+  }
+ }
+ const t=(time-a.t)/(b.t-a.t||1);
+ return lerp(a.v,b.v,t);
 }
 
 // ===== IK =====
@@ -83,78 +108,48 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== ACTIONS =====
-function jumpAll(){
- men.forEach(m=>{
-  if(m.onGround){
-   m.vy=-14;
-   m.onGround=false;
-  }
- });
- state="jump";
-}
+// ===== APPLY TIMELINE =====
+function applyTimeline(){
+ const hipY=sample(timeline.tracks.hipY,timeline.time);
+ const leg=sample(timeline.tracks.legSwing,timeline.time);
+ const arm=sample(timeline.tracks.armSwing,timeline.time);
 
-function run(m){
- m.phase+=0.1*m.speed;
- const s=Math.sin(m.phase);
- const stride=26;
+ man.hip.y=hipY;
+ man.hip.x=210;
 
- m.footL.x=m.hip.x-stride;
- m.footR.x=m.hip.x+stride;
- m.footL.y=ground-Math.max(0,s)*28;
- m.footR.y=ground-Math.max(0,-s)*28;
+ man.neck.x=man.hip.x;
+ man.neck.y=man.hip.y-70;
+ man.head.x=man.neck.x;
+ man.head.y=man.neck.y-40;
 
- m.hip.x+=m.speed;
- m.hip.y=ground-85-Math.abs(s)*8;
+ man.footL.x=man.hip.x-22;
+ man.footR.x=man.hip.x+22;
+ man.footL.y=ground-Math.max(0,leg)*30;
+ man.footR.y=ground-Math.max(0,-leg)*30;
 
- m.neck.x=m.hip.x;
- m.neck.y=m.hip.y-70;
- m.head.x=m.neck.x;
- m.head.y=m.neck.y-40;
-
- m.handL.x=m.neck.x-45-s*22;
- m.handR.x=m.neck.x+45+s*22;
- m.handL.y=m.neck.y+20;
- m.handR.y=m.neck.y+20;
-}
-
-function jump(m){
- m.vy+=0.8;
- m.hip.y+=m.vy;
- if(m.hip.y>=ground-85){
-  m.hip.y=ground-85;
-  m.vy=0;
-  m.onGround=true;
-  state="run";
- }
- m.neck.y=m.hip.y-70;
- m.head.y=m.neck.y-40;
-}
-
-function idle(m){
- const b=Math.sin(time*0.05+m.phase);
- m.hip.y=ground-85+b*4;
- m.neck.y=m.hip.y-70;
- m.head.y=m.neck.y-40;
+ man.handL.x=man.neck.x-45+arm*25;
+ man.handR.x=man.neck.x+45-arm*25;
+ man.handL.y=man.neck.y+20;
+ man.handR.y=man.neck.y+20;
 }
 
 // ===== SOLVE =====
-function solve(m){
+function solve(){
  for(let i=0;i<6;i++){
-  stick(m.neck,m.hip,70);
-  stick(m.head,m.neck,40);
+  stick(man.neck,man.hip,70);
+  stick(man.head,man.neck,40);
 
-  stick(m.hip,m.kneeL,40);
-  stick(m.kneeL,m.footL,40);
+  stick(man.hip,man.kneeL,40);
+  stick(man.kneeL,man.footL,40);
 
-  stick(m.hip,m.kneeR,40);
-  stick(m.kneeR,m.footR,40);
+  stick(man.hip,man.kneeR,40);
+  stick(man.kneeR,man.footR,40);
 
-  stick(m.neck,m.elbowL,35);
-  stick(m.elbowL,m.handL,35);
+  stick(man.neck,man.elbowL,35);
+  stick(man.elbowL,man.handL,35);
 
-  stick(m.neck,m.elbowR,35);
-  stick(m.elbowR,m.handR,35);
+  stick(man.neck,man.elbowR,35);
+  stick(man.elbowR,man.handR,35);
  }
 }
 
@@ -166,54 +161,47 @@ function line(a,b){
  ctx.stroke();
 }
 
-function drawMan(m){
+function draw(){
+ ctx.clearRect(0,0,W,H);
+
+ ctx.strokeStyle="#ccc";
  ctx.beginPath();
- ctx.arc(m.head.x,m.head.y,16,0,Math.PI*2);
+ ctx.moveTo(0,ground);
+ ctx.lineTo(W,ground);
  ctx.stroke();
 
- line(m.head,m.neck);
- line(m.neck,m.hip);
+ ctx.strokeStyle="#000";
+ ctx.beginPath();
+ ctx.arc(man.head.x,man.head.y,16,0,Math.PI*2);
+ ctx.stroke();
 
- line(m.hip,m.kneeL);
- line(m.kneeL,m.footL);
+ line(man.head,man.neck);
+ line(man.neck,man.hip);
 
- line(m.hip,m.kneeR);
- line(m.kneeR,m.footR);
+ line(man.hip,man.kneeL);
+ line(man.kneeL,man.footL);
 
- line(m.neck,m.elbowL);
- line(m.elbowL,m.handL);
+ line(man.hip,man.kneeR);
+ line(man.kneeR,man.footR);
 
- line(m.neck,m.elbowR);
- line(m.elbowR,m.handR);
+ line(man.neck,man.elbowL);
+ line(man.elbowL,man.handL);
+
+ line(man.neck,man.elbowR);
+ line(man.elbowR,man.handR);
 }
 
 // ===== LOOP =====
 function loop(){
- time++;
+ if(playing){
+  timeline.time+=1/timeline.fps;
+  if(timeline.time>timeline.duration) timeline.time=0;
+ }
 
- men.forEach(m=>{
-  if(state==="run") run(m);
-  if(state==="jump") jump(m);
-  if(state==="idle") idle(m);
-  solve(m);
- });
+ applyTimeline();
+ solve();
+ draw();
 
- camX+=(men[0].hip.x-W/2-camX)*0.08;
-
- ctx.clearRect(0,0,W,H);
- ctx.save();
- ctx.translate(-camX,0);
-
- ctx.strokeStyle="#ccc";
- ctx.beginPath();
- ctx.moveTo(-2000,ground);
- ctx.lineTo(2000,ground);
- ctx.stroke();
-
- ctx.strokeStyle="#000";
- men.forEach(drawMan);
-
- ctx.restore();
  requestAnimationFrame(loop);
 }
 loop();
