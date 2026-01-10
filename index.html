@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v7.7.1 – Walk Cycle</title>
+<title>Stickman AI v7.7.2 – Advanced Walk</title>
 <style>
   body {
     margin: 0;
@@ -26,28 +26,29 @@ const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
 /* =======================
-   GLOBAL STICKMAN STATE
+   GLOBAL STATE
 ======================= */
 const stickman = {
   x: 300,
+  baseY: 320,
   y: 320,
   scale: 1,
   pose: {
-    leftArm: 20,
-    rightArm: -20,
-    leftLeg: -20,
-    rightLeg: 20
+    leftArm: 0,
+    rightArm: 0,
+    leftLeg: 0,
+    rightLeg: 0
   }
 };
 
 /* =======================
-   WALK CYCLE SETTINGS
+   WALK SETTINGS
 ======================= */
-let walkTime = 0;
-const walkSpeed = 0.06; // tezlik
+let t = 0;
+const speed = 0.06;
 
 /* =======================
-   DRAW FUNCTIONS
+   DRAW
 ======================= */
 function drawStickman(s) {
   ctx.save();
@@ -68,13 +69,13 @@ function drawStickman(s) {
   ctx.arc(0, -70, 22, 0, Math.PI * 2);
   ctx.stroke();
 
-  // ARMS (oyoqka teskari)
+  // ARMS
   drawLimb(0, -20, 55, s.pose.leftArm);
   drawLimb(0, -20, 55, s.pose.rightArm);
 
   // LEGS
-  drawLimb(0, 60, 65, s.pose.leftLeg);
-  drawLimb(0, 60, 65, s.pose.rightLeg);
+  drawLeg(0, 60, 65, s.pose.leftLeg);
+  drawLeg(0, 60, 65, s.pose.rightLeg);
 
   ctx.restore();
 }
@@ -90,23 +91,56 @@ function drawLimb(x, y, length, angle) {
   ctx.restore();
 }
 
-/* =======================
-   WALK ANIMATION
-======================= */
-function updateWalk() {
-  walkTime += walkSpeed;
+/* ---- Knee leg ---- */
+function drawLeg(x, y, length, angle) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle * Math.PI / 180);
 
-  const swing = Math.sin(walkTime) * 30;
+  const upper = length * 0.55;
+  const lower = length * 0.45;
+  const kneeBend = Math.max(0, Math.sin(t + angle * 0.05)) * 25;
 
-  stickman.pose.leftLeg  =  swing;
-  stickman.pose.rightLeg = -swing;
+  // upper leg
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, upper);
+  ctx.stroke();
 
-  stickman.pose.leftArm  = -swing * 0.8;
-  stickman.pose.rightArm =  swing * 0.8;
+  // lower leg
+  ctx.translate(0, upper);
+  ctx.rotate(kneeBend * Math.PI / 180);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, lower);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 /* =======================
-   RENDER LOOP (SAFE)
+   WALK UPDATE
+======================= */
+function updateWalk() {
+  t += speed;
+
+  const swing = Math.sin(t) * 30;
+  const bounce = Math.abs(Math.sin(t)) * 8;
+
+  // legs
+  stickman.pose.leftLeg  =  swing;
+  stickman.pose.rightLeg = -swing;
+
+  // arms (opposite)
+  stickman.pose.leftArm  = -swing * 0.8;
+  stickman.pose.rightArm =  swing * 0.8;
+
+  // body bounce
+  stickman.y = stickman.baseY - bounce;
+}
+
+/* =======================
+   RENDER LOOP
 ======================= */
 function render() {
   ctx.setTransform(1,0,0,1,0,0);
