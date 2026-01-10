@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – Level 3 REAL</title>
+<title>Stickman AI – Level 4 ENGINE</title>
 <style>
 body{
   margin:0;
@@ -16,7 +16,7 @@ body{
   padding:10px;
 }
 .box{
-  width:420px;
+  width:440px;
   max-height:95vh;
   overflow:auto;
   padding:14px;
@@ -56,37 +56,56 @@ canvas{
   border-radius:6px;
   margin:2px;
 }
+.controls{
+  display:flex;
+  gap:6px;
+  margin-top:6px;
+}
+.controls button{flex:1}
 small{opacity:.7;display:block;text-align:center;margin-top:6px}
 </style>
 </head>
 
 <body>
 <div class="box">
-  <h3>🎬 Stickman AI – REAL LEVEL</h3>
+  <h3>🎬 Stickman AI – LEVEL 4</h3>
 
-  <!-- AI TEXT INPUT -->
   <input id="text" placeholder="run 2 jump 1 stand 2">
 
   <button onclick="generate()">🧠 Generate Timeline</button>
-  <button onclick="startRecord()">🎥 Start Recording</button>
-  <button onclick="stopRecord()">⏹ Save Video</button>
+
+  <div class="controls">
+    <button onclick="togglePlay()">⏯ Pause</button>
+    <button onclick="resetScene()">🔄 Reset</button>
+  </div>
+
+  <div class="controls">
+    <button onclick="startRecord()">🎥 Start</button>
+    <button onclick="stopRecord()">💾 Save</button>
+  </div>
 
   <div class="timeline" id="timelineUI"></div>
 
   <canvas id="c" width="360" height="600"></canvas>
 
-  <small>Text → Timeline → Scene → Video</small>
+  <small>Text → Timeline → Scene → Camera → Video</small>
 </div>
 
 <script>
 const c=document.getElementById('c');
 const ctx=c.getContext('2d');
 ctx.lineCap="round";ctx.lineJoin="round";
+
 const ground=c.height-100;
+let playing=true;
+
+// ===== CAMERA =====
+let camX=0;
 
 // ===== STICKMAN CLASS =====
 class Stickman{
   constructor(x,type){
+    this.baseX=x;
     this.x=x;
     this.y=ground;
     this.vy=0;
@@ -96,8 +115,8 @@ class Stickman{
 }
 
 const characters=[
-  new Stickman(c.width*0.35,'girl'),
-  new Stickman(c.width*0.65,'boy')
+  new Stickman(120,'girl'),
+  new Stickman(220,'boy')
 ];
 
 let frame=0;
@@ -114,7 +133,7 @@ function startRecord(){
   recorder.onstop=()=>{
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
-    a.download='stickman_real.webm';
+    a.download='stickman_level4.webm';
     a.click();
   };
   recorder.start();
@@ -126,37 +145,37 @@ function drawStickman(ch){
   let walk=Math.sin(frame*0.12);
   let lean=ch.action==='run'?walk*10:0;
 
+  let px=ch.x-camX;
+
   // HEAD
   ctx.beginPath();
-  ctx.arc(ch.x+lean*.3,ch.y-45,12,0,Math.PI*2);
+  ctx.arc(px+lean*.3,ch.y-45,12,0,Math.PI*2);
   ctx.stroke();
 
   // FACE
   ctx.beginPath();
-  ctx.arc(ch.x+lean*.3,ch.y-42,4,0,Math.PI);
+  ctx.arc(px+lean*.3,ch.y-42,4,0,Math.PI);
   ctx.stroke();
 
   // HAIR
   if(ch.type==='girl'){
     ctx.beginPath();
-    ctx.moveTo(ch.x+6,ch.y-58);
-    ctx.quadraticCurveTo(ch.x+30,ch.y-48,ch.x+20,ch.y-28);
+    ctx.moveTo(px+6,ch.y-58);
+    ctx.quadraticCurveTo(px+30,ch.y-48,px+20,ch.y-28);
     ctx.stroke();
   }
 
   // BODY
   ctx.beginPath();
-  ctx.moveTo(ch.x,ch.y-30);
-  ctx.lineTo(ch.x,ch.y+20);
+  ctx.moveTo(px,ch.y-30);
+  ctx.lineTo(px,ch.y+20);
   ctx.stroke();
 
-  // ARMS
-  limb(ch.x,ch.y-25,walk);
-  limb(ch.x,ch.y-25,walk+Math.PI);
+  limb(px,ch.y-25,walk);
+  limb(px,ch.y-25,walk+Math.PI);
 
-  // LEGS
-  leg(ch.x-6,ch.y+20,walk);
-  leg(ch.x+6,ch.y+20,walk+Math.PI);
+  leg(px-6,ch.y+20,walk);
+  leg(px+6,ch.y+20,walk+Math.PI);
 }
 
 function limb(x,y,p){
@@ -178,9 +197,8 @@ function leg(x,y,p){
 
 // ===== ENGINE =====
 function animate(){
-  frame++;
+  if(playing) frame++;
 
-  // WHITE BG (video-safe)
   ctx.fillStyle="#fff";
   ctx.fillRect(0,0,c.width,c.height);
 
@@ -190,23 +208,42 @@ function animate(){
   if(timeline.length){
     let cur=timeline[timeIndex];
     characters.forEach(ch=>ch.action=cur.action);
-    actionFrame++;
-    if(actionFrame>cur.frames){
-      actionFrame=0;
-      timeIndex=(timeIndex+1)%timeline.length;
+    if(playing){
+      actionFrame++;
+      if(actionFrame>cur.frames){
+        actionFrame=0;
+        timeIndex=(timeIndex+1)%timeline.length;
+      }
     }
   }
 
   characters.forEach(ch=>{
-    if(ch.action==='run') ch.x+=1;
-    if(ch.action==='jump'&&ch.y===ground) ch.vy=-11;
-    ch.vy+=0.6;
-    ch.y+=ch.vy;
-    if(ch.y>ground){ch.y=ground;ch.vy=0;}
-    drawStickman(ch);
+    if(playing){
+      if(ch.action==='run') ch.x+=1;
+      if(ch.action==='jump'&&ch.y===ground) ch.vy=-11;
+      ch.vy+=0.6;
+      ch.y+=ch.vy;
+      if(ch.y>ground){ch.y=ground;ch.vy=0;}
+    }
   });
 
+  // CAMERA FOLLOW (average)
+  camX += ((characters[0].x+characters[1].x)/2 - camX - c.width/2)*0.05;
+
+  characters.forEach(drawStickman);
   requestAnimationFrame(animate);
+}
+
+// ===== CONTROLS =====
+function togglePlay(){playing=!playing;}
+function resetScene(){
+  frame=0; timeIndex=0; actionFrame=0;
+  characters.forEach(ch=>{
+    ch.x=ch.baseX;
+    ch.y=ground;
+    ch.vy=0;
+    ch.action='stand';
+  });
 }
 
 // ===== TEXT → TIMELINE =====
@@ -221,10 +258,9 @@ function generate(){
     let act=parts[i];
     let sec=parseFloat(parts[i+1])||1;
     timeline.push({action:act,frames:sec*60});
-
-    let span=document.createElement('span');
-    span.textContent=`${act} (${sec}s)`;
-    document.getElementById('timelineUI').appendChild(span);
+    let s=document.createElement('span');
+    s.textContent=`${act} ${sec}s`;
+    document.getElementById('timelineUI').appendChild(s);
   }
 }
 
