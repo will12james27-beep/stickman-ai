@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v36.0 (Timeline)</title>
+<title>Stickman AI – STUDIO v36.1 (Keyframe)</title>
 <style>
 body{
   margin:0;
@@ -15,7 +15,7 @@ body{
   color:white;
 }
 #studio{display:flex;flex-direction:column;gap:10px;align-items:center}
-canvas{background:#fff;border-radius:16px}
+canvas{background:#fff;border-radius:16px;cursor:pointer}
 .panel{display:flex;gap:6px}
 button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer}
 .small{font-size:12px;opacity:.7}
@@ -27,8 +27,9 @@ button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer}
   <div class="panel">
     <button onclick="playing=!playing">Play / Pause</button>
     <button onclick="timeline.time=0">Reset</button>
+    <button onclick="clearKeys()">Clear Keys</button>
   </div>
-  <div class="small">v36.0 — Timeline engine (J bosqich)</div>
+  <div class="small">v36.1 — Click canvas to add keyframe</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -66,21 +67,9 @@ const timeline={
  duration:2,
  time:0,
  tracks:{
-  hipY:[
-   {t:0,v:ground-85},
-   {t:1,v:ground-95},
-   {t:2,v:ground-85}
-  ],
-  legSwing:[
-   {t:0,v:-1},
-   {t:1,v:1},
-   {t:2,v:-1}
-  ],
-  armSwing:[
-   {t:0,v:1},
-   {t:1,v:-1},
-   {t:2,v:1}
-  ]
+  hipY:[],
+  legSwing:[],
+  armSwing:[]
  }
 };
 
@@ -90,6 +79,9 @@ let playing=true;
 function lerp(a,b,t){return a+(b-a)*t;}
 
 function sample(track,time){
+ if(track.length===0) return 0;
+ if(track.length===1) return track[0].v;
+
  let a=track[0],b=track[track.length-1];
  for(let i=0;i<track.length-1;i++){
   if(time>=track[i].t && time<=track[i+1].t){
@@ -110,12 +102,12 @@ function stick(a,b,l){
 
 // ===== APPLY TIMELINE =====
 function applyTimeline(){
- const hipY=sample(timeline.tracks.hipY,timeline.time);
- const leg=sample(timeline.tracks.legSwing,timeline.time);
- const arm=sample(timeline.tracks.armSwing,timeline.time);
+ const hipY = sample(timeline.tracks.hipY,timeline.time) || ground-85;
+ const leg  = sample(timeline.tracks.legSwing,timeline.time);
+ const arm  = sample(timeline.tracks.armSwing,timeline.time);
 
- man.hip.y=hipY;
  man.hip.x=210;
+ man.hip.y=hipY;
 
  man.neck.x=man.hip.x;
  man.neck.y=man.hip.y-70;
@@ -151,6 +143,22 @@ function solve(){
   stick(man.neck,man.elbowR,35);
   stick(man.elbowR,man.handR,35);
  }
+}
+
+// ===== KEYFRAME ADD =====
+function addKeyframe(){
+ timeline.tracks.hipY.push({t:timeline.time,v:man.hip.y});
+ timeline.tracks.legSwing.push({t:timeline.time,v:Math.sign(man.footR.y-man.footL.y)});
+ timeline.tracks.armSwing.push({t:timeline.time,v:Math.sign(man.handL.x-man.handR.x)});
+
+ // sort
+ for(let k in timeline.tracks){
+  timeline.tracks[k].sort((a,b)=>a.t-b.t);
+ }
+}
+
+function clearKeys(){
+ for(let k in timeline.tracks) timeline.tracks[k]=[];
 }
 
 // ===== DRAW =====
@@ -191,17 +199,18 @@ function draw(){
  line(man.elbowR,man.handR);
 }
 
+// ===== EVENTS =====
+c.addEventListener("click",addKeyframe);
+
 // ===== LOOP =====
 function loop(){
  if(playing){
   timeline.time+=1/timeline.fps;
   if(timeline.time>timeline.duration) timeline.time=0;
  }
-
  applyTimeline();
  solve();
  draw();
-
  requestAnimationFrame(loop);
 }
 loop();
