@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v18.0</title>
+<title>Stickman AI – STUDIO v19.0</title>
 <style>
 body{
   margin:0;
@@ -14,7 +14,7 @@ body{
   align-items:center;
 }
 .box{
-  width:800px;
+  width:820px;
   background:#0b1f26;
   padding:14px;
   border-radius:18px;
@@ -50,13 +50,14 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v18.0</h3>
+<h3>🎬 Stickman AI – STUDIO v19.0</h3>
 
 <div class="panel">
 <b>🎮 Controls</b>
 <div class="row">
 <button onclick="toggleRagdoll()">💥 Ragdoll</button>
-<button onclick="toggleWalk()">🚶 Walk</button>
+<button onclick="aiCommand('walk')">🚶 Walk</button>
+<button onclick="aiCommand('stop')">⏹ Stop</button>
 <button onclick="aiCommand('jump')">⬆ Jump</button>
 <button onclick="aiCommand('sit')">⬇ Sit</button>
 <button onclick="toggleDebug()">🦴 Debug</button>
@@ -64,21 +65,23 @@ small{text-align:center;display:block;opacity:.6}
 </div>
 
 <canvas id="c"></canvas>
-<small>v18.0 • Walk Cycle • Balance AI • Timeline Core • AI Commands</small>
+<small>v19.0 • Forward Walk • Balance AI • Timeline Core • AI Commands</small>
 </div>
 
 <script>
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
-c.width = 360;
-c.height = 640;
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
+c.width=360; c.height=640;
 ctx.lineCap="round"; ctx.lineWidth=4;
 
-const ground = 520;
-const GRAVITY = 0.8;
+const ground=520;
+const GRAVITY=0.9;
 
-let ragdoll=false, debug=false, walking=false;
+let ragdoll=false;
+let debug=false;
+let walking=false;
 let time=0;
+let velocityX=0;
 
 // ===== JOINT =====
 class Joint{
@@ -91,28 +94,28 @@ class Joint{
 // ===== MAN =====
 class Man{
   constructor(x){
-    this.hip=new Joint(x,ground-60);
-    this.neck=new Joint(x,ground-120);
-    this.head=new Joint(x,ground-150);
+    this.hip=new Joint(x,ground-70);
+    this.neck=new Joint(x,ground-135);
+    this.head=new Joint(x,ground-170);
     this.legL=new Joint(x-14,ground);
     this.legR=new Joint(x+14,ground);
-    this.armL=new Joint(x-36,ground-120);
-    this.armR=new Joint(x+36,ground-120);
-    this.rootX=x;
+    this.armL=new Joint(x-36,ground-135);
+    this.armR=new Joint(x+36,ground-135);
   }
 }
 const man=new Man(180);
 
-// ===== UTILS =====
-function stick(a,b,l){
-  const dx=b.x-a.x,dy=b.y-a.y;
+// ===== STICK =====
+function stick(a,b,len){
+  const dx=b.x-a.x, dy=b.y-a.y;
   const d=Math.hypot(dx,dy)||0.001;
-  const diff=(d-l)/d;
+  const diff=(d-len)/d;
   const ox=dx*0.5*diff, oy=dy*0.5*diff;
   a.x+=ox; a.y+=oy;
   b.x-=ox; b.y-=oy;
 }
 
+// ===== PHYSICS =====
 function physics(j){
   j.vy+=GRAVITY;
   j.x+=j.vx;
@@ -122,25 +125,34 @@ function physics(j){
 
 // ===== BALANCE AI =====
 function balanceAI(){
-  man.hip.x += (man.rootX-man.hip.x)*0.15;
-  man.hip.y += ((ground-60)-man.hip.y)*0.2;
-  man.neck.x += (man.hip.x-man.neck.x)*0.15;
+  man.hip.y += ((ground-70)-man.hip.y)*0.25;
+  man.neck.x += (man.hip.x-man.neck.x)*0.2;
 }
 
-// ===== WALK CYCLE =====
-function walkCycle(){
-  const step=Math.sin(time*0.08)*18;
-  man.legL.x = man.hip.x - 14 + step;
-  man.legR.x = man.hip.x + 14 - step;
+// ===== WALK ENGINE (REAL FORWARD) =====
+function walkEngine(){
+  time++;
+  const step=Math.sin(time*0.12);
+
+  velocityX=1.2; // 🔥 forward speed
+  man.hip.x+=velocityX;
+
+  man.legL.x = man.hip.x - 14 + step*20;
+  man.legR.x = man.hip.x + 14 - step*20;
+
+  man.legL.y = ground - Math.max(0, step*12);
+  man.legR.y = ground - Math.max(0,-step*12);
 }
 
 // ===== AI COMMANDS =====
 function aiCommand(cmd){
+  if(cmd==="walk") walking=true;
+  if(cmd==="stop") walking=false;
   if(cmd==="jump" && !ragdoll){
-    man.hip.vy=-14;
+    man.hip.vy=-15;
   }
-  if(cmd==="sit" && !ragdoll){
-    man.hip.y=ground-30;
+  if(cmd==="sit"){
+    man.hip.y=ground-40;
   }
 }
 
@@ -187,22 +199,20 @@ function draw(){
 
 // ===== LOOP =====
 function loop(){
-  time++;
-
   if(ragdoll){
     Object.values(man).forEach(j=>j instanceof Joint && physics(j));
   }else{
     balanceAI();
-    if(walking) walkCycle();
+    if(walking) walkEngine();
   }
 
-  for(let i=0;i<8;i++){
-    stick(man.head,man.neck,30);
-    stick(man.neck,man.hip,60);
-    stick(man.hip,man.legL,60);
-    stick(man.hip,man.legR,60);
-    stick(man.neck,man.armL,40);
-    stick(man.neck,man.armR,40);
+  for(let i=0;i<10;i++){
+    stick(man.head,man.neck,35);
+    stick(man.neck,man.hip,65);
+    stick(man.hip,man.legL,65);
+    stick(man.hip,man.legR,65);
+    stick(man.neck,man.armL,45);
+    stick(man.neck,man.armR,45);
   }
 
   draw();
@@ -212,7 +222,6 @@ loop();
 
 // ===== UI =====
 function toggleRagdoll(){ragdoll=!ragdoll;}
-function toggleWalk(){walking=!walking;}
 function toggleDebug(){debug=!debug;}
 </script>
 </body>
