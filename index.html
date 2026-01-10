@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v28.1</title>
+<title>Stickman AI – STUDIO v29.0 (Stable Core)</title>
 <style>
 body{
   margin:0;
@@ -41,35 +41,37 @@ const ctx=c.getContext("2d");
 ctx.lineCap="round";
 ctx.lineWidth=4;
 
-const W=420, H=640, ground=520;
-let time=0, mode="walk", camX=0;
+const W=420,H=640,ground=520;
+let time=0,mode="walk",camX=0;
 
 // ===== JOINT =====
-class Joint{
-  constructor(x,y){this.x=x;this.y=y;}
-}
+class Joint{constructor(x,y){this.x=x;this.y=y;}}
 
 // ===== STICKMAN =====
 function createMan(x){
   return{
-    hip:new Joint(x,ground-80),
-    neck:new Joint(x,ground-150),
-    head:new Joint(x,ground-190),
-    kneeL:new Joint(x-20,ground-40),
-    kneeR:new Joint(x+20,ground-40),
-    footL:new Joint(x-20,ground),
-    footR:new Joint(x+20,ground),
-    elbowL:new Joint(x-45,ground-130),
-    elbowR:new Joint(x+45,ground-130),
-    handL:new Joint(x-60,ground-105),
-    handR:new Joint(x+60,ground-105),
-    step:0
+    hip:new Joint(x,ground-85),
+    neck:new Joint(x,ground-155),
+    head:new Joint(x,ground-195),
+
+    kneeL:new Joint(x-18,ground-45),
+    kneeR:new Joint(x+18,ground-45),
+    footL:new Joint(x-18,ground),
+    footR:new Joint(x+18,ground),
+
+    elbowL:new Joint(x-40,ground-135),
+    elbowR:new Joint(x+40,ground-135),
+    handL:new Joint(x-55,ground-115),
+    handR:new Joint(x+55,ground-115),
+
+    phase:0,
+    speed:1.15
   };
 }
 
 const men=[createMan(200)];
 
-// ===== IK =====
+// ===== IK SOLVER =====
 function stick(a,b,len){
   const dx=b.x-a.x, dy=b.y-a.y;
   const d=Math.hypot(dx,dy)||1;
@@ -78,57 +80,81 @@ function stick(a,b,len){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== WALK (STABLE) =====
+// ===== WALK (STABLE ENGINE) =====
 function walk(m){
-  m.step+=0.06;
-  const s=Math.sin(m.step);
-  const stride=28;
+  m.phase+=0.045;
+  const s=Math.sin(m.phase);
+  const stride=26;
 
-  const leftDown=s>0;
+  const leftLock=s>0;
 
-  if(leftDown){
+  // --- FOOT LOCK ---
+  if(leftLock){
     m.footL.x=m.hip.x-stride;
     m.footL.y=ground;
-    m.footR.x=m.hip.x+stride+s*24;
-    m.footR.y=ground-Math.max(0,-s)*30;
+
+    m.footR.x=m.hip.x+stride+s*22;
+    m.footR.y=ground-Math.max(0,-s)*28;
   }else{
     m.footR.x=m.hip.x+stride;
     m.footR.y=ground;
-    m.footL.x=m.hip.x-stride+s*24;
-    m.footL.y=ground-Math.max(0,s)*30;
+
+    m.footL.x=m.hip.x-stride+s*22;
+    m.footL.y=ground-Math.max(0,s)*28;
   }
 
-  m.hip.x+=1.2;
-  m.hip.y=ground-80-Math.abs(s)*10;
+  // --- HIP ---
+  m.hip.x+=m.speed;
+  m.hip.y=ground-85-Math.abs(s)*8;
 
-  m.handL.x=m.neck.x-45-s*22;
-  m.handR.x=m.neck.x+45+s*22;
+  // --- UPPER BODY (STABLE) ---
+  m.neck.x=m.hip.x;
+  m.neck.y=m.hip.y-70;
+  m.head.x=m.neck.x;
+  m.head.y=m.neck.y-40;
 
-  camX=m.hip.x-W/2;
+  // --- ARMS ---
+  m.handL.x=m.neck.x-45-s*20;
+  m.handR.x=m.neck.x+45+s*20;
+  m.handL.y=m.neck.y+20;
+  m.handR.y=m.neck.y+20;
+
+  camX+=((m.hip.x-W/2)-camX)*0.08;
 }
 
 // ===== IDLE =====
 function idle(m){
-  m.hip.y+=Math.sin(time*0.05)*0.4;
-  m.neck.y+=Math.sin(time*0.07)*0.4;
+  const b=Math.sin(time*0.05);
+  m.hip.y=ground-85+b*4;
+  m.neck.y=m.hip.y-70;
+  m.head.y=m.neck.y-40;
 }
 
 // ===== WAVE =====
 function wave(m){
-  m.handR.y=m.neck.y-60-Math.sin(time*0.3)*30;
-  m.handR.x=m.neck.x+55;
+  idle(m);
+  m.handR.y=m.neck.y-50-Math.sin(time*0.25)*25;
+  m.handR.x=m.neck.x+50;
 }
 
 // ===== SOLVE =====
 function solve(){
   men.forEach(m=>{
-    for(let i=0;i<8;i++){
+    for(let i=0;i<6;i++){
+      stick(m.neck,m.hip,70);
       stick(m.head,m.neck,40);
-      stick(m.neck,m.hip,75);
-      stick(m.hip,m.kneeL,40); stick(m.kneeL,m.footL,40);
-      stick(m.hip,m.kneeR,40); stick(m.kneeR,m.footR,40);
-      stick(m.neck,m.elbowL,35); stick(m.elbowL,m.handL,35);
-      stick(m.neck,m.elbowR,35); stick(m.elbowR,m.handR,35);
+
+      stick(m.hip,m.kneeL,40);
+      stick(m.kneeL,m.footL,40);
+
+      stick(m.hip,m.kneeR,40);
+      stick(m.kneeR,m.footR,40);
+
+      stick(m.neck,m.elbowL,35);
+      stick(m.elbowL,m.handL,35);
+
+      stick(m.neck,m.elbowR,35);
+      stick(m.elbowR,m.handR,35);
     }
   });
 }
@@ -182,9 +208,9 @@ function draw(){
 function loop(){
   time++;
   men.forEach(m=>{
-    if(mode==="walk") walk(m);
-    if(mode==="idle") idle(m);
-    if(mode==="wave") wave(m);
+    if(mode==="walk")walk(m);
+    if(mode==="idle")idle(m);
+    if(mode==="wave")wave(m);
   });
   solve();
   draw();
@@ -192,6 +218,5 @@ function loop(){
 }
 loop();
 </script>
-
 </body>
 </html>
