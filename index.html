@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Engine v36</title>
+<title>Stickman Studio v36.1</title>
 <style>
 body{
  margin:0;
@@ -11,16 +11,37 @@ body{
  display:flex;
  justify-content:center;
  align-items:center;
+ font-family:Arial;
+ color:white;
+}
+#studio{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ gap:10px;
 }
 canvas{
  background:#fff;
  border-radius:16px;
 }
+button{
+ padding:6px 12px;
+ border:none;
+ border-radius:6px;
+ cursor:pointer;
+}
+.small{font-size:12px;opacity:.7}
 </style>
 </head>
 <body>
 
-<canvas id="c" width="420" height="640"></canvas>
+<div id="studio">
+ <div>
+  <button onclick="exportMP4()">Export MP4</button>
+ </div>
+ <div class="small">v36.1 — MP4 export (safe)</div>
+ <canvas id="c" width="420" height="640"></canvas>
+</div>
 
 <script>
 const c=document.getElementById("c");
@@ -28,7 +49,7 @@ const ctx=c.getContext("2d");
 ctx.lineCap="round";
 ctx.lineWidth=4;
 
-const ground=520;
+const W=420,H=640,ground=520;
 
 class Joint{
  constructor(x,y){this.x=x;this.y=y;}
@@ -70,16 +91,12 @@ function solve(m){
  for(let i=0;i<6;i++){
   stick(m.neck,m.hip,70);
   stick(m.head,m.neck,40);
-
   stick(m.hip,m.kneeL,40);
   stick(m.kneeL,m.footL,40);
-
   stick(m.hip,m.kneeR,40);
   stick(m.kneeR,m.footR,40);
-
   stick(m.neck,m.elbowL,35);
   stick(m.elbowL,m.handL,35);
-
   stick(m.neck,m.elbowR,35);
   stick(m.elbowR,m.handR,35);
  }
@@ -99,31 +116,17 @@ function drawMan(m){
 
  line(m.head,m.neck);
  line(m.neck,m.hip);
-
  line(m.hip,m.kneeL);
  line(m.kneeL,m.footL);
-
  line(m.hip,m.kneeR);
  line(m.kneeR,m.footR);
-
  line(m.neck,m.elbowL);
  line(m.elbowL,m.handL);
-
  line(m.neck,m.elbowR);
  line(m.elbowR,m.handR);
 }
 
-function loop(){
- ctx.clearRect(0,0,420,640);
-
- ctx.strokeStyle="#ccc";
- ctx.beginPath();
- ctx.moveTo(0,ground);
- ctx.lineTo(420,ground);
- ctx.stroke();
-
- ctx.strokeStyle="#000";
-
+function step(){
  men.forEach(m=>{
   m.phase+=0.08;
   const s=Math.sin(m.phase);
@@ -139,12 +142,65 @@ function loop(){
   m.handR.x=m.neck.x+s*22;
 
   solve(m);
-  drawMan(m);
  });
+}
 
+function draw(){
+ ctx.clearRect(0,0,W,H);
+
+ ctx.strokeStyle="#ccc";
+ ctx.beginPath();
+ ctx.moveTo(0,ground);
+ ctx.lineTo(W,ground);
+ ctx.stroke();
+
+ ctx.strokeStyle="#000";
+ men.forEach(drawMan);
+}
+
+function loop(){
+ step();
+ draw();
  requestAnimationFrame(loop);
 }
 loop();
+
+// ===== MP4 EXPORT =====
+async function exportMP4(){
+ alert("MP4 tayyorlanmoqda, kuting...");
+
+ const { createFFmpeg, fetchFile } =
+  await import("https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js");
+
+ const ffmpeg=createFFmpeg({log:true});
+ await ffmpeg.load();
+
+ const frames=96, fps=24;
+
+ for(let i=0;i<frames;i++){
+  step();
+  draw();
+  const png=c.toDataURL("image/png");
+  ffmpeg.FS("writeFile",`f${i}.png`,await fetchFile(png));
+ }
+
+ await ffmpeg.run(
+  "-framerate",String(fps),
+  "-i","f%d.png",
+  "-pix_fmt","yuv420p",
+  "out.mp4"
+ );
+
+ const video=ffmpeg.FS("readFile","out.mp4");
+ const url=URL.createObjectURL(
+  new Blob([video.buffer],{type:"video/mp4"})
+ );
+
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="stickman.mp4";
+ a.click();
+}
 </script>
 
 </body>
