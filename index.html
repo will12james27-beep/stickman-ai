@@ -2,53 +2,61 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v24.0</title>
+<title>Stickman AI – STUDIO v25.0</title>
 <style>
 body{
   margin:0;
-  background:#02080c;
+  background:#0b0f14;
   height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
   font-family:Arial;
+  color:white;
+}
+#studio{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
 }
 canvas{
   background:#fff;
-  border-radius:12px;
+  border-radius:16px;
 }
 .panel{
-  position:absolute;
-  top:10px;
-  left:10px;
   display:flex;
   gap:6px;
   flex-wrap:wrap;
+  justify-content:center;
 }
-input[type=range]{width:120px}
 button,input{
   padding:6px 10px;
   border-radius:6px;
   border:none;
+  cursor:pointer;
 }
+input[type=text]{width:160px}
+input[type=range]{width:140px}
 </style>
 </head>
 <body>
 
-<div class="panel">
-  <button onclick="mode='walk'">Walk</button>
-  <button onclick="mode='idle'">Idle</button>
-  <button onclick="mode='wave'">Wave</button>
-  <button onclick="autoGenerate()">🤖 AutoAnim</button>
-  <button onclick="record()">● Rec</button>
-  <button onclick="play()">▶ Play</button>
-  <input type="range" min="0" max="0" value="0" id="scrub" oninput="scrubFrame(this.value)">
-  <button onclick="exportSprite()">🧩 Sprite</button>
-  <button onclick="exportJSON()">⤓ JSON</button>
-  <button onclick="importJSON()">⤒ Load</button>
-</div>
+<div id="studio">
+  <div class="panel">
+    <button onclick="mode='walk'">Walk</button>
+    <button onclick="mode='idle'">Idle</button>
+    <button onclick="mode='wave'">Wave</button>
+    <button onclick="record()">● Rec</button>
+    <button onclick="play()">▶ Play</button>
+    <button onclick="makeGIF()">🎞 GIF</button>
+    <input type="range" id="scrub" min="0" max="0" value="0" oninput="scrubFrame(this.value)">
+    <input id="cmd" type="text" placeholder="text → anim" 
+      onkeydown="if(event.key==='Enter')textAI(this.value)">
+  </div>
 
-<canvas id="c" width="360" height="640"></canvas>
+  <canvas id="c" width="360" height="640"></canvas>
+</div>
 
 <script>
 const c=document.getElementById("c");
@@ -91,90 +99,56 @@ function stick(a,b,l){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== AI =====
+// ===== ANIMS =====
 function walk(m){
-  const s=Math.sin(time*0.12);
-  m.hip.x+=0.8;
+  const s=Math.sin(time*0.15);
+  m.hip.x+=0.9;
   m.footL.x=m.hip.x-15+s*20;
   m.footR.x=m.hip.x+15-s*20;
-  m.footL.y=ground-Math.max(0,s*15);
-  m.footR.y=ground-Math.max(0,-s*15);
+  m.footL.y=ground-Math.max(0,s*16);
+  m.footR.y=ground-Math.max(0,-s*16);
   m.handL.x=m.neck.x-40-s*10;
   m.handR.x=m.neck.x+40+s*10;
 }
-function idle(m){m.neck.y+=Math.sin(time*0.05)*0.05;}
-function wave(m){m.handR.y=m.neck.y-40-Math.sin(time*0.2)*20;}
+function idle(m){m.neck.y+=Math.sin(time*0.05)*0.06;}
+function wave(m){m.handR.y=m.neck.y-45-Math.sin(time*0.25)*25;}
 
-// ===== AUTO AI GENERATOR =====
-function autoGenerate(){
+// ===== TEXT AI =====
+function textAI(t){
+  t=t.toLowerCase();
   timeline=[]; recording=false;
-  for(let i=0;i<40;i++){
+  let frames=40;
+  if(t.includes("2s")) frames=80;
+  if(t.includes("fast")) frames=25;
+  for(let i=0;i<frames;i++){
     time++;
-    men.forEach(walk);
-    solve();
-    capture();
+    men.forEach(m=>{
+      if(t.includes("walk")) walk(m);
+      else if(t.includes("wave")) wave(m);
+      else idle(m);
+    });
+    solve(); capture();
   }
   document.getElementById("scrub").max=timeline.length-1;
-  alert("Auto animation created");
 }
 
 // ===== TIMELINE =====
-function record(){
-  recording=!recording;
-  if(recording) timeline=[];
-}
+function record(){recording=!recording; if(recording)timeline=[];}
 function play(){playing=true; playIndex=0;}
 function capture(){
   timeline.push(JSON.parse(JSON.stringify(men)));
   document.getElementById("scrub").max=timeline.length-1;
 }
-function scrubFrame(i){
-  if(timeline[i]) applyFrame(timeline[i]);
-}
+function scrubFrame(i){ if(timeline[i]) applyFrame(timeline[i]); }
 function applyFrame(f){
   f.forEach((fm,i)=>{
-    for(let k in fm){
-      men[i][k].x=fm[k].x;
-      men[i][k].y=fm[k].y;
-    }
+    for(let k in fm){men[i][k].x=fm[k].x; men[i][k].y=fm[k].y;}
   });
 }
 
-// ===== EXPORT =====
-function exportJSON(){
-  const a=document.createElement("a");
-  a.download="animation.json";
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(timeline)],{type:"application/json"}));
-  a.click();
-}
-function importJSON(){
-  const i=document.createElement("input");
-  i.type="file";
-  i.onchange=e=>{
-    const r=new FileReader();
-    r.onload=()=>{timeline=JSON.parse(r.result);};
-    r.readAsText(e.target.files[0]);
-  };
-  i.click();
-}
-function exportSprite(){
-  const off=document.createElement("canvas");
-  off.width=360*timeline.length;
-  off.height=640;
-  const octx=off.getContext("2d");
-
-  timeline.forEach((f,i)=>{
-    applyFrame(f);
-    octx.save();
-    octx.translate(i*360,0);
-    draw();
-    octx.restore();
-  });
-
-  const a=document.createElement("a");
-  a.download="sprite.png";
-  a.href=off.toDataURL();
-  a.click();
+// ===== GIF EXPORT (basic) =====
+function makeGIF(){
+  alert("GIF export demo\n(v26.0 da full encoder bo‘ladi)");
 }
 
 // ===== DRAW =====
