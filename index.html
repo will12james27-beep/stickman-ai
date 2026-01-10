@@ -2,219 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI</title>
+<title>Stickman AI – Real Level</title>
 <style>
-body {
-  margin: 0;
-  background: radial-gradient(#0f2b33, #07161b);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  font-family: Arial, sans-serif;
-  color: white;
+body{
+  margin:0;
+  background:radial-gradient(#0f2b33,#07161b);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  font-family:Arial;
+  color:#fff;
 }
-.box {
-  width: 340px;
-  padding: 20px;
-  border-radius: 20px;
-  background: #0b1f26;
-  box-shadow: 0 0 30px #00ffff55;
-  text-align: center;
+.box{
+  width:360px;
+  padding:16px;
+  border-radius:18px;
+  background:#0b1f26;
+  box-shadow:0 0 30px #00ffff55;
+  text-align:center;
 }
-input, button {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  font-size: 16px;
-  margin-top: 6px;
+input,button{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  border-radius:8px;
+  border:none;
+  font-size:15px;
 }
-button {
-  background: cyan;
-  cursor: pointer;
-}
-canvas {
-  background: #fff;
-  margin-top: 15px;
-  border-radius: 10px;
+button{background:cyan;cursor:pointer}
+canvas{
+  background:#fff;
+  margin-top:10px;
+  border-radius:10px;
+  width:100%;
+  height:auto;
 }
 </style>
 </head>
 
 <body>
 <div class="box">
-  <h2>🤖 Stickman AI</h2>
+  <h3>🤖 Stickman AI</h3>
   <input id="text" placeholder="girl run happy jump">
   <button onclick="run()">Generate</button>
-  <button onclick="startRecord()">🎥 Start Video</button>
-  <button onclick="stopRecord()">⏹ Stop & Save</button>
+  <button onclick="startRecord()">🎥 Start</button>
+  <button onclick="stopRecord()">⏹ Save</button>
   <canvas id="c" width="280" height="400"></canvas>
 </div>
 
 <script>
-const c = document.getElementById('c');
-const ctx = c.getContext('2d');
-ctx.lineCap = "round";
-ctx.lineJoin = "round";
+const c=document.getElementById('c');
+const ctx=c.getContext('2d');
+ctx.lineCap="round";ctx.lineJoin="round";
 
-let x = c.width / 2;
-let y = c.height - 90;
-const ground = c.height - 90;
+const ground=c.height-90;
 
-let velocityY = 0;
-const gravity = 0.6;
+// ===== CHARACTER STATE =====
+let char={
+  x:c.width/2,
+  y:ground,
+  vy:0,
+  facing:1,
+  targetFacing:1,
+  action:'stand',
+  character:'girl',
+  emotion:'happy'
+};
 
-let frame = 0;
-let facing = 1;
-let targetFacing = 1;
-
-let action = 'stand';
-let actions = [];
-let actionIndex = 0;
-
-let character = 'girl';
-let emotion = 'happy';
+let frame=0;
 
 // ===== VIDEO =====
-let recorder, chunks = [];
-function startRecord() {
-  const stream = c.captureStream(60);
-  recorder = new MediaRecorder(stream);
-  chunks = [];
-  recorder.ondataavailable = e => chunks.push(e.data);
-  recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'stickman.webm';
-    a.click();
+let recorder,chunks=[];
+function startRecord(){
+  recorder=new MediaRecorder(c.captureStream(60));
+  chunks=[];
+  recorder.ondataavailable=e=>chunks.push(e.data);
+  recorder.onstop=()=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
+    a.download='stickman.webm';a.click();
   };
   recorder.start();
 }
-function stopRecord() {
-  if (recorder) recorder.stop();
-}
+function stopRecord(){recorder&&recorder.stop();}
 
-// ===== EASING =====
-const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+// ===== UTIL =====
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 
-function draw() {
+// ===== DRAW =====
+function draw(){
   ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle="#000";
-  ctx.lineWidth=4;
+  ctx.strokeStyle="#000";ctx.lineWidth=4;
 
-  facing += (targetFacing - facing) * 0.1;
+  char.facing+= (char.targetFacing-char.facing)*0.12;
 
-  let walk = ease((Math.sin(frame*0.08)+1)/2);
-  let idle = Math.sin(frame*0.04)*1.5;
+  let walk=ease((Math.sin(frame*0.1)+1)/2);
+  let idle=Math.sin(frame*0.05)*1.5;
+  let lean=char.action==='run'?(walk-.5)*18*char.facing:idle;
 
-  let lean = action==='run' ? (walk-.5)*18*facing : idle;
-
-  // ===== HEAD =====
+  // HEAD
   ctx.beginPath();
-  ctx.arc(x+lean*.4,y-50+idle,14,0,Math.PI*2);
+  ctx.arc(char.x+lean*.4,char.y-50+idle,14,0,Math.PI*2);
   ctx.stroke();
 
-  // ===== FACE =====
+  // FACE
   ctx.beginPath();
-  if(emotion==='happy'){
-    ctx.arc(x+lean*.4,y-48+idle,5,0,Math.PI);
-  } else if(emotion==='sad'){
-    ctx.arc(x+lean*.4,y-42+idle,5,Math.PI,0);
-  } else {
-    ctx.moveTo(x+lean*.4-5,y-45);
-    ctx.lineTo(x+lean*.4+5,y-45);
-  }
+  if(char.emotion==='happy')
+    ctx.arc(char.x+lean*.4,char.y-46+idle,5,0,Math.PI);
+  else
+    ctx.moveTo(char.x-4,char.y-45),ctx.lineTo(char.x+4,char.y-45);
   ctx.stroke();
 
-  // ===== HAIR (girl) =====
-  if(character==='girl'){
-    let hs = (action==='run'?walk*6:idle)*facing;
+  // HAIR
+  if(char.character==='girl'){
+    let hs=(char.action==='run'?walk*6:idle)*char.facing;
     ctx.beginPath();
-    ctx.moveTo(x+lean*.4+facing*6,y-64+idle);
+    ctx.moveTo(char.x+lean*.4+char.facing*6,char.y-64+idle);
     ctx.quadraticCurveTo(
-      x+lean*.4+facing*(40+hs),
-      y-55,
-      x+lean*.4+facing*(28+hs),
-      y-30
+      char.x+lean*.4+char.facing*(38+hs),
+      char.y-52,
+      char.x+lean*.4+char.facing*(26+hs),
+      char.y-30
     );
     ctx.stroke();
   }
 
-  // ===== BODY =====
+  // BODY
   ctx.beginPath();
-  ctx.moveTo(x+lean,y-35+idle);
-  if(character==='girl'){
-    ctx.lineTo(x-22+lean*.6,y+25);
-    ctx.lineTo(x+22+lean*.6,y+25);
-    ctx.closePath();
-    ctx.fillStyle="#ffb6c1";
-    ctx.fill();
-  } else {
-    ctx.lineTo(x,y+25);
-  }
-  ctx.stroke();
+  ctx.moveTo(char.x+lean,char.y-35+idle);
+  ctx.lineTo(char.x-22+lean*.6,char.y+25);
+  ctx.lineTo(char.x+22+lean*.6,char.y+25);
+  ctx.closePath();
+  ctx.fillStyle="#ffb6c1";
+  ctx.fill();ctx.stroke();
 
-  let sx=x+lean, sy=y-35+idle;
+  let sx=char.x+lean,sy=char.y-35+idle;
 
-  // ===== ARMS =====
-  drawArm(sx,sy,action==='run'?frame*.15:idle*.2);
-  drawArm(sx,sy,action==='run'?frame*.15+Math.PI:-idle*.2);
+  drawArm(sx,sy,walk);
+  drawArm(sx,sy,walk+Math.PI);
 
-  // ===== LEGS =====
-  drawLeg(x-8,y+25,0);
-  drawLeg(x+8,y+25,Math.PI);
+  drawLeg(char.x-8,char.y+25,walk);
+  drawLeg(char.x+8,char.y+25,walk+Math.PI);
 }
 
 function drawArm(sx,sy,p){
-  const u=18,l=16;
-  let a1=Math.sin(p)*.8,a2=Math.sin(p+.6)*.6;
-  let ex=sx+Math.sin(a1)*u,ey=sy+Math.cos(a1)*u;
-  let hx=ex+Math.sin(a2)*l,hy=ey+Math.cos(a2)*l;
+  let a=Math.sin(p)*0.8;
+  let ex=sx+Math.sin(a)*18;
+  let ey=sy+Math.cos(a)*18;
   ctx.beginPath();
-  ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.lineTo(hx,hy);ctx.stroke();
+  ctx.moveTo(sx,sy);
+  ctx.lineTo(ex,ey);
+  ctx.lineTo(ex,ey+14);
+  ctx.stroke();
 }
 
-function drawLeg(hx,hy,d){
-  const t=22,c=20;
-  let p=frame*.15+d;
-  let lift=Math.max(0,Math.sin(p))*8;
-  let kx=hx+Math.sin(p)*t;
-  let ky=hy+Math.cos(p)*t-lift;
-  let fx=kx+Math.sin(p+.8)*c;
-  let fy=ky+Math.cos(p+.8)*c;
+// ===== FIXED LEG (NO CHARXPALAK) =====
+function drawLeg(hx,hy,p){
+  let swing=Math.sin(p)*0.6;
+  let lift=Math.max(0,Math.sin(p))*6;
+  let kx=hx+Math.sin(swing)*16;
+  let ky=hy+Math.cos(swing)*18-lift;
+  let fx=kx;
+  let fy=ky+18;
   ctx.beginPath();
-  ctx.moveTo(hx,hy);ctx.lineTo(kx,ky);ctx.lineTo(fx,fy);ctx.stroke();
+  ctx.moveTo(hx,hy);
+  ctx.lineTo(kx,ky);
+  ctx.lineTo(fx,fy);
+  ctx.stroke();
 }
 
+// ===== ENGINE =====
 function animate(){
   frame++;
 
-  if(action==='run') x+=1.4*facing;
-  if(x>c.width-30) targetFacing=-1;
-  if(x<30) targetFacing=1;
+  if(char.action==='run') char.x+=1.4*char.facing;
+  if(char.x>c.width-30) char.targetFacing=-1;
+  if(char.x<30) char.targetFacing=1;
 
-  if(action==='jump'&&y===ground) velocityY=-12;
-  velocityY+=gravity; y+=velocityY;
-  if(y>ground){y=ground;velocityY=0;}
+  if(char.action==='jump'&&char.y===ground) char.vy=-12;
+  char.vy+=0.6; char.y+=char.vy;
+  if(char.y>ground){char.y=ground;char.vy=0;}
 
   draw();
   requestAnimationFrame(animate);
 }
 
+// ===== TEXT → ACTION =====
 function run(){
-  const t=document.getElementById('text').value.toLowerCase();
-  actions=[]; actionIndex=0; frame=0;
-
-  character = t.includes('boy')?'boy':'girl';
-  emotion = t.includes('sad')?'sad':t.includes('angry')?'angry':'happy';
-
-  if(t.includes('run')) actions.push('run');
-  if(t.includes('jump')) actions.push('jump');
-  if(!actions.length) actions.push('stand');
-
-  action=actions[0];
+  let t=document.getElementById('text').value.toLowerCase();
+  char.character=t.includes('boy')?'boy':'girl';
+  char.emotion=t.includes('sad')?'sad':'happy';
+  char.action=t.includes('run')?'run':t.includes('jump')?'jump':'stand';
 }
 
 animate();
