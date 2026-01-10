@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v23.0</title>
+<title>Stickman AI – STUDIO v24.0</title>
 <style>
 body{
   margin:0;
@@ -25,6 +25,7 @@ canvas{
   gap:6px;
   flex-wrap:wrap;
 }
+input[type=range]{width:120px}
 button,input{
   padding:6px 10px;
   border-radius:6px;
@@ -35,14 +36,16 @@ button,input{
 <body>
 
 <div class="panel">
-  <button onclick="mode='walk'">AI Walk</button>
+  <button onclick="mode='walk'">Walk</button>
   <button onclick="mode='idle'">Idle</button>
   <button onclick="mode='wave'">Wave</button>
+  <button onclick="autoGenerate()">🤖 AutoAnim</button>
   <button onclick="record()">● Rec</button>
   <button onclick="play()">▶ Play</button>
-  <button onclick="save()">💾 Save</button>
-  <button onclick="load()">⤒ Load</button>
-  <input id="cmd" placeholder="text → anim" onkeydown="if(event.key==='Enter')command(this.value)">
+  <input type="range" min="0" max="0" value="0" id="scrub" oninput="scrubFrame(this.value)">
+  <button onclick="exportSprite()">🧩 Sprite</button>
+  <button onclick="exportJSON()">⤓ JSON</button>
+  <button onclick="importJSON()">⤒ Load</button>
 </div>
 
 <canvas id="c" width="360" height="640"></canvas>
@@ -60,10 +63,7 @@ let recording=false, playing=false;
 let timeline=[], playIndex=0;
 
 // ===== JOINT =====
-class Joint{
-  constructor(x,y){this.x=x;this.y=y;}
-  clone(){return {x:this.x,y:this.y}}
-}
+class Joint{constructor(x,y){this.x=x;this.y=y;}}
 
 // ===== STICKMAN =====
 function createMan(x){
@@ -83,10 +83,9 @@ function createMan(x){
 }
 const men=[createMan(180)];
 
-// ===== IK STICK =====
+// ===== IK =====
 function stick(a,b,l){
-  const dx=b.x-a.x,dy=b.y-a.y;
-  const d=Math.hypot(dx,dy)||1;
+  const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
   const diff=(d-l)/d*0.5;
   a.x+=dx*diff; a.y+=dy*diff;
   b.x-=dx*diff; b.y-=dy*diff;
@@ -103,44 +102,110 @@ function walk(m){
   m.handL.x=m.neck.x-40-s*10;
   m.handR.x=m.neck.x+40+s*10;
 }
-function idle(m){
-  m.neck.y+=Math.sin(time*0.05)*0.05;
-}
-function wave(m){
-  m.handR.y=m.neck.y-40-Math.sin(time*0.2)*20;
+function idle(m){m.neck.y+=Math.sin(time*0.05)*0.05;}
+function wave(m){m.handR.y=m.neck.y-40-Math.sin(time*0.2)*20;}
+
+// ===== AUTO AI GENERATOR =====
+function autoGenerate(){
+  timeline=[]; recording=false;
+  for(let i=0;i<40;i++){
+    time++;
+    men.forEach(walk);
+    solve();
+    capture();
+  }
+  document.getElementById("scrub").max=timeline.length-1;
+  alert("Auto animation created");
 }
 
-// ===== TEXT AI =====
-function command(t){
-  if(t.includes("walk"))mode="walk";
-  if(t.includes("idle"))mode="idle";
-  if(t.includes("wave"))mode="wave";
+// ===== TIMELINE =====
+function record(){
+  recording=!recording;
+  if(recording) timeline=[];
 }
-
-// ===== RECORD =====
-function record(){recording=!recording; if(recording)timeline=[];}
 function play(){playing=true; playIndex=0;}
-function capture(){timeline.push(JSON.parse(JSON.stringify(men)));}
+function capture(){
+  timeline.push(JSON.parse(JSON.stringify(men)));
+  document.getElementById("scrub").max=timeline.length-1;
+}
+function scrubFrame(i){
+  if(timeline[i]) applyFrame(timeline[i]);
+}
 function applyFrame(f){
   f.forEach((fm,i)=>{
-    for(let k in fm){men[i][k].x=fm[k].x; men[i][k].y=fm[k].y;}
+    for(let k in fm){
+      men[i][k].x=fm[k].x;
+      men[i][k].y=fm[k].y;
+    }
   });
 }
 
-// ===== SAVE / LOAD =====
-function save(){localStorage.setItem("stickAnim",JSON.stringify(timeline)); alert("Saved");}
-function load(){timeline=JSON.parse(localStorage.getItem("stickAnim")||"[]"); alert("Loaded");}
+// ===== EXPORT =====
+function exportJSON(){
+  const a=document.createElement("a");
+  a.download="animation.json";
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(timeline)],{type:"application/json"}));
+  a.click();
+}
+function importJSON(){
+  const i=document.createElement("input");
+  i.type="file";
+  i.onchange=e=>{
+    const r=new FileReader();
+    r.onload=()=>{timeline=JSON.parse(r.result);};
+    r.readAsText(e.target.files[0]);
+  };
+  i.click();
+}
+function exportSprite(){
+  const off=document.createElement("canvas");
+  off.width=360*timeline.length;
+  off.height=640;
+  const octx=off.getContext("2d");
+
+  timeline.forEach((f,i)=>{
+    applyFrame(f);
+    octx.save();
+    octx.translate(i*360,0);
+    draw();
+    octx.restore();
+  });
+
+  const a=document.createElement("a");
+  a.download="sprite.png";
+  a.href=off.toDataURL();
+  a.click();
+}
 
 // ===== DRAW =====
 function line(a,b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
 function drawMan(m){
-  line(m.head,m.neck);
-  line(m.neck,m.hip);
+  line(m.head,m.neck); line(m.neck,m.hip);
   line(m.hip,m.kneeL); line(m.kneeL,m.footL);
   line(m.hip,m.kneeR); line(m.kneeR,m.footR);
   line(m.neck,m.elbowL); line(m.elbowL,m.handL);
   line(m.neck,m.elbowR); line(m.elbowR,m.handR);
   ctx.beginPath(); ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2); ctx.stroke();
+}
+function draw(){
+  ctx.clearRect(0,0,360,640);
+  ctx.strokeStyle="#ccc"; line({x:0,y:ground},{x:360,y:ground});
+  ctx.strokeStyle="#000";
+  men.forEach(drawMan);
+}
+
+// ===== SOLVE =====
+function solve(){
+  men.forEach(m=>{
+    for(let i=0;i<6;i++){
+      stick(m.head,m.neck,35);
+      stick(m.neck,m.hip,65);
+      stick(m.hip,m.kneeL,35); stick(m.kneeL,m.footL,35);
+      stick(m.hip,m.kneeR,35); stick(m.kneeR,m.footR,35);
+      stick(m.neck,m.elbowL,30); stick(m.elbowL,m.handL,30);
+      stick(m.neck,m.elbowR,30); stick(m.elbowR,m.handR,30);
+    }
+  });
 }
 
 // ===== LOOP =====
@@ -156,30 +221,9 @@ function loop(){
       if(mode==="wave")wave(m);
     });
   }
-
-  men.forEach(m=>{
-    for(let i=0;i<6;i++){
-      stick(m.head,m.neck,35);
-      stick(m.neck,m.hip,65);
-      stick(m.hip,m.kneeL,35);
-      stick(m.kneeL,m.footL,35);
-      stick(m.hip,m.kneeR,35);
-      stick(m.kneeR,m.footR,35);
-      stick(m.neck,m.elbowL,30);
-      stick(m.elbowL,m.handL,30);
-      stick(m.neck,m.elbowR,30);
-      stick(m.elbowR,m.handR,30);
-    }
-  });
-
+  solve();
   if(recording)capture();
-
-  ctx.clearRect(0,0,360,640);
-  ctx.strokeStyle="#ccc";
-  line({x:0,y:ground},{x:360,y:ground});
-  ctx.strokeStyle="#000";
-  men.forEach(drawMan);
-
+  draw();
   requestAnimationFrame(loop);
 }
 loop();
