@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Studio v37.5.1 — FIXED</title>
+<title>Stickman Studio v37.5.2 — FINAL FIX</title>
 <style>
 body{
  margin:0;
@@ -69,7 +69,7 @@ input[type=range]{ width:260px; }
  <input id="timeline" type="range" min="0" max="119" value="0">
  <div id="dots"></div>
 
- <div class="small">v37.5.1 — timeline keyframe dots (fixed)</div>
+ <div class="small">v37.5.2 — stable timeline engine</div>
  <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -139,10 +139,11 @@ function applyPose(m,p){
 
 // ===== SETUP =====
 const man=createMan(210);
-const basePose=clonePose(man); // 🔴 MUHIM!
+const basePose=clonePose(man);
 
 // ===== TIMELINE =====
 const timeline={ duration:120, keys:[] };
+addKeyframe(0, clonePose(man));
 
 function addKeyframe(frame,pose){
  timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
@@ -154,7 +155,6 @@ function deleteKeyframe(frame){
  timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
  renderDots();
 }
-addKeyframe(0,clonePose(man));
 
 // ===== SOLVE =====
 function solve(m){
@@ -201,7 +201,7 @@ let playing=true;
 const slider=document.getElementById("timeline");
 
 function getPoseAtFrame(f){
- if(timeline.keys.length===0) return basePose;
+ if(timeline.keys.length===0) return clonePose(basePose);
  let a=timeline.keys[0], b=timeline.keys[timeline.keys.length-1];
  for(let i=0;i<timeline.keys.length-1;i++){
   if(f>=timeline.keys[i].frame && f<=timeline.keys[i+1].frame){
