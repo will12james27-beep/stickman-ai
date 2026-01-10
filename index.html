@@ -1,84 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stickman AI</title>
+<style>
+  body {
+    margin: 0;
+    background: radial-gradient(#0f2b33, #07161b);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+
+  .box {
+    width: 320px;
+    padding: 20px;
+    border-radius: 20px;
+    background: #0b1f26;
+    box-shadow: 0 0 30px #00ffff55;
+    text-align: center;
+  }
+
+  input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+
+  button {
+    width: 100%;
+    padding: 10px;
+    background: cyan;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  canvas {
+    background: #000;
+    margin-top: 15px;
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h2>🤖 Stickman AI</h2>
+  <p>Type text → animation plays</p>
+
+  <input id="text" placeholder="run jump">
+  <button onclick="run()">Generate</button>
+  <p id="status"></p>
+
+  <canvas id="c" width="280" height="400"></canvas>
+</div>
+
 <script>
 const c = document.getElementById('c');
 const ctx = c.getContext('2d');
 
 let x = c.width / 2;
 let y = c.height - 80;
+let ground = c.height - 80;
+
 let velocityY = 0;
 let gravity = 0.6;
 
-let timeline = [];
-let currentAction = null;
-let actionEndTime = 0;
+let action = 'stand';
+let actions = [];
+let actionIndex = 0;
 let frame = 0;
 
-function draw(){
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle='white';
-  ctx.lineWidth=3;
+function draw() {
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 3;
 
-  let swing =
-    currentAction === 'run'
-      ? Math.sin(frame * 0.15) * 12
-      : Math.sin(frame * 0.05) * 2;
+  let swing = action === 'run'
+    ? Math.sin(frame * 0.15) * 12
+    : 0;
 
   // head
   ctx.beginPath();
-  ctx.arc(x, y-35, 10, 0, Math.PI*2);
+  ctx.arc(x, y - 35, 10, 0, Math.PI * 2);
   ctx.stroke();
 
   // body
   ctx.beginPath();
-  ctx.moveTo(x, y-25);
+  ctx.moveTo(x, y - 25);
   ctx.lineTo(x, y);
   ctx.stroke();
 
   // arms
   ctx.beginPath();
-  ctx.moveTo(x + swing, y - 15);
-  ctx.lineTo(x - swing, y - 15);
+  ctx.moveTo(x - swing, y - 15);
+  ctx.lineTo(x + swing, y - 15);
   ctx.stroke();
 
   // legs
   ctx.beginPath();
   ctx.moveTo(x, y);
-  ctx.lineTo(x - swing, y + 18);
+  ctx.lineTo(x - swing, y + 20);
   ctx.moveTo(x, y);
-  ctx.lineTo(x + swing, y + 18);
+  ctx.lineTo(x + swing, y + 20);
   ctx.stroke();
 }
 
-function updateAction(){
-  if (!currentAction && timeline.length > 0){
-    const next = timeline.shift();
-    currentAction = next.action;
-    actionEndTime = Date.now() + next.duration;
+function animate() {
+  frame++;
 
-    if (currentAction === 'jump'){
-      velocityY = -10;
+  // action switch (har 2 sekund)
+  if (actions.length > 1 && frame % 120 === 0) {
+    actionIndex++;
+    if (actionIndex < actions.length) {
+      action = actions[actionIndex];
     }
   }
 
-  if (currentAction && Date.now() > actionEndTime){
-    currentAction = null;
-  }
-}
-
-function animate(){
-  frame++;
-  updateAction();
-
-  if (currentAction === 'run'){
+  if (action === 'run') {
     x += 1.5;
   }
 
-  if (currentAction === 'jump' || currentAction === 'fall'){
-    velocityY += gravity;
-    y += velocityY;
+  if (action === 'jump' && y === ground) {
+    velocityY = -11;
   }
 
-  if (y > c.height - 80){
-    y = c.height - 80;
+  velocityY += gravity;
+  y += velocityY;
+
+  if (y > ground) {
+    y = ground;
     velocityY = 0;
   }
 
@@ -88,60 +147,27 @@ function animate(){
   requestAnimationFrame(animate);
 }
 
-function parseText(text){
-  timeline = [];
-  const parts = text.split(' ');
-
-  for (let i = 0; i < parts.length; i++){
-    const word = parts[i];
-
-    if (word === 'run'){
-      let duration = 2000;
-      if (parts[i+1]?.includes('s')){
-        duration = parseInt(parts[i+1]) * 1000;
-        i++;
-      }
-      timeline.push({ action:'run', duration });
-    }
-
-    if (word === 'jump'){
-      timeline.push({ action:'jump', duration:800 });
-    }
-  }
-}
-
-function run(){
+function run() {
   const t = document.getElementById('text').value.toLowerCase();
   document.getElementById('status').innerText = 'AI is thinking...';
 
-  parseText(t);
+  actions = [];
+  actionIndex = 0;
+  frame = 0;
 
-  setTimeout(()=>{
+  if (t.includes('run')) actions.push('run');
+  if (t.includes('jump')) actions.push('jump');
+
+  if (actions.length === 0) actions.push('stand');
+  action = actions[0];
+
+  setTimeout(() => {
     document.getElementById('status').innerText = 'Done ✅';
-  },300);
-}
-function parseText(text) {
-  const parts = text.split(' ');
-  const queue = [];
-
-  for (let i = 0; i < parts.length; i++) {
-
-    // run 2s
-    if (parts[i] === 'run' && parts[i+1]?.endsWith('s')) {
-      const sec = parseInt(parts[i+1]);
-      queue.push({ type: 'run', duration: sec * 1000 });
-      i++;
-    }
-
-    // jump
-    else if (parts[i] === 'jump') {
-      queue.push({ type: 'jump' });
-    }
-
-  }
-
-  return queue;
+  }, 400);
 }
 
 animate();
 </script>
+
+</body>
+</html>
