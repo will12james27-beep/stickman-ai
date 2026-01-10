@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v26.0</title>
+<title>Stickman AI – STUDIO v27.0</title>
 <style>
 body{
   margin:0;
@@ -32,23 +32,28 @@ input[type=range]{width:140px}
     <button onclick="record()">● Rec</button>
     <button onclick="play()">▶ Play</button>
     <button onclick="exportSprite()">🧩 Sprite</button>
+    <button onclick="saveOnline()">☁ Save</button>
+    <button onclick="loadOnline()">☁ Load</button>
     <input type="range" id="scrub" min="0" max="0" value="0" oninput="scrubFrame(this.value)">
-    <input id="cmd" placeholder="walk 2s / wave fast"
+    <input id="cmd" placeholder="walk 2s fast"
       onkeydown="if(event.key==='Enter')textAI(this.value)">
   </div>
 
-  <canvas id="c" width="360" height="640"></canvas>
+  <canvas id="c" width="420" height="640"></canvas>
 </div>
 
 <script>
 const c=document.getElementById("c"),ctx=c.getContext("2d");
 ctx.lineCap="round"; ctx.lineWidth=4;
 
-const W=360,H=640,ground=520;
+const W=420,H=640,ground=520;
 let time=0,mode="idle",camX=0;
 
 // ===== TIMELINE =====
 let timeline=[],recording=false,playing=false,playIndex=0;
+
+// ===== EASING =====
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 
 // ===== JOINT =====
 class Joint{constructor(x,y){this.x=x;this.y=y;}}
@@ -56,20 +61,27 @@ class Joint{constructor(x,y){this.x=x;this.y=y;}}
 // ===== STICKMAN =====
 function createMan(x){
  return{
-  hip:new Joint(x,ground-70),
-  neck:new Joint(x,ground-135),
-  head:new Joint(x,ground-170),
-  kneeL:new Joint(x-15,ground-35),
-  kneeR:new Joint(x+15,ground-35),
-  footL:new Joint(x-15,ground),
-  footR:new Joint(x+15,ground),
-  elbowL:new Joint(x-35,ground-120),
-  elbowR:new Joint(x+35,ground-120),
-  handL:new Joint(x-45,ground-105),
-  handR:new Joint(x+45,ground-105)
+  hip:new Joint(x,ground-80),
+  neck:new Joint(x,ground-150),
+  head:new Joint(x,ground-190),
+  kneeL:new Joint(x-20,ground-40),
+  kneeR:new Joint(x+20,ground-40),
+  footL:new Joint(x-20,ground),
+  footR:new Joint(x+20,ground),
+  elbowL:new Joint(x-45,ground-130),
+  elbowR:new Joint(x+45,ground-130),
+  handL:new Joint(x-60,ground-105),
+  handR:new Joint(x+60,ground-105),
+  vx:0
  };
 }
-const men=[createMan(180)];
+
+// ===== CROWD =====
+const men=[
+ createMan(120),
+ createMan(210),
+ createMan(300)
+];
 
 // ===== IK =====
 function stick(a,b,l){
@@ -79,31 +91,43 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== ANIMS =====
-function walk(m){
- const s=Math.sin(time*0.15);
- m.hip.x+=1;
- m.footL.x=m.hip.x-15+s*20;
- m.footR.x=m.hip.x+15-s*20;
- m.footL.y=ground-Math.max(0,s*16);
- m.footR.y=ground-Math.max(0,-s*16);
- m.handL.x=m.neck.x-40-s*10;
- m.handR.x=m.neck.x+40+s*10;
+// ===== STRONG ANIMS =====
+function walk(m,phase){
+ const s=Math.sin(phase);
+ const lift=Math.max(0,s)*22;
+ m.vx+=0.15; m.vx*=0.9;
+ m.hip.x+=m.vx;
+ m.hip.y=ground-80-Math.abs(s)*12;
+ m.footL.x=m.hip.x-20+s*30;
+ m.footR.x=m.hip.x+20-s*30;
+ m.footL.y=ground-lift;
+ m.footR.y=ground-Math.max(0,-s)*22;
+ m.handL.x=m.neck.x-50-s*25;
+ m.handR.x=m.neck.x+50+s*25;
  camX=m.hip.x-W/2;
 }
-function idle(m){m.neck.y+=Math.sin(time*0.05)*0.06;}
-function wave(m){m.handR.y=m.neck.y-45-Math.sin(time*0.25)*25;}
+
+function idle(m){
+ m.hip.y+=Math.sin(time*0.05)*0.6;
+ m.neck.y+=Math.sin(time*0.07)*0.6;
+}
+
+function wave(m){
+ m.handR.y=m.neck.y-60-Math.sin(time*0.3)*35;
+ m.handR.x=m.neck.x+55+Math.sin(time*0.3)*10;
+}
 
 // ===== TEXT AI =====
 function textAI(t){
  t=t.toLowerCase(); timeline=[];
- let frames=40;
- if(t.includes("2s"))frames=80;
- if(t.includes("fast"))frames=25;
+ let frames=60;
+ if(t.includes("2s"))frames=120;
+ if(t.includes("fast"))frames=35;
  for(let i=0;i<frames;i++){
   time++;
-  men.forEach(m=>{
-   if(t.includes("walk"))walk(m);
+  men.forEach((m,idx)=>{
+   const p=ease((i/frames))*Math.PI*2 + idx;
+   if(t.includes("walk"))walk(m,p);
    else if(t.includes("wave"))wave(m);
    else idle(m);
   });
@@ -119,11 +143,23 @@ function capture(){timeline.push(JSON.parse(JSON.stringify(men)));}
 function scrubFrame(i){if(timeline[i])applyFrame(timeline[i]);}
 function applyFrame(f){
  f.forEach((fm,i)=>{
-  for(let k in fm){men[i][k].x=fm[k].x;men[i][k].y=fm[k].y;}
+  for(let k in fm){
+   if(men[i][k]){men[i][k].x=fm[k].x;men[i][k].y=fm[k].y;}
+  }
  });
 }
 
-// ===== SPRITE EXPORT =====
+// ===== ONLINE SAVE =====
+function saveOnline(){
+ localStorage.setItem("stickman_cloud",JSON.stringify(timeline));
+ alert("Saved to cloud ☁ (mock)");
+}
+function loadOnline(){
+ const d=localStorage.getItem("stickman_cloud");
+ if(d){timeline=JSON.parse(d);alert("Loaded ☁");}
+}
+
+// ===== SPRITE =====
 function exportSprite(){
  const off=document.createElement("canvas");
  off.width=W*timeline.length; off.height=H;
@@ -136,25 +172,28 @@ function exportSprite(){
   o.restore();
  });
  const a=document.createElement("a");
- a.download="stickman_sprite.png";
+ a.download="stickman_v27_sprite.png";
  a.href=off.toDataURL();
  a.click();
 }
 
 // ===== DRAW =====
-function line(ctx,a,b){ctx.beginPath();ctx.moveTo(a.x,b? a.y:a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+function line(ctx,a,b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
 function drawMan(ctx,m){
  line(ctx,m.head,m.neck); line(ctx,m.neck,m.hip);
  line(ctx,m.hip,m.kneeL); line(ctx,m.kneeL,m.footL);
  line(ctx,m.hip,m.kneeR); line(ctx,m.kneeR,m.footR);
  line(ctx,m.neck,m.elbowL); line(ctx,m.elbowL,m.handL);
  line(ctx,m.neck,m.elbowR); line(ctx,m.elbowR,m.handR);
- ctx.beginPath(); ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2); ctx.stroke();
+ ctx.beginPath(); ctx.arc(m.head.x,m.head.y,16,0,Math.PI*2); ctx.stroke();
 }
 function draw(context=ctx){
  context.clearRect(0,0,W,H);
  context.strokeStyle="#ccc";
- context.beginPath();context.moveTo(-camX,ground);context.lineTo(W-camX,ground);context.stroke();
+ context.beginPath();
+ context.moveTo(-camX,ground);
+ context.lineTo(W-camX,ground);
+ context.stroke();
  context.strokeStyle="#000";
  context.save(); context.translate(-camX,0);
  men.forEach(m=>drawMan(context,m));
@@ -164,13 +203,13 @@ function draw(context=ctx){
 // ===== SOLVE =====
 function solve(){
  men.forEach(m=>{
-  for(let i=0;i<6;i++){
-   stick(m.head,m.neck,35);
-   stick(m.neck,m.hip,65);
-   stick(m.hip,m.kneeL,35); stick(m.kneeL,m.footL,35);
-   stick(m.hip,m.kneeR,35); stick(m.kneeR,m.footR,35);
-   stick(m.neck,m.elbowL,30); stick(m.elbowL,m.handL,30);
-   stick(m.neck,m.elbowR,30); stick(m.elbowR,m.handR,30);
+  for(let i=0;i<8;i++){
+   stick(m.head,m.neck,40);
+   stick(m.neck,m.hip,75);
+   stick(m.hip,m.kneeL,40); stick(m.kneeL,m.footL,40);
+   stick(m.hip,m.kneeR,40); stick(m.kneeR,m.footR,40);
+   stick(m.neck,m.elbowL,35); stick(m.elbowL,m.handL,35);
+   stick(m.neck,m.elbowR,35); stick(m.elbowR,m.handR,35);
   }
  });
 }
@@ -182,8 +221,9 @@ function loop(){
   applyFrame(timeline[playIndex++]);
   if(playIndex>=timeline.length)playing=false;
  }else{
-  men.forEach(m=>{
-   if(mode==="walk")walk(m);
+  men.forEach((m,i)=>{
+   const p=time*0.2+i;
+   if(mode==="walk")walk(m,p);
    if(mode==="idle")idle(m);
    if(mode==="wave")wave(m);
   });
