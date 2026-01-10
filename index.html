@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v38.1</title>
+<title>Stickman Engine v36</title>
 <style>
 body{
  margin:0;
@@ -11,65 +11,40 @@ body{
  display:flex;
  justify-content:center;
  align-items:center;
- font-family:Arial;
- color:white;
-}
-#studio{
- display:flex;
- flex-direction:column;
- gap:10px;
- align-items:center;
 }
 canvas{
  background:#fff;
  border-radius:16px;
 }
-.panel{
- display:flex;
- gap:10px;
-}
-button{
- padding:6px 12px;
- border:none;
- border-radius:6px;
- cursor:pointer;
-}
-.small{font-size:12px;opacity:.7}
 </style>
 </head>
 <body>
 
-<div id="studio">
- <div class="panel">
-  <button onclick="playing=!playing">Play</button>
-  <button onclick="exportMP4()">Export MP4</button>
- </div>
- <div class="small">v38.1 — MP4 export (fixed)</div>
- <canvas id="c" width="420" height="640"></canvas>
-</div>
-
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+<canvas id="c" width="420" height="640"></canvas>
 
 <script>
-const { createFFmpeg, fetchFile } = FFmpeg;
-const ffmpeg = createFFmpeg({ log:true });
-
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 ctx.lineCap="round";
 ctx.lineWidth=4;
 
-const W=420,H=640,ground=520;
+const ground=520;
 
-// ===== JOINT =====
 class Joint{
  constructor(x,y){this.x=x;this.y=y;}
- clone(){ return new Joint(this.x,this.y); }
+ clone(){return new Joint(this.x,this.y);}
 }
 
-// ===== CREATE MAN =====
+function stick(a,b,l){
+ const dx=b.x-a.x,dy=b.y-a.y;
+ const d=Math.hypot(dx,dy)||1;
+ const diff=(d-l)/d*0.5;
+ a.x+=dx*diff; a.y+=dy*diff;
+ b.x-=dx*diff; b.y-=dy*diff;
+}
+
 function createMan(x){
- const j={
+ return{
   hip:new Joint(x,ground-85),
   neck:new Joint(x,ground-155),
   head:new Joint(x,ground-195),
@@ -83,73 +58,33 @@ function createMan(x){
   elbowR:new Joint(x+40,ground-135),
   handL:new Joint(x-60,ground-115),
   handR:new Joint(x+60,ground-115),
- };
 
- return{
-  joints:j,
-  base:clonePose(j),
-  phase:Math.random(),
-  speed:0.8+Math.random()*0.4
+  phase:Math.random()
  };
 }
 
-function clonePose(j){
- const p={};
- for(let k in j) p[k]=j[k].clone();
- return p;
-}
+const men=[];
+for(let i=0;i<3;i++) men.push(createMan(140+i*70));
 
-// ===== CROWD =====
-const crowd=[];
-for(let i=0;i<5;i++) crowd.push(createMan(120+i*60));
-
-// ===== RUN SAMPLE =====
-function sampleRun(base,phase){
- const s=Math.sin(phase);
- const p=clonePose(base);
-
- p.footL.y=ground-Math.max(0,s)*30;
- p.footR.y=ground-Math.max(0,-s)*30;
-
- p.handL.x-=s*25;
- p.handR.x+=s*25;
-
- p.hip.y=ground-85-Math.abs(s)*8;
- p.neck.y=p.hip.y-70;
- p.head.y=p.neck.y-40;
-
- return p;
-}
-
-// ===== IK =====
-function stick(a,b,l){
- const dx=b.x-a.x,dy=b.y-a.y;
- const d=Math.hypot(dx,dy)||1;
- const diff=(d-l)/d*0.5;
- a.x+=dx*diff; a.y+=dy*diff;
- b.x-=dx*diff; b.y-=dy*diff;
-}
-
-function solve(j){
+function solve(m){
  for(let i=0;i<6;i++){
-  stick(j.neck,j.hip,70);
-  stick(j.head,j.neck,40);
+  stick(m.neck,m.hip,70);
+  stick(m.head,m.neck,40);
 
-  stick(j.hip,j.kneeL,40);
-  stick(j.kneeL,j.footL,40);
+  stick(m.hip,m.kneeL,40);
+  stick(m.kneeL,m.footL,40);
 
-  stick(j.hip,j.kneeR,40);
-  stick(j.kneeR,j.footR,40);
+  stick(m.hip,m.kneeR,40);
+  stick(m.kneeR,m.footR,40);
 
-  stick(j.neck,j.elbowL,35);
-  stick(j.elbowL,j.handL,35);
+  stick(m.neck,m.elbowL,35);
+  stick(m.elbowL,m.handL,35);
 
-  stick(j.neck,j.elbowR,35);
-  stick(j.elbowR,j.handR,35);
+  stick(m.neck,m.elbowR,35);
+  stick(m.elbowR,m.handR,35);
  }
 }
 
-// ===== DRAW =====
 function line(a,b){
  ctx.beginPath();
  ctx.moveTo(a.x,a.y);
@@ -157,85 +92,60 @@ function line(a,b){
  ctx.stroke();
 }
 
-function draw(){
- ctx.clearRect(0,0,W,H);
+function drawMan(m){
+ ctx.beginPath();
+ ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2);
+ ctx.stroke();
+
+ line(m.head,m.neck);
+ line(m.neck,m.hip);
+
+ line(m.hip,m.kneeL);
+ line(m.kneeL,m.footL);
+
+ line(m.hip,m.kneeR);
+ line(m.kneeR,m.footR);
+
+ line(m.neck,m.elbowL);
+ line(m.elbowL,m.handL);
+
+ line(m.neck,m.elbowR);
+ line(m.elbowR,m.handR);
+}
+
+function loop(){
+ ctx.clearRect(0,0,420,640);
 
  ctx.strokeStyle="#ccc";
  ctx.beginPath();
  ctx.moveTo(0,ground);
- ctx.lineTo(W,ground);
+ ctx.lineTo(420,ground);
  ctx.stroke();
 
  ctx.strokeStyle="#000";
 
- crowd.forEach(m=>{
-  const pose=sampleRun(m.base,m.phase);
-  for(let k in pose){
-   m.joints[k].x=pose[k].x;
-   m.joints[k].y=pose[k].y;
-  }
-  solve(m.joints);
+ men.forEach(m=>{
+  m.phase+=0.08;
+  const s=Math.sin(m.phase);
 
-  ctx.beginPath();
-  ctx.arc(m.joints.head.x,m.joints.head.y,14,0,Math.PI*2);
-  ctx.stroke();
+  m.footL.y=ground-Math.max(0,s)*28;
+  m.footR.y=ground-Math.max(0,-s)*28;
 
-  line(m.joints.head,m.joints.neck);
-  line(m.joints.neck,m.joints.hip);
+  m.hip.y=ground-85-Math.abs(s)*8;
+  m.neck.y=m.hip.y-70;
+  m.head.y=m.neck.y-40;
 
-  line(m.joints.hip,m.joints.kneeL);
-  line(m.joints.kneeL,m.joints.footL);
+  m.handL.x=m.neck.x-s*22;
+  m.handR.x=m.neck.x+s*22;
 
-  line(m.joints.hip,m.joints.kneeR);
-  line(m.joints.kneeR,m.joints.footR);
-
-  line(m.joints.neck,m.joints.elbowL);
-  line(m.joints.elbowL,m.joints.handL);
-
-  line(m.joints.neck,m.joints.elbowR);
-  line(m.joints.elbowR,m.joints.handR);
+  solve(m);
+  drawMan(m);
  });
-}
 
-// ===== LOOP =====
-let playing=true;
-function loop(){
- if(playing) crowd.forEach(m=>m.phase+=0.08*m.speed);
- draw();
  requestAnimationFrame(loop);
 }
 loop();
-
-// ===== EXPORT MP4 =====
-async function exportMP4(){
- if(!ffmpeg.isLoaded()){
-  alert("FFmpeg yuklanmoqda...");
-  await ffmpeg.load();
- }
-
- const fps=24, frames=96;
- for(let i=0;i<frames;i++){
-  crowd.forEach(m=>m.phase+=0.08*m.speed);
-  draw();
-  const data=c.toDataURL("image/png");
-  ffmpeg.FS("writeFile",`f${String(i).padStart(3,"0")}.png`,
-   await fetchFile(data));
- }
-
- await ffmpeg.run(
-  "-framerate",String(fps),
-  "-i","f%03d.png",
-  "-pix_fmt","yuv420p",
-  "out.mp4"
- );
-
- const video=ffmpeg.FS("readFile","out.mp4");
- const url=URL.createObjectURL(new Blob([video.buffer],{type:"video/mp4"}));
- const a=document.createElement("a");
- a.href=url;
- a.download="stickman.mp4";
- a.click();
-}
 </script>
+
 </body>
 </html>
