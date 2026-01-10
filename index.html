@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v36.1 (Keyframe)</title>
+<title>Stickman AI – STUDIO v36.2 (Timeline Scrub)</title>
 <style>
 body{
   margin:0;
@@ -14,22 +14,49 @@ body{
   font-family:Arial;
   color:white;
 }
-#studio{display:flex;flex-direction:column;gap:10px;align-items:center}
-canvas{background:#fff;border-radius:16px;cursor:pointer}
-.panel{display:flex;gap:6px}
-button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer}
-.small{font-size:12px;opacity:.7}
+#studio{
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ align-items:center;
+}
+canvas{
+ background:#fff;
+ border-radius:16px;
+ cursor:pointer;
+}
+.panel{
+ display:flex;
+ gap:6px;
+ align-items:center;
+}
+input[type=range]{
+ width:300px;
+}
+button{
+ padding:6px 12px;
+ border:none;
+ border-radius:6px;
+ cursor:pointer;
+}
+.small{
+ font-size:12px;
+ opacity:.7;
+}
 </style>
 </head>
 <body>
 
 <div id="studio">
   <div class="panel">
-    <button onclick="playing=!playing">Play / Pause</button>
-    <button onclick="timeline.time=0">Reset</button>
+    <button onclick="togglePlay()">Play / Pause</button>
+    <button onclick="resetTime()">Reset</button>
     <button onclick="clearKeys()">Clear Keys</button>
   </div>
-  <div class="small">v36.1 — Click canvas to add keyframe</div>
+
+  <input id="slider" type="range" min="0" max="1000" value="0">
+
+  <div class="small">v36.2 — Timeline scrub + keyframes</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -38,6 +65,8 @@ const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 ctx.lineCap="round";
 ctx.lineWidth=4;
+
+const slider=document.getElementById("slider");
 
 const W=420,H=640,ground=520;
 
@@ -73,7 +102,7 @@ const timeline={
  }
 };
 
-let playing=true;
+let playing=false;
 
 // ===== INTERPOLATION =====
 function lerp(a,b,t){return a+(b-a)*t;}
@@ -145,13 +174,11 @@ function solve(){
  }
 }
 
-// ===== KEYFRAME ADD =====
+// ===== KEYFRAME =====
 function addKeyframe(){
  timeline.tracks.hipY.push({t:timeline.time,v:man.hip.y});
  timeline.tracks.legSwing.push({t:timeline.time,v:Math.sign(man.footR.y-man.footL.y)});
  timeline.tracks.armSwing.push({t:timeline.time,v:Math.sign(man.handL.x-man.handR.x)});
-
- // sort
  for(let k in timeline.tracks){
   timeline.tracks[k].sort((a,b)=>a.t-b.t);
  }
@@ -160,6 +187,18 @@ function addKeyframe(){
 function clearKeys(){
  for(let k in timeline.tracks) timeline.tracks[k]=[];
 }
+
+// ===== UI =====
+function togglePlay(){ playing=!playing; }
+function resetTime(){
+ timeline.time=0;
+ slider.value=0;
+}
+
+slider.oninput=()=>{
+ playing=false;
+ timeline.time=(slider.value/1000)*timeline.duration;
+};
 
 // ===== DRAW =====
 function line(a,b){
@@ -207,6 +246,7 @@ function loop(){
  if(playing){
   timeline.time+=1/timeline.fps;
   if(timeline.time>timeline.duration) timeline.time=0;
+  slider.value=(timeline.time/timeline.duration)*1000;
  }
  applyTimeline();
  solve();
