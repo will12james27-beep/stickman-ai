@@ -141,8 +141,16 @@ function drawLeg(hipX, hipY, dir) {
   const thigh = 18;
   const calf = 18;
 
-  let a1 = Math.sin(frame * 0.15 + dir) * 0.6;
-  let a2 = Math.sin(frame * 0.15 + dir + 0.8) * 0.6;
+  let a1, a2;
+
+  if (action === 'run') {
+    a1 = Math.sin(frame * 0.15 + dir) * 0.6;
+    a2 = Math.sin(frame * 0.15 + dir + 0.8) * 0.6;
+  } else {
+    // stand va jump — oyoqlar qotib turadi
+    a1 = 0.4 * dir;
+    a2 = 0;
+  }
 
   const kneeX = hipX + Math.sin(a1) * thigh;
   const kneeY = hipY + Math.cos(a1) * thigh;
@@ -155,8 +163,9 @@ function drawLeg(hipX, hipY, dir) {
   ctx.lineTo(kneeX, kneeY);
   ctx.lineTo(footX, footY);
   ctx.stroke();
-
 }
+
+
 
 function animate() {
   frame++;
