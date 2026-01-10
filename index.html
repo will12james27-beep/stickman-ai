@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v31.2 (Weight & Balance)</title>
+<title>Stickman AI – STUDIO v31.3 (Ground Impact)</title>
 <style>
 body{
   margin:0;
@@ -45,9 +45,7 @@ const W=420, H=640, ground=520;
 let time=0, mode="walk", camX=0;
 
 // ===== JOINT =====
-class Joint{
-  constructor(x,y){ this.x=x; this.y=y; }
-}
+class Joint{ constructor(x,y){ this.x=x; this.y=y; } }
 
 // ===== STICKMAN =====
 function createMan(x){
@@ -73,9 +71,12 @@ function createMan(x){
     accel:0.06,
     decel:0.08,
 
-    // BALANCE
+    // REALISM
     sway:0,
-    headLag:0
+    headLag:0,
+    impact:0,
+    impactVel:0,
+    prevFootLock:false
   };
 }
 
@@ -112,7 +113,7 @@ function walk(m){
 
   const leftLock = s > 0;
 
-  // FOOT LOCK
+  // --- FOOT LOCK ---
   if(leftLock){
     m.footL.x = m.hip.x - stride;
     m.footL.y = ground;
@@ -127,14 +128,26 @@ function walk(m){
     m.footL.y = ground - Math.max(0,s)*28;
   }
 
-  // HIP MOVE
-  m.hip.x += m.vel;
-  m.hip.y = ground-85 - Math.abs(s)*8;
+  // --- GROUND IMPACT DETECT ---
+  if(leftLock !== m.prevFootLock){
+    m.impactVel = 6; // STEP FORCE
+  }
+  m.prevFootLock = leftLock;
 
-  // BALANCE SWAY
+  // --- IMPACT PHYSICS ---
+  m.impactVel -= m.impact * 0.35;
+  m.impactVel *= 0.65;
+  m.impact += m.impactVel;
+  m.impact *= 0.7;
+
+  // --- HIP ---
+  m.hip.x += m.vel;
+  m.hip.y = ground-85 - Math.abs(s)*8 + m.impact;
+
+  // --- BALANCE SWAY ---
   m.sway += ((-s*8) - m.sway) * 0.15;
 
-  // NECK & HEAD (S-curve)
+  // --- SPINE ---
   m.neck.x = m.hip.x + m.sway;
   m.neck.y = m.hip.y - 70;
 
@@ -142,7 +155,7 @@ function walk(m){
   m.head.x = m.neck.x + m.headLag;
   m.head.y = m.neck.y - 40;
 
-  // ARMS (counter balance)
+  // --- ARMS ---
   m.handL.x = m.neck.x - 45 - s*22;
   m.handR.x = m.neck.x + 45 + s*22;
   m.handL.y = m.neck.y + 20;
@@ -156,8 +169,10 @@ function idle(m){
   m.targetVel = 0;
   updateSpeed(m);
 
+  m.impact *= 0.8;
   const b = Math.sin(time*0.05);
-  m.hip.y = ground-85 + b*4;
+
+  m.hip.y = ground-85 + b*4 + m.impact;
 
   m.sway *= 0.85;
 
