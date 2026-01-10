@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Studio v37.5 — Timeline Dots</title>
+<title>Stickman Studio v37.5.1 — FIXED</title>
 <style>
 body{
  margin:0;
@@ -37,9 +37,7 @@ button{
  border-radius:6px;
  cursor:pointer;
 }
-input[type=range]{
- width:260px;
-}
+input[type=range]{ width:260px; }
 .small{font-size:12px;opacity:.7}
 #dots{
  position:relative;
@@ -71,7 +69,7 @@ input[type=range]{
  <input id="timeline" type="range" min="0" max="119" value="0">
  <div id="dots"></div>
 
- <div class="small">v37.5 — timeline keyframe dots</div>
+ <div class="small">v37.5.1 — timeline keyframe dots (fixed)</div>
  <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -121,7 +119,7 @@ function clonePose(m){
  for(let k in m) p[k]=m[k].clone();
  return p;
 }
-function lerp(a,b,t){return a+(b-a)*t;}
+function lerp(a,b,t){ return a+(b-a)*t; }
 function blendPose(a,b,t){
  const p={};
  for(let k in a){
@@ -139,11 +137,13 @@ function applyPose(m,p){
  }
 }
 
+// ===== SETUP =====
+const man=createMan(210);
+const basePose=clonePose(man); // 🔴 MUHIM!
+
 // ===== TIMELINE =====
-const timeline={
- duration:120,
- keys:[]
-};
+const timeline={ duration:120, keys:[] };
+
 function addKeyframe(frame,pose){
  timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
  timeline.keys.push({frame,pose});
@@ -154,9 +154,6 @@ function deleteKeyframe(frame){
  timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
  renderDots();
 }
-
-// ===== SETUP =====
-const man=createMan(210);
 addKeyframe(0,clonePose(man));
 
 // ===== SOLVE =====
@@ -204,12 +201,11 @@ let playing=true;
 const slider=document.getElementById("timeline");
 
 function getPoseAtFrame(f){
- const k=timeline.keys;
- if(k.length===0) return clonePose(man);
- let a=k[0],b=k[k.length-1];
- for(let i=0;i<k.length-1;i++){
-  if(f>=k[i].frame && f<=k[i+1].frame){
-   a=k[i]; b=k[i+1]; break;
+ if(timeline.keys.length===0) return basePose;
+ let a=timeline.keys[0], b=timeline.keys[timeline.keys.length-1];
+ for(let i=0;i<timeline.keys.length-1;i++){
+  if(f>=timeline.keys[i].frame && f<=timeline.keys[i+1].frame){
+   a=timeline.keys[i]; b=timeline.keys[i+1]; break;
   }
  }
  if(a===b) return clonePose(a.pose);
@@ -231,8 +227,7 @@ function loop(){
  }
  document.getElementById("f").innerText=frame;
 
- const pose=getPoseAtFrame(frame);
- applyPose(man,pose);
+ applyPose(man,getPoseAtFrame(frame));
  solve(man);
 
  ctx.clearRect(0,0,W,H);
@@ -244,8 +239,8 @@ function loop(){
 
  ctx.strokeStyle="#000";
  drawMan(man);
-
  highlightDot();
+
  requestAnimationFrame(loop);
 }
 loop();
