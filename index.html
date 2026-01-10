@@ -2,20 +2,16 @@
 document.addEventListener("DOMContentLoaded",()=>{
 
 const c=document.getElementById("c");
-if(!c) return;
 const ctx=c.getContext("2d");
-
-c.width=360; 
-c.height=640;
-ctx.lineCap="round"; 
-ctx.lineWidth=4;
+c.width=360; c.height=640;
+ctx.lineCap="round"; ctx.lineWidth=4;
 
 const ground=520;
 const GRAVITY=0.9;
 
 let debug=false;
 let time=0;
-let state="idle";
+let state="idle"; // idle | walk | sit | jump | ragdoll | play
 
 // ===== TIMELINE =====
 let recording=false;
@@ -31,30 +27,25 @@ class Joint{
 }
 
 // ===== MAN =====
-class Man{
-  constructor(x){
-    this.hip=new Joint(x,ground-70);
-    this.neck=new Joint(x,ground-135);
-    this.head=new Joint(x,ground-170);
-    this.legL=new Joint(x-14,ground);
-    this.legR=new Joint(x+14,ground);
-    this.armL=new Joint(x-36,ground-135);
-    this.armR=new Joint(x+36,ground-135);
-  }
-}
-const man=new Man(180);
+const man={
+  hip:new Joint(180,ground-70),
+  neck:new Joint(180,ground-135),
+  head:new Joint(180,ground-170),
+  legL:new Joint(166,ground),
+  legR:new Joint(194,ground),
+  armL:new Joint(140,ground-135),
+  armR:new Joint(220,ground-135)
+};
 
-// ===== CONSTRAINT =====
-function stick(a,b,len){
+// ===== UTILS =====
+function stick(a,b,l){
   const dx=b.x-a.x, dy=b.y-a.y;
-  const d=Math.hypot(dx,dy)||0.001;
-  const diff=(d-len)/d;
-  const ox=dx*0.5*diff, oy=dy*0.5*diff;
-  a.x+=ox; a.y+=oy;
-  b.x-=ox; b.y-=oy;
+  const d=Math.hypot(dx,dy)||1;
+  const diff=(d-l)/d*0.5;
+  a.x+=dx*diff; a.y+=dy*diff;
+  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== PHYSICS =====
 function physics(j){
   j.vy+=GRAVITY;
   j.x+=j.vx;
@@ -62,23 +53,20 @@ function physics(j){
   if(j.y>ground){ j.y=ground; j.vy=0; }
 }
 
-// ===== BALANCE =====
+// ===== CONTROLLERS =====
 function balance(){
-  man.hip.y += ((ground-70)-man.hip.y)*0.2;
+  man.hip.y += ((ground-70)-man.hip.y)*0.25;
   man.neck.x += (man.hip.x-man.neck.x)*0.2;
 }
 
-// ===== WALK =====
 function walk(){
   time++;
-  const step=Math.sin(time*0.12);
+  const s=Math.sin(time*0.12);
   man.hip.x+=1.2;
-
-  man.legL.x = man.hip.x-14 + step*20;
-  man.legR.x = man.hip.x+14 - step*20;
-
-  man.legL.y = ground - Math.max(0, step*12);
-  man.legR.y = ground - Math.max(0,-step*12);
+  man.legL.x=man.hip.x-14+s*20;
+  man.legR.x=man.hip.x+14-s*20;
+  man.legL.y=ground-Math.max(0,s*12);
+  man.legR.y=ground-Math.max(0,-s*12);
 }
 
 // ===== AI COMMAND =====
@@ -86,20 +74,28 @@ window.aiCommand=function(cmd){
   cmd=cmd.trim();
   if(cmd==="walk") state="walk";
   if(cmd==="stop") state="idle";
-  if(cmd==="jump"){ man.hip.vy=-16; state="jump"; }
   if(cmd==="sit") state="sit";
-
-  const cmdInput=document.getElementById("cmd");
-  if(cmdInput) cmdInput.value="";
-}
+  if(cmd==="jump"){
+    man.hip.vy=-15;
+    state="jump";
+  }
+  const i=document.getElementById("cmd");
+  if(i) i.value="";
+};
 
 // ===== UI =====
-window.toggleRagdoll=function(){
-  state = state==="ragdoll" ? "idle" : "ragdoll";
-}
-window.toggleDebug=function(){debug=!debug;}
-window.toggleRecord=function(){recording=!recording; if(recording) timeline=[];}
-window.playTimeline=function(){ if(timeline.length){ state="play"; playIndex=0; }}
+window.toggleRagdoll=()=> state = state==="ragdoll" ? "idle" : "ragdoll";
+window.toggleDebug=()=> debug=!debug;
+window.toggleRecord=()=>{
+  recording=!recording;
+  if(recording) timeline=[];
+};
+window.playTimeline=()=>{
+  if(timeline.length){
+    state="play";
+    playIndex=0;
+  }
+};
 
 // ===== DRAW =====
 function line(a,b){
@@ -110,8 +106,7 @@ function line(a,b){
 }
 
 function draw(){
-  ctx.clearRect(0,0,c.width,c.height);
-
+  ctx.clearRect(0,0,360,640);
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
   ctx.moveTo(0,ground);
@@ -142,19 +137,19 @@ function draw(){
 
 // ===== LOOP =====
 function loop(){
+
   if(state==="play"){
     const f=timeline[playIndex++];
     if(!f) state="idle";
-    else Object.keys(f).forEach(k=>{
+    else Object.keys(man).forEach(k=>{
       man[k].x=f[k].x;
       man[k].y=f[k].y;
     });
   }
-  else if(state==="ragdoll"){
+  else if(state==="ragdoll" || state==="jump"){
     Object.values(man).forEach(j=>physics(j));
   }
   else{
-    Object.values(man).forEach(j=>physics(j));
     if(state==="walk") walk();
     if(state==="sit") man.hip.y=ground-40;
     balance();
@@ -169,7 +164,13 @@ function loop(){
     stick(man.neck,man.armR,45);
   }
 
-  if(recording) timeline.push(JSON.parse(JSON.stringify(man)));
+  if(recording){
+    const frame={};
+    Object.keys(man).forEach(k=>{
+      frame[k]={x:man[k].x,y:man[k].y};
+    });
+    timeline.push(frame);
+  }
 
   draw();
   requestAnimationFrame(loop);
