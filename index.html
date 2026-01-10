@@ -1,131 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v7.6.1 — Pose Test</title>
+<title>Stickman AI v7.6.3</title>
 <style>
-body{
- margin:0;
- background:#0b0f14;
- height:100vh;
- display:flex;
- justify-content:center;
- align-items:center;
-}
-canvas{
- background:#fff;
- border-radius:16px;
-}
+  body {
+    margin: 0;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  canvas {
+    background: #fff;
+  }
 </style>
 </head>
 <body>
 
-<canvas id="c" width="420" height="640"></canvas>
+<canvas id="c" width="600" height="600"></canvas>
 
 <script>
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
-ctx.lineWidth = 4;
-ctx.lineCap = "round";
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
 
-const ground = 520;
+/* =======================
+   GLOBAL STICKMAN STATE
+======================= */
+const stickman = {
+  x: 300,
+  y: 350,
+  scale: 1,
+  pose: {
+    head: 0,
+    leftArm: 0,
+    rightArm: 0,
+    leftLeg: 0,
+    rightLeg: 0
+  }
+};
 
-// ===== JOINT =====
-class Joint{
- constructor(x,y){ this.x=x; this.y=y; }
- clone(){ return new Joint(this.x,this.y); }
+/* =======================
+   TIMELINE (SAFE)
+======================= */
+const timeline = [
+  { time: 0,   pose: { leftArm: 0,   rightArm: 0   } },
+  { time: 500, pose: { leftArm: -40, rightArm: 40  } },
+  { time: 1000,pose: { leftArm: 0,   rightArm: 0   } }
+];
+
+/* =======================
+   APPLY KEYFRAME
+======================= */
+function applyKeyframe(frame) {
+  if (!frame.pose) return;
+  for (let k in frame.pose) {
+    if (stickman.pose[k] !== undefined) {
+      stickman.pose[k] = frame.pose[k];
+    }
+  }
 }
 
-// ===== MAN =====
-function createMan(){
- return {
-  head:new Joint(210,300),
-  neck:new Joint(210,340),
-  hip:new Joint(210,400),
+/* =======================
+   DRAW STICKMAN
+======================= */
+function drawStickman(s) {
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.scale(s.scale, s.scale);
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#000";
 
-  kneeL:new Joint(190,460),
-  footL:new Joint(190,ground),
+  // BODY
+  ctx.beginPath();
+  ctx.moveTo(0, -50);
+  ctx.lineTo(0, 50);
+  ctx.stroke();
 
-  kneeR:new Joint(230,460),
-  footR:new Joint(230,ground),
+  // HEAD
+  ctx.beginPath();
+  ctx.arc(0, -75, 25, 0, Math.PI * 2);
+  ctx.stroke();
 
-  elbowL:new Joint(180,360),
-  handL:new Joint(160,380),
+  // ARMS
+  drawLimb(0, -30, -50, s.pose.leftArm);
+  drawLimb(0, -30,  50, s.pose.rightArm);
 
-  elbowR:new Joint(240,360),
-  handR:new Joint(260,380),
- };
+  // LEGS
+  drawLimb(0, 50, -35, s.pose.leftLeg);
+  drawLimb(0, 50,  35, s.pose.rightLeg);
+
+  ctx.restore();
 }
 
-const man = createMan();
-const basePose = clonePose(man);
-
-// ===== POSE =====
-function clonePose(m){
- const p={};
- for(let k in m) p[k]=m[k].clone();
- return p;
+function drawLimb(x, y, length, angle) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle * Math.PI / 180);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, length);
+  ctx.stroke();
+  ctx.restore();
 }
 
-function applyPose(m,p){
- for(let k in p){
-  m[k].x=p[k].x;
-  m[k].y=p[k].y;
- }
+/* =======================
+   RENDER LOOP (SAFE)
+======================= */
+function render() {
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawStickman(stickman);
+  requestAnimationFrame(render);
 }
+render();
 
-// test pose (qo‘l ko‘tarilgan)
-const testPose = clonePose(basePose);
-testPose.handL.y -= 60;
-testPose.elbowL.y -= 30;
+/* =======================
+   TIMELINE PLAYER
+======================= */
+let startTime = performance.now();
 
-// ===== DRAW =====
-function line(a,b){
- ctx.beginPath();
- ctx.moveTo(a.x,a.y);
- ctx.lineTo(b.x,b.y);
- ctx.stroke();
+function playTimeline() {
+  const t = performance.now() - startTime;
+
+  timeline.forEach(f => {
+    if (!f.done && t >= f.time) {
+      applyKeyframe(f);
+      f.done = true;
+    }
+  });
 }
-
-function draw(){
- ctx.clearRect(0,0,c.width,c.height);
-
- // ground
- ctx.strokeStyle="#ccc";
- ctx.beginPath();
- ctx.moveTo(0,ground);
- ctx.lineTo(420,ground);
- ctx.stroke();
-
- ctx.strokeStyle="#000";
-
- // apply pose
- applyPose(man, testPose);
-
- // head
- ctx.beginPath();
- ctx.arc(man.head.x, man.head.y, 14, 0, Math.PI*2);
- ctx.stroke();
-
- line(man.head, man.neck);
- line(man.neck, man.hip);
-
- line(man.hip, man.kneeL);
- line(man.kneeL, man.footL);
-
- line(man.hip, man.kneeR);
- line(man.kneeR, man.footR);
-
- line(man.neck, man.elbowL);
- line(man.elbowL, man.handL);
-
- line(man.neck, man.elbowR);
- line(man.elbowR, man.handR);
-
- requestAnimationFrame(draw);
-}
-
-draw();
+setInterval(playTimeline, 16);
 </script>
 
 </body>
