@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v10.1</title>
+<title>Stickman AI – STUDIO v10.2</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -15,13 +15,6 @@ body{
   justify-content:center;
   align-items:center;
 }
-
-.app-wrapper{
-  width:100%;
-  display:flex;
-  justify-content:center;
-}
-
 .box{
   width:520px;
   max-width:95%;
@@ -30,9 +23,7 @@ body{
   border-radius:20px;
   box-shadow:0 0 40px #00ffff55;
 }
-
-h3{text-align:center;margin-top:4px}
-
+h3{text-align:center}
 input,button{
   width:100%;
   padding:9px;
@@ -40,38 +31,26 @@ input,button{
   border-radius:8px;
   border:none;
 }
-
 button{background:cyan;cursor:pointer;font-weight:bold}
-
 canvas{
   display:block;
-  margin:12px auto 6px;
+  margin:12px auto;
   background:#fff;
   width:360px;
   height:560px;
   border-radius:12px;
 }
-
 .row{display:flex;gap:8px}
 .row>*{flex:1}
-
 .hidden{display:none}
-
-small{
-  text-align:center;
-  opacity:.7;
-  display:block;
-  margin-top:6px;
-  line-height:1.4;
-}
+small{text-align:center;opacity:.7;display:block}
 </style>
 </head>
 
 <body>
-<div class="app-wrapper">
 <div class="box">
 
-<h3>🎬 Stickman AI – STUDIO v10.1</h3>
+<h3>🎬 Stickman AI – STUDIO v10.2</h3>
 
 <div id="loginBox">
 <input id="username" placeholder="Username">
@@ -80,17 +59,12 @@ small{
 
 <div id="app" class="hidden">
 
-<div style="display:flex;justify-content:space-between;align-items:center">
-  <div>👤 <b id="userLabel"></b></div>
-  <button onclick="logout()" style="width:auto;padding:6px 12px">Logout</button>
+<div style="display:flex;justify-content:space-between">
+<b id="userLabel"></b>
+<button onclick="logout()" style="width:auto">Logout</button>
 </div>
 
-<input id="aiText" placeholder="girl happy run fast right 2 | boy sad stand 3 | camera follow | background sky">
-
-<small>
-Prompt help: <br>
-girl/boy • run/stand • fast/slow • left/right • happy/sad • seconds
-</small>
+<input id="aiText" placeholder="girl run 2 jump 1 | boy stand 3 | camera follow | background sky">
 
 <div class="row">
 <button onclick="parseAI()">🧠 Generate</button>
@@ -99,9 +73,7 @@ girl/boy • run/stand • fast/slow • left/right • happy/sad • seconds
 
 <canvas id="c"></canvas>
 
-<small>v10.1 • UI Fix • Camera Fix • Prompt UX</small>
-</div>
-
+<small>v10.2 • Animation Fix • Jump • Scene • Camera</small>
 </div>
 </div>
 
@@ -109,28 +81,20 @@ girl/boy • run/stand • fast/slow • left/right • happy/sad • seconds
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 const dpr=window.devicePixelRatio||1;
-c.width=360*dpr;
-c.height=560*dpr;
+c.width=360*dpr; c.height=560*dpr;
 ctx.scale(dpr,dpr);
-ctx.lineCap="round";
-ctx.lineJoin="round";
-ctx.lineWidth=3;
+ctx.lineCap="round"; ctx.lineJoin="round"; ctx.lineWidth=3;
 
 const ground=440;
-let camX=0;
-let cameraMode="follow";
-let playing=true;
-let background="street";
+let camX=0, playing=true;
+let cameraMode="follow", background="street";
 
 // ===== LOGIN =====
 function login(){
   localStorage.setItem("user",username.value||"guest");
   start();
 }
-function logout(){
-  localStorage.clear();
-  location.reload();
-}
+function logout(){localStorage.clear();location.reload();}
 function start(){
   const u=localStorage.getItem("user");
   if(!u) return;
@@ -143,19 +107,15 @@ start();
 // ===== STICKMAN =====
 class Stickman{
   constructor(x,type){
-    this.baseX=x;
-    this.x=x;
-    this.y=ground;
+    this.baseX=x; this.x=x; this.y=ground;
+    this.vy=0;
     this.type=type;
-    this.timeline=[{action:"stand",frames:999999}];
-    this.ti=0;
-    this.tf=0;
-    this.dir=1;
-    this.speed=1;
-    this.emotion="normal";
+    this.timeline=[];
+    this.ti=0; this.tf=0;
+    this.dir=1; this.speed=1;
+    this.action="stand";
   }
 }
-
 const girl=new Stickman(140,"girl");
 const boy=new Stickman(220,"boy");
 const chars=[girl,boy];
@@ -168,8 +128,10 @@ function drawBG(){
 
 function draw(ch){
   const x=ch.x-camX;
-  const lean=ch.emotion==="happy"?-5:ch.emotion==="sad"?5:0;
-  const swing=Math.sin(Date.now()*0.015*ch.speed);
+  let swing=0;
+
+  if(ch.action==="run") swing=Math.sin(ch.tf*0.25)*12;
+  if(ch.action==="stand") swing=Math.sin(ch.tf*0.05)*2;
 
   // head
   ctx.beginPath();
@@ -179,28 +141,28 @@ function draw(ch){
   // body
   ctx.beginPath();
   ctx.moveTo(x,ch.y-38);
-  ctx.lineTo(x+lean,ch.y-10);
+  ctx.lineTo(x,ch.y-10);
   ctx.stroke();
 
   // arms
-  limb(x+lean,ch.y-32,swing*ch.dir,18);
-  limb(x+lean,ch.y-32,-swing*ch.dir,18);
+  limb(x,ch.y-32,swing*0.03);
+  limb(x,ch.y-32,-swing*0.03);
 
   // legs
-  leg(x,ch.y-10,swing*ch.dir,28);
-  leg(x,ch.y-10,-swing*ch.dir,28);
+  leg(x-5,ch.y-10,swing*0.04);
+  leg(x+5,ch.y-10,-swing*0.04);
 }
 
-function limb(x,y,a,l){
+function limb(x,y,a){
   ctx.beginPath();
   ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(a)*l,y+Math.cos(a)*l);
+  ctx.lineTo(x+Math.sin(a)*16,y+Math.cos(a)*16);
   ctx.stroke();
 }
-function leg(x,y,a,l){
+function leg(x,y,a){
   ctx.beginPath();
   ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(a)*14,y+l);
+  ctx.lineTo(x+Math.sin(a)*14,y+28);
   ctx.stroke();
 }
 
@@ -208,15 +170,21 @@ function leg(x,y,a,l){
 function animate(){
   if(playing){
     chars.forEach(ch=>{
-      const cur=ch.timeline[ch.ti];
+      const cur=ch.timeline[ch.ti]||{action:"stand",frames:9999};
+      ch.action=cur.action;
       ch.tf++;
+
       if(ch.tf>cur.frames){
         ch.tf=0;
-        ch.ti=(ch.ti+1)%ch.timeline.length;
+        ch.ti++;
       }
-      if(cur.action==="run"){
-        ch.x+=ch.speed*ch.dir;
-      }
+
+      if(ch.action==="run") ch.x+=ch.speed*ch.dir;
+      if(ch.action==="jump" && ch.vy===0) ch.vy=-12;
+
+      ch.vy+=0.6;
+      ch.y+=ch.vy;
+      if(ch.y>ground){ch.y=ground;ch.vy=0;}
     });
   }
 
@@ -233,13 +201,13 @@ animate();
 
 // ===== AI PARSER =====
 function parseAI(){
-  chars.forEach(c=>{
-    c.timeline=[];
-    c.ti=0;
-    c.tf=0;
-    c.x=c.baseX;
+  chars.forEach(ch=>{
+    ch.timeline=[];
+    ch.ti=0; ch.tf=0;
+    ch.x=ch.baseX;
+    ch.y=ground;
+    ch.vy=0;
   });
-  cameraMode="follow";
 
   aiText.value.toLowerCase().split("|").forEach(b=>{
     const p=b.trim().split(" ");
@@ -247,12 +215,12 @@ function parseAI(){
     else if(p[0]==="camera") cameraMode=p[1];
     else{
       const ch=p[0]==="girl"?girl:boy;
-      ch.emotion=p.includes("happy")?"happy":p.includes("sad")?"sad":"normal";
-      ch.dir=p.includes("left")?-1:1;
-      ch.speed=p.includes("fast")?2:p.includes("slow")?0.6:1;
-      const act=p.find(x=>["run","stand"].includes(x))||"stand";
-      const sec=parseFloat(p[p.length-1])||2;
-      ch.timeline.push({action:act,frames:sec*60});
+      for(let i=1;i<p.length;i+=2){
+        ch.timeline.push({
+          action:p[i],
+          frames:(parseFloat(p[i+1])||1)*60
+        });
+      }
     }
   });
 }
