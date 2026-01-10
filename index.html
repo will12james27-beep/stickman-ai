@@ -127,13 +127,17 @@ if (action === 'jump') {
 ctx.stroke();
 
 
-  // legs
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x - swing, y + 20);
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + swing, y + 20);
-  ctx.stroke();
+// legs
+let legY = action === 'jump' ? 10 : 20;
+let legSwing = action === 'jump' ? 6 : swing;
+
+ctx.beginPath();
+ctx.moveTo(x, y);
+ctx.lineTo(x - legSwing, y + legY);
+ctx.moveTo(x, y);
+ctx.lineTo(x + legSwing, y + legY);
+ctx.stroke();
+
 }
 
 function animate() {
