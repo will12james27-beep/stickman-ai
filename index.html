@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – Level 4 ENGINE</title>
+<title>Stickman AI – LEVEL 5 PRO</title>
 <style>
 body{
   margin:0;
-  background:radial-gradient(#0f2b33,#07161b);
+  background:#06161b;
   display:flex;
   justify-content:center;
   align-items:flex-start;
@@ -16,79 +16,62 @@ body{
   padding:10px;
 }
 .box{
-  width:440px;
-  max-height:95vh;
-  overflow:auto;
+  width:460px;
   padding:14px;
   border-radius:18px;
   background:#0b1f26;
   box-shadow:0 0 30px #00ffff55;
 }
-h3{text-align:center;margin:6px 0}
-input,button{
+h3{text-align:center}
+input,select,button{
   width:100%;
-  padding:10px;
+  padding:8px;
   margin-top:6px;
   border-radius:8px;
   border:none;
-  font-size:14px;
 }
 button{background:cyan;cursor:pointer}
 canvas{
-  display:block;
   background:#fff;
   margin-top:10px;
-  border-radius:10px;
   width:100%;
-  height:auto;
-}
-.timeline{
-  margin-top:10px;
-  background:#07161b;
-  padding:8px;
   border-radius:10px;
-  font-size:13px;
 }
-.timeline span{
-  display:inline-block;
-  background:#00ffff33;
-  padding:4px 8px;
-  border-radius:6px;
-  margin:2px;
-}
-.controls{
-  display:flex;
-  gap:6px;
-  margin-top:6px;
-}
-.controls button{flex:1}
+.row{display:flex;gap:6px}
+.row>*{flex:1}
 small{opacity:.7;display:block;text-align:center;margin-top:6px}
 </style>
 </head>
 
 <body>
 <div class="box">
-  <h3>🎬 Stickman AI – LEVEL 4</h3>
+<h3>🎬 Stickman AI – LEVEL 5 PRO</h3>
 
-  <input id="text" placeholder="run 2 jump 1 stand 2">
+<input id="aiText" placeholder="girl run 2 jump 1 | boy stand 3 | background street">
 
-  <button onclick="generate()">🧠 Generate Timeline</button>
+<div class="row">
+<button onclick="parseAI()">🧠 AI Generate</button>
+<button onclick="saveProject()">💾 Save</button>
+<button onclick="loadProject()">📂 Load</button>
+</div>
 
-  <div class="controls">
-    <button onclick="togglePlay()">⏯ Pause</button>
-    <button onclick="resetScene()">🔄 Reset</button>
-  </div>
+<div class="row">
+<select id="bgSelect" onchange="background=this.value">
+<option value="street">Street</option>
+<option value="room">Room</option>
+<option value="sky">Sky</option>
+</select>
+<button onclick="togglePlay()">⏯ Pause</button>
+<button onclick="resetScene()">🔄 Reset</button>
+</div>
 
-  <div class="controls">
-    <button onclick="startRecord()">🎥 Start</button>
-    <button onclick="stopRecord()">💾 Save</button>
-  </div>
+<div class="row">
+<button onclick="startRecord()">🎥 Start</button>
+<button onclick="stopRecord()">⏹ Save Video</button>
+</div>
 
-  <div class="timeline" id="timelineUI"></div>
-
-  <canvas id="c" width="360" height="600"></canvas>
-
-  <small>Text → Timeline → Scene → Camera → Video</small>
+<canvas id="c" width="360" height="560"></canvas>
+<small>AI → Scene → Character → Video</small>
 </div>
 
 <script>
@@ -96,33 +79,30 @@ const c=document.getElementById('c');
 const ctx=c.getContext('2d');
 ctx.lineCap="round";ctx.lineJoin="round";
 
-const ground=c.height-100;
+const ground=c.height-90;
 let playing=true;
-
-// ===== CAMERA =====
+let background="street";
 let camX=0;
 
-// ===== STICKMAN CLASS =====
+// ===== CHARACTER =====
 class Stickman{
-  constructor(x,type){
+  constructor(x,type,color){
     this.baseX=x;
     this.x=x;
     this.y=ground;
     this.vy=0;
     this.action='stand';
     this.type=type;
+    this.color=color;
+    this.timeline=[];
+    this.ti=0;
+    this.tf=0;
   }
 }
 
-const characters=[
-  new Stickman(120,'girl'),
-  new Stickman(220,'boy')
-];
-
-let frame=0;
-let timeline=[];
-let timeIndex=0;
-let actionFrame=0;
+const girl=new Stickman(120,'girl','#000');
+const boy=new Stickman(220,'boy','#000');
+const characters=[girl,boy];
 
 // ===== VIDEO =====
 let recorder,chunks=[];
@@ -133,135 +113,140 @@ function startRecord(){
   recorder.onstop=()=>{
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
-    a.download='stickman_level4.webm';
+    a.download='stickman_pro.webm';
     a.click();
   };
   recorder.start();
 }
 function stopRecord(){recorder&&recorder.stop();}
 
-// ===== DRAW =====
-function drawStickman(ch){
-  let walk=Math.sin(frame*0.12);
-  let lean=ch.action==='run'?walk*10:0;
+// ===== BACKGROUND =====
+function drawBackground(){
+  if(background==='street'){
+    ctx.fillStyle="#eaeaea";
+    ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle="#999";
+    ctx.fillRect(0,ground+30,c.width,40);
+  }
+  if(background==='room'){
+    ctx.fillStyle="#fff4e6";
+    ctx.fillRect(0,0,c.width,c.height);
+  }
+  if(background==='sky'){
+    ctx.fillStyle="#bde7ff";
+    ctx.fillRect(0,0,c.width,c.height);
+  }
+}
 
+// ===== DRAW STICKMAN =====
+function drawStickman(ch){
+  ctx.strokeStyle=ch.color;
+  let walk=Math.sin(Date.now()*0.01);
   let px=ch.x-camX;
 
-  // HEAD
   ctx.beginPath();
-  ctx.arc(px+lean*.3,ch.y-45,12,0,Math.PI*2);
+  ctx.arc(px,ch.y-40,12,0,Math.PI*2);
   ctx.stroke();
 
-  // FACE
-  ctx.beginPath();
-  ctx.arc(px+lean*.3,ch.y-42,4,0,Math.PI);
-  ctx.stroke();
-
-  // HAIR
   if(ch.type==='girl'){
     ctx.beginPath();
-    ctx.moveTo(px+6,ch.y-58);
-    ctx.quadraticCurveTo(px+30,ch.y-48,px+20,ch.y-28);
+    ctx.moveTo(px+6,ch.y-52);
+    ctx.quadraticCurveTo(px+26,ch.y-44,px+18,ch.y-26);
     ctx.stroke();
   }
 
-  // BODY
   ctx.beginPath();
-  ctx.moveTo(px,ch.y-30);
+  ctx.moveTo(px,ch.y-28);
   ctx.lineTo(px,ch.y+20);
   ctx.stroke();
 
-  limb(px,ch.y-25,walk);
-  limb(px,ch.y-25,walk+Math.PI);
-
+  limb(px,ch.y-24,walk);
+  limb(px,ch.y-24,walk+Math.PI);
   leg(px-6,ch.y+20,walk);
   leg(px+6,ch.y+20,walk+Math.PI);
 }
 
 function limb(x,y,p){
-  let a=Math.sin(p)*.6;
   ctx.beginPath();
   ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(a)*16,y+Math.cos(a)*16);
+  ctx.lineTo(x+Math.sin(p)*16,y+Math.cos(p)*16);
   ctx.stroke();
 }
 function leg(x,y,p){
-  let s=Math.sin(p)*.6;
-  let lift=Math.max(0,Math.sin(p))*6;
   ctx.beginPath();
   ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(s)*14,y+16-lift);
-  ctx.lineTo(x+Math.sin(s)*14,y+30);
+  ctx.lineTo(x+Math.sin(p)*14,y+28);
   ctx.stroke();
 }
 
 // ===== ENGINE =====
 function animate(){
-  if(playing) frame++;
-
-  ctx.fillStyle="#fff";
-  ctx.fillRect(0,0,c.width,c.height);
-
-  ctx.strokeStyle="#000";
-  ctx.lineWidth=3;
-
-  if(timeline.length){
-    let cur=timeline[timeIndex];
-    characters.forEach(ch=>ch.action=cur.action);
-    if(playing){
-      actionFrame++;
-      if(actionFrame>cur.frames){
-        actionFrame=0;
-        timeIndex=(timeIndex+1)%timeline.length;
+  if(playing){
+    characters.forEach(ch=>{
+      if(ch.timeline.length){
+        let cur=ch.timeline[ch.ti];
+        ch.action=cur.action;
+        ch.tf++;
+        if(ch.tf>cur.frames){ch.tf=0;ch.ti=(ch.ti+1)%ch.timeline.length;}
       }
-    }
-  }
-
-  characters.forEach(ch=>{
-    if(playing){
       if(ch.action==='run') ch.x+=1;
       if(ch.action==='jump'&&ch.y===ground) ch.vy=-11;
       ch.vy+=0.6;
       ch.y+=ch.vy;
       if(ch.y>ground){ch.y=ground;ch.vy=0;}
-    }
-  });
+    });
+  }
 
-  // CAMERA FOLLOW (average)
-  camX += ((characters[0].x+characters[1].x)/2 - camX - c.width/2)*0.05;
+  camX+=((girl.x+boy.x)/2-camX-c.width/2)*0.05;
 
+  drawBackground();
   characters.forEach(drawStickman);
   requestAnimationFrame(animate);
+}
+
+// ===== AI PARSER =====
+function parseAI(){
+  characters.forEach(ch=>{ch.timeline=[];ch.ti=0;ch.tf=0;});
+  let blocks=document.getElementById('aiText').value.toLowerCase().split('|');
+  blocks.forEach(b=>{
+    b=b.trim();
+    if(b.startsWith('background')){
+      background=b.split(' ')[1]||background;
+      document.getElementById('bgSelect').value=background;
+    }else{
+      let parts=b.split(' ');
+      let ch=parts[0]==='girl'?girl:boy;
+      for(let i=1;i<parts.length;i+=2){
+        ch.timeline.push({action:parts[i],frames:(parts[i+1]||1)*60});
+      }
+    }
+  });
+}
+
+// ===== SAVE / LOAD =====
+function saveProject(){
+  localStorage.setItem('stickmanProject',JSON.stringify({
+    background,
+    girl:girl.timeline,
+    boy:boy.timeline
+  }));
+  alert('Saved!');
+}
+function loadProject(){
+  let p=JSON.parse(localStorage.getItem('stickmanProject'));
+  if(!p) return;
+  background=p.background;
+  girl.timeline=p.girl;
+  boy.timeline=p.boy;
+  document.getElementById('bgSelect').value=background;
 }
 
 // ===== CONTROLS =====
 function togglePlay(){playing=!playing;}
 function resetScene(){
-  frame=0; timeIndex=0; actionFrame=0;
   characters.forEach(ch=>{
-    ch.x=ch.baseX;
-    ch.y=ground;
-    ch.vy=0;
-    ch.action='stand';
+    ch.x=ch.baseX;ch.y=ground;ch.vy=0;ch.ti=0;ch.tf=0;
   });
-}
-
-// ===== TEXT → TIMELINE =====
-function generate(){
-  timeline=[];
-  timeIndex=0;
-  actionFrame=0;
-  document.getElementById('timelineUI').innerHTML='';
-
-  let parts=document.getElementById('text').value.toLowerCase().split(' ');
-  for(let i=0;i<parts.length;i+=2){
-    let act=parts[i];
-    let sec=parseFloat(parts[i+1])||1;
-    timeline.push({action:act,frames:sec*60});
-    let s=document.createElement('span');
-    s.textContent=`${act} ${sec}s`;
-    document.getElementById('timelineUI').appendChild(s);
-  }
 }
 
 animate();
