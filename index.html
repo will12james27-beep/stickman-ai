@@ -84,21 +84,16 @@ function draw() {
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 3;
 
-  let swing;
-
-let swing = 0;
+let swing;
 
 if (action === 'run') {
   swing = Math.sin(frame * 0.15) * 12;
+} else if (action === 'jump') {
+  swing = 0; // ❗ MUHIM: sinus yo‘q
+} else {
+  swing = 4; // stand
 }
 
-if (action === 'jump') {
-  swing = 6; // sakrayotganda qotib turadi
-}
-
-if (action === 'stand') {
-  swing = 4;
-}
 
   // head
   ctx.beginPath();
