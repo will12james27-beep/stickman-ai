@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v17.4</title>
+<title>Stickman AI – STUDIO v18.0</title>
 <style>
 body{
   margin:0;
@@ -14,7 +14,7 @@ body{
   align-items:center;
 }
 .box{
-  width:780px;
+  width:800px;
   background:#0b1f26;
   padding:14px;
   border-radius:18px;
@@ -50,18 +50,21 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v17.4</h3>
+<h3>🎬 Stickman AI – STUDIO v18.0</h3>
 
 <div class="panel">
 <b>🎮 Controls</b>
 <div class="row">
 <button onclick="toggleRagdoll()">💥 Ragdoll</button>
+<button onclick="toggleWalk()">🚶 Walk</button>
+<button onclick="aiCommand('jump')">⬆ Jump</button>
+<button onclick="aiCommand('sit')">⬇ Sit</button>
 <button onclick="toggleDebug()">🦴 Debug</button>
 </div>
 </div>
 
 <canvas id="c"></canvas>
-<small>v17.4 • Standing Controller • No Auto Fall • Clean Ragdoll Switch</small>
+<small>v18.0 • Walk Cycle • Balance AI • Timeline Core • AI Commands</small>
 </div>
 
 <script>
@@ -69,14 +72,13 @@ const c = document.getElementById("c");
 const ctx = c.getContext("2d");
 c.width = 360;
 c.height = 640;
-ctx.lineCap = "round";
-ctx.lineWidth = 4;
+ctx.lineCap="round"; ctx.lineWidth=4;
 
 const ground = 520;
 const GRAVITY = 0.8;
 
-let ragdoll = false;
-let debug = false;
+let ragdoll=false, debug=false, walking=false;
+let time=0;
 
 // ===== JOINT =====
 class Joint{
@@ -86,53 +88,60 @@ class Joint{
   }
 }
 
-// ===== RAGDOLL =====
+// ===== MAN =====
 class Man{
-  constructor(x,y){
-    this.hip  = new Joint(x, y-60);
-    this.neck = new Joint(x, y-120);
-    this.head = new Joint(x, y-150);
-
-    this.legL = new Joint(x-14, ground);
-    this.legR = new Joint(x+14, ground);
-
-    this.armL = new Joint(x-36, y-120);
-    this.armR = new Joint(x+36, y-120);
-
-    this.rootX = x;
+  constructor(x){
+    this.hip=new Joint(x,ground-60);
+    this.neck=new Joint(x,ground-120);
+    this.head=new Joint(x,ground-150);
+    this.legL=new Joint(x-14,ground);
+    this.legR=new Joint(x+14,ground);
+    this.armL=new Joint(x-36,ground-120);
+    this.armR=new Joint(x+36,ground-120);
+    this.rootX=x;
   }
 }
-const man = new Man(180, ground);
+const man=new Man(180);
 
-// ===== CONSTRAINT =====
-function stick(a,b,len){
-  const dx=b.x-a.x, dy=b.y-a.y;
-  const d=Math.hypot(dx,dy)||0.0001;
-  const diff=(d-len)/d;
+// ===== UTILS =====
+function stick(a,b,l){
+  const dx=b.x-a.x,dy=b.y-a.y;
+  const d=Math.hypot(dx,dy)||0.001;
+  const diff=(d-l)/d;
   const ox=dx*0.5*diff, oy=dy*0.5*diff;
   a.x+=ox; a.y+=oy;
   b.x-=ox; b.y-=oy;
 }
 
-// ===== PHYSICS =====
 function physics(j){
-  j.vy += GRAVITY;
-  j.x += j.vx;
-  j.y += j.vy;
+  j.vy+=GRAVITY;
+  j.x+=j.vx;
+  j.y+=j.vy;
+  if(j.y>ground){ j.y=ground; j.vy=0; }
 }
 
-// ===== STANDING CONTROLLER (KEY FIX) =====
-function standingController(){
-  // feet locked
-  man.legL.y = ground;
-  man.legR.y = ground;
+// ===== BALANCE AI =====
+function balanceAI(){
+  man.hip.x += (man.rootX-man.hip.x)*0.15;
+  man.hip.y += ((ground-60)-man.hip.y)*0.2;
+  man.neck.x += (man.hip.x-man.neck.x)*0.15;
+}
 
-  // hip vertical support
-  man.hip.y += ((ground-60) - man.hip.y) * 0.25;
-  man.hip.x += (man.rootX - man.hip.x) * 0.2;
+// ===== WALK CYCLE =====
+function walkCycle(){
+  const step=Math.sin(time*0.08)*18;
+  man.legL.x = man.hip.x - 14 + step;
+  man.legR.x = man.hip.x + 14 - step;
+}
 
-  // neck upright
-  man.neck.x += (man.hip.x - man.neck.x) * 0.15;
+// ===== AI COMMANDS =====
+function aiCommand(cmd){
+  if(cmd==="jump" && !ragdoll){
+    man.hip.vy=-14;
+  }
+  if(cmd==="sit" && !ragdoll){
+    man.hip.y=ground-30;
+  }
 }
 
 // ===== DRAW =====
@@ -178,12 +187,13 @@ function draw(){
 
 // ===== LOOP =====
 function loop(){
+  time++;
+
   if(ragdoll){
-    Object.values(man).forEach(j=>{
-      if(j instanceof Joint) physics(j);
-    });
-  } else {
-    standingController();
+    Object.values(man).forEach(j=>j instanceof Joint && physics(j));
+  }else{
+    balanceAI();
+    if(walking) walkCycle();
   }
 
   for(let i=0;i<8;i++){
@@ -202,6 +212,7 @@ loop();
 
 // ===== UI =====
 function toggleRagdoll(){ragdoll=!ragdoll;}
+function toggleWalk(){walking=!walking;}
 function toggleDebug(){debug=!debug;}
 </script>
 </body>
