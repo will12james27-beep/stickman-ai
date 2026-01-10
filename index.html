@@ -120,6 +120,28 @@ function run(){
     document.getElementById('status').innerText = 'Done ✅';
   },300);
 }
+function parseText(text) {
+  const parts = text.split(' ');
+  const queue = [];
+
+  for (let i = 0; i < parts.length; i++) {
+
+    // run 2s
+    if (parts[i] === 'run' && parts[i+1]?.endsWith('s')) {
+      const sec = parseInt(parts[i+1]);
+      queue.push({ type: 'run', duration: sec * 1000 });
+      i++;
+    }
+
+    // jump
+    else if (parts[i] === 'jump') {
+      queue.push({ type: 'jump' });
+    }
+
+  }
+
+  return queue;
+}
 
 animate();
 </script>
