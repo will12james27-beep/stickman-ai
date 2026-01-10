@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v20.1</title>
+<title>Stickman AI – STUDIO v21.0</title>
 <style>
 body{
   margin:0;
@@ -11,49 +11,61 @@ body{
   justify-content:center;
   align-items:center;
   height:100vh;
+  color:white;
+  font-family:Arial;
 }
 canvas{
   background:#fff;
   border-radius:12px;
 }
+.panel{
+  position:absolute;
+  top:10px;
+  left:10px;
+  display:flex;
+  gap:6px;
+}
+button{
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
 
-<!-- 🔴 SHU BO‘LISHI SHART -->
+<div class="panel">
+  <button onclick="state='walk'">Walk</button>
+  <button onclick="state='idle'">Idle</button>
+  <button onclick="record()">● Rec</button>
+  <button onclick="play()">▶ Play</button>
+  <button onclick="exportData()">⤓ Export</button>
+</div>
+
 <canvas id="c" width="360" height="640"></canvas>
 
 <script>
-document.addEventListener("DOMContentLoaded",()=>{
-
 const c=document.getElementById("c");
-if(!c){
-  alert("Canvas topilmadi!");
-  return;
-}
 const ctx=c.getContext("2d");
 
 ctx.lineCap="round";
 ctx.lineWidth=4;
 
 const ground=520;
-const GRAVITY=0.9;
-
-let debug=false;
 let time=0;
 let state="idle";
 
 // ===== TIMELINE =====
 let recording=false;
+let playing=false;
 let timeline=[];
 let playIndex=0;
 
 // ===== JOINT =====
 class Joint{
-  constructor(x,y){
-    this.x=x; this.y=y;
-    this.vx=0; this.vy=0;
-  }
+  constructor(x,y){this.x=x;this.y=y;}
+  clone(){return {x:this.x,y:this.y}}
 }
 
 // ===== MAN =====
@@ -61,35 +73,77 @@ const man={
   hip:new Joint(180,ground-70),
   neck:new Joint(180,ground-135),
   head:new Joint(180,ground-170),
-  legL:new Joint(166,ground),
-  legR:new Joint(194,ground),
+  legL:new Joint(165,ground),
+  legR:new Joint(195,ground),
   armL:new Joint(140,ground-135),
   armR:new Joint(220,ground-135)
 };
 
 // ===== UTILS =====
 function stick(a,b,l){
-  const dx=b.x-a.x, dy=b.y-a.y;
+  const dx=b.x-a.x,dy=b.y-a.y;
   const d=Math.hypot(dx,dy)||1;
   const diff=(d-l)/d*0.5;
   a.x+=dx*diff; a.y+=dy*diff;
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== CONTROLLERS =====
-function balance(){
-  man.hip.y += ((ground-70)-man.hip.y)*0.25;
-  man.neck.x += (man.hip.x-man.neck.x)*0.2;
+// ===== ANIMATIONS =====
+function idle(){
+  const s=Math.sin(time*0.05)*2;
+  man.neck.y+=s*0.05;
 }
 
 function walk(){
   time++;
   const s=Math.sin(time*0.12);
   man.hip.x+=1.2;
-  man.legL.x=man.hip.x-14+s*20;
-  man.legR.x=man.hip.x+14-s*20;
-  man.legL.y=ground-Math.max(0,s*12);
-  man.legR.y=ground-Math.max(0,-s*12);
+
+  man.legL.x=man.hip.x-15+s*22;
+  man.legR.x=man.hip.x+15-s*22;
+  man.legL.y=ground-Math.max(0,s*14);
+  man.legR.y=ground-Math.max(0,-s*14);
+
+  man.armL.x=man.neck.x-30-s*18;
+  man.armR.x=man.neck.x+30+s*18;
+}
+
+// ===== RECORD / PLAY =====
+function record(){
+  recording=!recording;
+  if(recording){timeline=[];}
+}
+
+function play(){
+  if(timeline.length===0)return;
+  playing=true;
+  playIndex=0;
+}
+
+function capture(){
+  timeline.push({
+    hip:man.hip.clone(),
+    neck:man.neck.clone(),
+    head:man.head.clone(),
+    legL:man.legL.clone(),
+    legR:man.legR.clone(),
+    armL:man.armL.clone(),
+    armR:man.armR.clone()
+  });
+}
+
+function applyFrame(f){
+  for(let k in f){
+    man[k].x=f[k].x;
+    man[k].y=f[k].y;
+  }
+}
+
+// ===== EXPORT =====
+function exportData(){
+  const data=JSON.stringify(timeline,null,2);
+  console.log(data);
+  alert("Timeline console’da (F12) chiqarildi");
 }
 
 // ===== DRAW =====
@@ -103,11 +157,8 @@ function line(a,b){
 function draw(){
   ctx.clearRect(0,0,360,640);
 
-  ctx.strokeStyle="#aaa";
-  ctx.beginPath();
-  ctx.moveTo(0,ground);
-  ctx.lineTo(360,ground);
-  ctx.stroke();
+  ctx.strokeStyle="#ccc";
+  line({x:0,y:ground},{x:360,y:ground});
 
   ctx.strokeStyle="#000";
   line(man.head,man.neck);
@@ -124,10 +175,18 @@ function draw(){
 
 // ===== LOOP =====
 function loop(){
-  if(state==="walk") walk();
-  balance();
+  time++;
 
-  for(let i=0;i<8;i++){
+  if(playing){
+    applyFrame(timeline[playIndex]);
+    playIndex++;
+    if(playIndex>=timeline.length) playing=false;
+  }else{
+    if(state==="walk") walk();
+    else idle();
+  }
+
+  for(let i=0;i<6;i++){
     stick(man.head,man.neck,35);
     stick(man.neck,man.hip,65);
     stick(man.hip,man.legL,65);
@@ -136,12 +195,11 @@ function loop(){
     stick(man.neck,man.armR,45);
   }
 
+  if(recording) capture();
   draw();
   requestAnimationFrame(loop);
 }
 loop();
-
-});
 </script>
 </body>
 </html>
