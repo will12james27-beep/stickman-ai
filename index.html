@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v30.0 (Real Motion Core)</title>
+<title>Stickman AI – STUDIO v31.1 (Speed Engine)</title>
 <style>
 body{
   margin:0;
@@ -13,9 +13,20 @@ body{
   align-items:center;
   font-family:Arial;
 }
-#studio{display:flex;flex-direction:column;gap:10px;align-items:center}
-canvas{background:#fff;border-radius:16px}
-.panel{display:flex;gap:6px}
+#studio{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  align-items:center;
+}
+canvas{
+  background:#fff;
+  border-radius:16px;
+}
+.panel{
+  display:flex;
+  gap:6px;
+}
 button{
   padding:6px 12px;
   border:none;
@@ -41,12 +52,12 @@ const ctx=c.getContext("2d");
 ctx.lineCap="round";
 ctx.lineWidth=4;
 
-const W=420,H=640,ground=520;
-let time=0,mode="walk",camX=0;
+const W=420, H=640, ground=520;
+let time=0, mode="walk", camX=0;
 
 // ===== JOINT =====
 class Joint{
-  constructor(x,y){this.x=x;this.y=y;}
+  constructor(x,y){ this.x=x; this.y=y; }
 }
 
 // ===== STICKMAN =====
@@ -66,16 +77,19 @@ function createMan(x){
     handL:new Joint(x-55,ground-115),
     handR:new Joint(x+55,ground-115),
 
+    // --- SPEED ENGINE ---
     phase:0,
-    speed:1.2,
-    pelvisRot:0,
-    headLag:0
+    vel:0,
+    targetVel:0,
+    maxSpeed:1.6,
+    accel:0.06,
+    decel:0.08
   };
 }
 
 const men=[createMan(200)];
 
-// ===== IK =====
+// ===== IK SOLVER =====
 function stick(a,b,len){
   const dx=b.x-a.x, dy=b.y-a.y;
   const d=Math.hypot(dx,dy)||1;
@@ -84,72 +98,82 @@ function stick(a,b,len){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== WALK v30 (REAL) =====
+// ===== SPEED ENGINE =====
+function updateSpeed(m){
+  if(m.vel < m.targetVel){
+    m.vel += m.accel;
+    if(m.vel > m.targetVel) m.vel = m.targetVel;
+  }else if(m.vel > m.targetVel){
+    m.vel -= m.decel;
+    if(m.vel < m.targetVel) m.vel = m.targetVel;
+  }
+}
+
+// ===== WALK =====
 function walk(m){
-  m.phase+=0.04;
+  m.targetVel = m.maxSpeed;
+  updateSpeed(m);
+
+  m.phase += m.vel * 0.04;
   const s=Math.sin(m.phase);
-  const c=Math.cos(m.phase);
-  const stride=28;
+  const stride=26;
 
-  const leftPlant=s>0;
+  const leftLock=s>0;
 
-  // --- FOOT PLANT ---
-  if(leftPlant){
+  if(leftLock){
     m.footL.x=m.hip.x-stride;
     m.footL.y=ground;
 
-    m.footR.x=m.hip.x+stride+s*26;
-    m.footR.y=ground-Math.max(0,-s)*32;
+    m.footR.x=m.hip.x+stride+s*22;
+    m.footR.y=ground-Math.max(0,-s)*28;
   }else{
     m.footR.x=m.hip.x+stride;
     m.footR.y=ground;
 
-    m.footL.x=m.hip.x-stride+s*26;
-    m.footL.y=ground-Math.max(0,s)*32;
+    m.footL.x=m.hip.x-stride+s*22;
+    m.footL.y=ground-Math.max(0,s)*28;
   }
 
-  // --- PELVIS ---
-  m.pelvisRot=s*6;
-  m.hip.x+=m.speed;
-  m.hip.y=ground-85-Math.abs(s)*10;
+  m.hip.x += m.vel;
+  m.hip.y = ground-85-Math.abs(s)*8;
 
-  // --- SPINE ---
-  m.neck.x=m.hip.x+m.pelvisRot*0.2;
-  m.neck.y=m.hip.y-70;
+  m.neck.x = m.hip.x;
+  m.neck.y = m.hip.y-70;
+  m.head.x = m.neck.x;
+  m.head.y = m.neck.y-40;
 
-  // --- HEAD LAG ---
-  m.headLag+=(s*4-m.headLag)*0.1;
-  m.head.x=m.neck.x+m.headLag;
-  m.head.y=m.neck.y-40;
+  m.handL.x = m.neck.x-45-s*20;
+  m.handR.x = m.neck.x+45+s*20;
+  m.handL.y = m.neck.y+20;
+  m.handR.y = m.neck.y+20;
 
-  // --- ARMS ---
-  m.handL.x=m.neck.x-45-s*26;
-  m.handR.x=m.neck.x+45+s*26;
-  m.handL.y=m.neck.y+18+c*4;
-  m.handR.y=m.neck.y+18-c*4;
-
-  camX+=((m.hip.x-W/2)-camX)*0.06;
+  camX += ((m.hip.x-W/2)-camX)*0.08;
 }
 
 // ===== IDLE =====
 function idle(m){
+  m.targetVel = 0;
+  updateSpeed(m);
+
   const b=Math.sin(time*0.05);
-  m.hip.y=ground-85+b*4;
-  m.neck.y=m.hip.y-70;
-  m.head.y=m.neck.y-40;
+  m.hip.y = ground-85 + b*4;
+
+  m.neck.x = m.hip.x;
+  m.neck.y = m.hip.y-70;
+  m.head.y = m.neck.y-40;
 }
 
 // ===== WAVE =====
 function wave(m){
   idle(m);
-  m.handR.y=m.neck.y-55-Math.sin(time*0.3)*30;
-  m.handR.x=m.neck.x+55;
+  m.handR.y = m.neck.y-50-Math.sin(time*0.25)*25;
+  m.handR.x = m.neck.x+50;
 }
 
 // ===== SOLVE =====
 function solve(){
   men.forEach(m=>{
-    for(let i=0;i<7;i++){
+    for(let i=0;i<6;i++){
       stick(m.neck,m.hip,70);
       stick(m.head,m.neck,40);
 
@@ -217,9 +241,9 @@ function draw(){
 function loop(){
   time++;
   men.forEach(m=>{
-    if(mode==="walk")walk(m);
-    if(mode==="idle")idle(m);
-    if(mode==="wave")wave(m);
+    if(mode==="walk") walk(m);
+    if(mode==="idle") idle(m);
+    if(mode==="wave") wave(m);
   });
   solve();
   draw();
@@ -227,5 +251,6 @@ function loop(){
 }
 loop();
 </script>
+
 </body>
 </html>
