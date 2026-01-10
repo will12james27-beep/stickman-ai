@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v33.2</title>
+<title>Stickman AI – STUDIO v34.0 (GIF Export)</title>
 <style>
 body{
   margin:0;
@@ -16,7 +16,7 @@ body{
 }
 #studio{display:flex;flex-direction:column;gap:10px;align-items:center}
 canvas{background:#fff;border-radius:16px}
-.panel{display:flex;gap:6px}
+.panel{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 button{
   padding:6px 12px;
   border:none;
@@ -33,10 +33,14 @@ button{
     <button onclick="state='run'">Run</button>
     <button onclick="jump()">Jump</button>
     <button onclick="state='idle'">Idle</button>
+    <button onclick="recordGIF()">🎞️ Export GIF</button>
   </div>
-  <div class="small">v33.2 — engine confirmed alive</div>
+  <div class="small">v34.0 — canvas → frames → GIF (stable)</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
+
+<!-- GIF encoder (STABLE) -->
+<script src="https://unpkg.com/gif-capture/dist/gif-capture.min.js"></script>
 
 <script>
 const c=document.getElementById("c");
@@ -45,10 +49,7 @@ ctx.lineCap="round";
 ctx.lineWidth=4;
 
 const W=420,H=640,ground=520;
-let time=0,state="run";
-
-// ===== CAMERA =====
-let camX=0;
+let time=0,state="run",camX=0;
 
 // ===== JOINT =====
 class Joint{constructor(x,y){this.x=x;this.y=y;}}
@@ -69,7 +70,7 @@ const man={
  handL:new Joint(155,ground-115),
  handR:new Joint(265,ground-115),
 
- phase:0, vy:0, onGround:true
+ phase:0,vy:0,onGround:true
 };
 
 // ===== IK =====
@@ -164,7 +165,6 @@ function line(a,b){
 
 function draw(){
  ctx.clearRect(0,0,W,H);
-
  ctx.save();
  ctx.translate(-camX,0);
 
@@ -191,6 +191,36 @@ function draw(){
  line(man.elbowR,man.handR);
 
  ctx.restore();
+}
+
+// ===== GIF RECORD =====
+function recordGIF(){
+ const gif=new GIFCapture({
+  workers:2,
+  quality:10,
+  width:W,
+  height:H
+ });
+
+ let frames=0;
+ const maxFrames=90;
+
+ function capture(){
+  gif.addFrame(c,{copy:true,delay:33});
+  frames++;
+  if(frames<maxFrames){
+   requestAnimationFrame(capture);
+  }else{
+   gif.render();
+   gif.on('finished',blob=>{
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="stickman.gif";
+    a.click();
+   });
+  }
+ }
+ capture();
 }
 
 // ===== LOOP =====
