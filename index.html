@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v7.6.4</title>
+<title>Stickman AI v7.7.1 – Walk Cycle</title>
 <style>
   body {
     margin: 0;
@@ -33,36 +33,21 @@ const stickman = {
   y: 320,
   scale: 1,
   pose: {
-    head: 0,
-    leftArm: -15,
-    rightArm: 15,
-    leftLeg: 15,
-    rightLeg: -15
+    leftArm: 20,
+    rightArm: -20,
+    leftLeg: -20,
+    rightLeg: 20
   }
 };
 
 /* =======================
-   TIMELINE (SAFE)
+   WALK CYCLE SETTINGS
 ======================= */
-const timeline = [
-  { time: 400, pose: { leftArm: -45, rightArm: 45 } },
-  { time: 800, pose: { leftArm: -15, rightArm: 15 } }
-];
+let walkTime = 0;
+const walkSpeed = 0.06; // tezlik
 
 /* =======================
-   APPLY KEYFRAME
-======================= */
-function applyKeyframe(frame) {
-  if (!frame.pose) return;
-  for (let k in frame.pose) {
-    if (stickman.pose[k] !== undefined) {
-      stickman.pose[k] = frame.pose[k];
-    }
-  }
-}
-
-/* =======================
-   DRAW STICKMAN
+   DRAW FUNCTIONS
 ======================= */
 function drawStickman(s) {
   ctx.save();
@@ -83,7 +68,7 @@ function drawStickman(s) {
   ctx.arc(0, -70, 22, 0, Math.PI * 2);
   ctx.stroke();
 
-  // ARMS
+  // ARMS (oyoqka teskari)
   drawLimb(0, -20, 55, s.pose.leftArm);
   drawLimb(0, -20, 55, s.pose.rightArm);
 
@@ -106,31 +91,33 @@ function drawLimb(x, y, length, angle) {
 }
 
 /* =======================
+   WALK ANIMATION
+======================= */
+function updateWalk() {
+  walkTime += walkSpeed;
+
+  const swing = Math.sin(walkTime) * 30;
+
+  stickman.pose.leftLeg  =  swing;
+  stickman.pose.rightLeg = -swing;
+
+  stickman.pose.leftArm  = -swing * 0.8;
+  stickman.pose.rightArm =  swing * 0.8;
+}
+
+/* =======================
    RENDER LOOP (SAFE)
 ======================= */
 function render() {
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  updateWalk();
   drawStickman(stickman);
+
   requestAnimationFrame(render);
 }
 render();
-
-/* =======================
-   TIMELINE PLAYER
-======================= */
-let startTime = performance.now();
-
-function playTimeline() {
-  const t = performance.now() - startTime;
-  timeline.forEach(f => {
-    if (!f.done && t >= f.time) {
-      applyKeyframe(f);
-      f.done = true;
-    }
-  });
-}
-setInterval(playTimeline, 16);
 </script>
 
 </body>
