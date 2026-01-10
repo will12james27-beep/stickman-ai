@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Studio v37.4 — Timeline</title>
+<title>Stickman Studio v37.5 — Timeline Dots</title>
 <style>
 body{
  margin:0;
@@ -17,7 +17,7 @@ body{
 #studio{
  display:flex;
  flex-direction:column;
- gap:8px;
+ gap:6px;
  align-items:center;
 }
 canvas{
@@ -41,6 +41,21 @@ input[type=range]{
  width:260px;
 }
 .small{font-size:12px;opacity:.7}
+#dots{
+ position:relative;
+ width:260px;
+ height:14px;
+}
+.dot{
+ position:absolute;
+ top:4px;
+ width:8px;
+ height:8px;
+ border-radius:50%;
+ background:#ffcc00;
+ cursor:pointer;
+}
+.dot.active{ background:#ff4444; }
 </style>
 </head>
 <body>
@@ -48,14 +63,15 @@ input[type=range]{
 <div id="studio">
  <div class="panel">
   <button onclick="togglePlay()">Play / Pause</button>
-  <button onclick="addKey()">Add Keyframe</button>
-  <button onclick="delKey()">Delete Keyframe</button>
+  <button onclick="addKey()">Add Key</button>
+  <button onclick="delKey()">Delete Key</button>
   <span class="small">Frame: <span id="f">0</span></span>
  </div>
 
  <input id="timeline" type="range" min="0" max="119" value="0">
+ <div id="dots"></div>
 
- <div class="small">v37.4 — Timeline scrubber</div>
+ <div class="small">v37.5 — timeline keyframe dots</div>
  <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -126,17 +142,17 @@ function applyPose(m,p){
 // ===== TIMELINE =====
 const timeline={
  duration:120,
- tracks:{ man0:[] }
+ keys:[]
 };
 function addKeyframe(frame,pose){
- timeline.tracks.man0 =
-  timeline.tracks.man0.filter(k=>k.frame!==frame);
- timeline.tracks.man0.push({frame,pose});
- timeline.tracks.man0.sort((a,b)=>a.frame-b.frame);
+ timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
+ timeline.keys.push({frame,pose});
+ timeline.keys.sort((a,b)=>a.frame-b.frame);
+ renderDots();
 }
 function deleteKeyframe(frame){
- timeline.tracks.man0 =
-  timeline.tracks.man0.filter(k=>k.frame!==frame);
+ timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
+ renderDots();
 }
 
 // ===== SETUP =====
@@ -188,18 +204,17 @@ let playing=true;
 const slider=document.getElementById("timeline");
 
 function getPoseAtFrame(f){
- const keys=timeline.tracks.man0;
- if(keys.length===0) return clonePose(man);
-
- let k0=keys[0], k1=keys[keys.length-1];
- for(let i=0;i<keys.length-1;i++){
-  if(f>=keys[i].frame && f<=keys[i+1].frame){
-   k0=keys[i]; k1=keys[i+1]; break;
+ const k=timeline.keys;
+ if(k.length===0) return clonePose(man);
+ let a=k[0],b=k[k.length-1];
+ for(let i=0;i<k.length-1;i++){
+  if(f>=k[i].frame && f<=k[i+1].frame){
+   a=k[i]; b=k[i+1]; break;
   }
  }
- if(k0===k1) return clonePose(k0.pose);
- const t=(f-k0.frame)/(k1.frame-k0.frame);
- return blendPose(k0.pose,k1.pose,t);
+ if(a===b) return clonePose(a.pose);
+ const t=(f-a.frame)/(b.frame-a.frame);
+ return blendPose(a.pose,b.pose,t);
 }
 
 function togglePlay(){ playing=!playing; }
@@ -230,9 +245,32 @@ function loop(){
  ctx.strokeStyle="#000";
  drawMan(man);
 
+ highlightDot();
  requestAnimationFrame(loop);
 }
 loop();
+
+// ===== DOTS =====
+const dots=document.getElementById("dots");
+function renderDots(){
+ dots.innerHTML="";
+ timeline.keys.forEach(k=>{
+  const d=document.createElement("div");
+  d.className="dot";
+  d.style.left=(k.frame/(timeline.duration-1)*252)+"px";
+  d.onclick=()=>{
+   frame=k.frame;
+   slider.value=frame;
+   playing=false;
+  };
+  dots.appendChild(d);
+ });
+}
+function highlightDot(){
+ [...dots.children].forEach((d,i)=>{
+  d.classList.toggle("active",timeline.keys[i].frame===frame);
+ });
+}
 
 // ===== UI =====
 function addKey(){ addKeyframe(frame,clonePose(man)); }
