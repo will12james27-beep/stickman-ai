@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v31.5 (Cinematic Camera)</title>
+<title>Stickman AI – STUDIO v31.6 (Action Layers)</title>
 <style>
 body{
   margin:0;
@@ -15,23 +15,25 @@ body{
 }
 #studio{display:flex;flex-direction:column;gap:10px;align-items:center}
 canvas{background:#fff;border-radius:16px}
-.panel{display:flex;gap:6px}
+.panel{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 button{
-  padding:6px 12px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
+  padding:6px 12px;border:none;border-radius:6px;cursor:pointer
 }
+.small{font-size:12px;opacity:.8}
 </style>
 </head>
 <body>
 
 <div id="studio">
   <div class="panel">
-    <button onclick="mode='walk'">Walk</button>
-    <button onclick="mode='idle'">Idle</button>
-    <button onclick="mode='wave'">Wave</button>
+    <button onclick="setMode('walk')">Walk</button>
+    <button onclick="setMode('run')">Run</button>
+    <button onclick="setMode('jump')">Jump</button>
+    <button onclick="setMode('stop')">Stop</button>
+    <button onclick="setMode('idle')">Idle</button>
+    <button onclick="setMode('wave')">Wave</button>
   </div>
+  <div class="small">Space = Slow-Mo</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -42,14 +44,20 @@ ctx.lineCap="round";
 ctx.lineWidth=4;
 
 const W=420,H=640,ground=520;
-let time=0,mode="walk";
+let time=0, mode="walk";
+let slowmo=false, freeze=0;
 
-// ===== CAMERA (CINEMA) =====
-const cam={
-  x:0,y:0,zoom:1,
-  tx:0,ty:0,tz:1,
-  shake:0
-};
+// ===== INPUT =====
+window.addEventListener("keydown",e=>{
+  if(e.code==="Space") slowmo=true;
+});
+window.addEventListener("keyup",e=>{
+  if(e.code==="Space") slowmo=false;
+});
+function setMode(m){ mode=m; }
+
+// ===== CAMERA =====
+const cam={x:0,y:0,zoom:1, tx:0,ty:0,tz:1, shake:0};
 
 // ===== JOINT =====
 class Joint{constructor(x,y){this.x=x;this.y=y;}}
@@ -75,6 +83,9 @@ function createMan(x){
     vel:0,
     targetVel:0,
 
+    vy:0,
+    onGround:true,
+
     impact:0,
     impactVel:0,
     prevFoot:false,
@@ -84,7 +95,6 @@ function createMan(x){
     headRot:0
   };
 }
-
 const men=[createMan(200)];
 
 // ===== IK =====
@@ -96,77 +106,95 @@ function stick(a,b,len){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== WALK =====
-function walk(m){
-  m.targetVel=1.6;
+// ===== COMMON WALK CORE =====
+function locomotion(m, speedMul){
+  m.targetVel=1.6*speedMul;
   m.vel+=(m.targetVel-m.vel)*0.08;
 
   m.phase+=m.vel*0.04;
   const s=Math.sin(m.phase);
-  const stride=26;
+  const stride=26*speedMul;
   const left=s>0;
 
-  // FOOT LOCK
   if(left){
-    m.footL.x=m.hip.x-stride;
-    m.footL.y=ground;
+    m.footL.x=m.hip.x-stride; m.footL.y=ground;
     m.footR.x=m.hip.x+stride+s*22;
     m.footR.y=ground-Math.max(0,-s)*28;
   }else{
-    m.footR.x=m.hip.x+stride;
-    m.footR.y=ground;
+    m.footR.x=m.hip.x+stride; m.footR.y=ground;
     m.footL.x=m.hip.x-stride+s*22;
     m.footL.y=ground-Math.max(0,s)*28;
   }
 
-  // IMPACT
-  if(left!==m.prevFoot) m.impactVel=6;
+  if(left!==m.prevFoot){
+    m.impactVel=6*speedMul;
+    freeze=2; // IMPACT FREEZE
+  }
   m.prevFoot=left;
   m.impactVel*=0.6;
   m.impact+=m.impactVel;
   m.impact*=0.7;
 
-  // HIP
   m.hip.x+=m.vel;
   m.hip.y=ground-85-Math.abs(s)*8+m.impact;
 
-  // ROTATION
   m.hipRot+=((-s*10)-m.hipRot)*0.12;
   m.shoulderRot+=((s*14)-m.shoulderRot)*0.15;
   m.headRot+=((-m.shoulderRot*0.6)-m.headRot)*0.18;
 
-  // SPINE
   m.neck.x=m.hip.x+m.shoulderRot;
   m.neck.y=m.hip.y-70;
   m.head.x=m.neck.x+m.headRot;
   m.head.y=m.neck.y-40;
 
-  // ARMS
-  m.handL.x=m.neck.x-45-s*22+m.shoulderRot*0.4;
-  m.handR.x=m.neck.x+45+s*22+m.shoulderRot*0.4;
+  m.handL.x=m.neck.x-45-s*22;
+  m.handR.x=m.neck.x+45+s*22;
   m.handL.y=m.neck.y+20;
   m.handR.y=m.neck.y+20;
 
-  // CAMERA TARGET
   cam.tx=m.hip.x-W/2;
   cam.ty=(m.hip.y-300)*0.15;
-  cam.tz=1+Math.abs(s)*0.03;
-  cam.shake=Math.abs(m.impact)*0.4;
+  cam.tz=1+Math.abs(s)*0.04;
+  cam.shake=Math.abs(m.impact)*0.5;
 }
 
-// ===== IDLE =====
+// ===== ACTIONS =====
+function walk(m){ locomotion(m,1); }
+function run(m){ locomotion(m,1.8); }
+
+function stop(m){
+  m.targetVel=0;
+  m.vel+=(m.targetVel-m.vel)*0.12;
+  m.hip.x+=m.vel;
+}
+
+function jump(m){
+  if(m.onGround){
+    m.vy=-14;
+    m.onGround=false;
+    freeze=3;
+  }
+  m.vy+=0.7;
+  m.hip.y+=m.vy;
+  if(m.hip.y>=ground-85){
+    m.hip.y=ground-85;
+    m.vy=0;
+    m.onGround=true;
+    m.impactVel=10;
+    freeze=3;
+  }
+  m.neck.y=m.hip.y-70;
+  m.head.y=m.neck.y-40;
+}
+
 function idle(m){
   const b=Math.sin(time*0.05);
   m.hip.y=ground-85+b*4;
   m.neck.y=m.hip.y-70;
   m.head.y=m.neck.y-40;
-
-  cam.tx=m.hip.x-W/2;
-  cam.ty=0;
-  cam.tz=1;
+  cam.tx=m.hip.x-W/2; cam.ty=0; cam.tz=1;
 }
 
-// ===== WAVE =====
 function wave(m){
   idle(m);
   m.handR.y=m.neck.y-50-Math.sin(time*0.25)*25;
@@ -191,12 +219,10 @@ function solve(){
 function line(a,b){
   ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
 }
-
 function drawMan(m){
   ctx.beginPath();
   ctx.arc(m.head.x,m.head.y,16,0,Math.PI*2);
   ctx.stroke();
-
   line(m.head,m.neck); line(m.neck,m.hip);
   line(m.hip,m.kneeL); line(m.kneeL,m.footL);
   line(m.hip,m.kneeR); line(m.kneeR,m.footR);
@@ -207,7 +233,6 @@ function drawMan(m){
 function draw(){
   ctx.clearRect(0,0,W,H);
 
-  // CAMERA SMOOTH
   cam.x+=(cam.tx-cam.x)*0.08;
   cam.y+=(cam.ty-cam.y)*0.08;
   cam.zoom+=(cam.tz-cam.zoom)*0.05;
@@ -220,12 +245,8 @@ function draw(){
   ctx.scale(cam.zoom,cam.zoom);
   ctx.translate(-W/2-cam.x+shakeX,-H/2-cam.y+shakeY);
 
-  // ground
   ctx.strokeStyle="#ccc";
-  ctx.beginPath();
-  ctx.moveTo(-1000,ground);
-  ctx.lineTo(2000,ground);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-1000,ground); ctx.lineTo(2000,ground); ctx.stroke();
 
   ctx.strokeStyle="#000";
   men.forEach(drawMan);
@@ -234,13 +255,21 @@ function draw(){
 
 // ===== LOOP =====
 function loop(){
-  time++;
-  men.forEach(m=>{
-    if(mode==="walk")walk(m);
-    if(mode==="idle")idle(m);
-    if(mode==="wave")wave(m);
-  });
-  solve();
+  if(freeze>0){ freeze--; draw(); requestAnimationFrame(loop); return; }
+
+  const speed = slowmo ? 0.35 : 1;
+  for(let i=0;i<speed;i++){
+    time++;
+    men.forEach(m=>{
+      if(mode==="walk")walk(m);
+      if(mode==="run")run(m);
+      if(mode==="jump")jump(m);
+      if(mode==="stop")stop(m);
+      if(mode==="idle")idle(m);
+      if(mode==="wave")wave(m);
+    });
+    solve();
+  }
   draw();
   requestAnimationFrame(loop);
 }
