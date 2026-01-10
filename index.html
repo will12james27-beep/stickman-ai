@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v22.0</title>
+<title>Stickman AI – STUDIO v23.0</title>
 <style>
 body{
   margin:0;
   background:#02080c;
+  height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
-  height:100vh;
   font-family:Arial;
 }
 canvas{
@@ -25,11 +25,10 @@ canvas{
   gap:6px;
   flex-wrap:wrap;
 }
-button{
+button,input{
   padding:6px 10px;
-  border:none;
   border-radius:6px;
-  cursor:pointer;
+  border:none;
 }
 </style>
 </head>
@@ -37,11 +36,13 @@ button{
 
 <div class="panel">
   <button onclick="mode='walk'">AI Walk</button>
-  <button onclick="mode='idle'">AI Idle</button>
+  <button onclick="mode='idle'">Idle</button>
+  <button onclick="mode='wave'">Wave</button>
   <button onclick="record()">● Rec</button>
   <button onclick="play()">▶ Play</button>
-  <button onclick="exportJSON()">⤓ JSON</button>
-  <button onclick="exportPNG()">🖼 PNG</button>
+  <button onclick="save()">💾 Save</button>
+  <button onclick="load()">⤒ Load</button>
+  <input id="cmd" placeholder="text → anim" onkeydown="if(event.key==='Enter')command(this.value)">
 </div>
 
 <canvas id="c" width="360" height="640"></canvas>
@@ -49,12 +50,10 @@ button{
 <script>
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
-ctx.lineCap="round";
-ctx.lineWidth=4;
+ctx.lineCap="round"; ctx.lineWidth=4;
 
 const ground=520;
-let time=0;
-let mode="idle";
+let time=0, mode="idle";
 
 // ===== TIMELINE =====
 let recording=false, playing=false;
@@ -66,22 +65,25 @@ class Joint{
   clone(){return {x:this.x,y:this.y}}
 }
 
-// ===== STICKMAN FACTORY =====
+// ===== STICKMAN =====
 function createMan(x){
-  return {
+  return{
     hip:new Joint(x,ground-70),
     neck:new Joint(x,ground-135),
     head:new Joint(x,ground-170),
-    legL:new Joint(x-15,ground),
-    legR:new Joint(x+15,ground),
-    armL:new Joint(x-40,ground-135),
-    armR:new Joint(x+40,ground-135)
+    kneeL:new Joint(x-15,ground-35),
+    kneeR:new Joint(x+15,ground-35),
+    footL:new Joint(x-15,ground),
+    footR:new Joint(x+15,ground),
+    elbowL:new Joint(x-35,ground-120),
+    elbowR:new Joint(x+35,ground-120),
+    handL:new Joint(x-45,ground-105),
+    handR:new Joint(x+45,ground-105)
   };
 }
+const men=[createMan(180)];
 
-const men=[createMan(140),createMan(220)];
-
-// ===== UTILS =====
+// ===== IK STICK =====
 function stick(a,b,l){
   const dx=b.x-a.x,dy=b.y-a.y;
   const d=Math.hypot(dx,dy)||1;
@@ -90,107 +92,68 @@ function stick(a,b,l){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== AI ANIMATION =====
-function aiWalk(man){
+// ===== AI =====
+function walk(m){
   const s=Math.sin(time*0.12);
-  man.hip.x+=0.6;
-  man.legL.x=man.hip.x-15+s*20;
-  man.legR.x=man.hip.x+15-s*20;
-  man.legL.y=ground-Math.max(0,s*14);
-  man.legR.y=ground-Math.max(0,-s*14);
-  man.armL.x=man.neck.x-35-s*15;
-  man.armR.x=man.neck.x+35+s*15;
+  m.hip.x+=0.8;
+  m.footL.x=m.hip.x-15+s*20;
+  m.footR.x=m.hip.x+15-s*20;
+  m.footL.y=ground-Math.max(0,s*15);
+  m.footR.y=ground-Math.max(0,-s*15);
+  m.handL.x=m.neck.x-40-s*10;
+  m.handR.x=m.neck.x+40+s*10;
+}
+function idle(m){
+  m.neck.y+=Math.sin(time*0.05)*0.05;
+}
+function wave(m){
+  m.handR.y=m.neck.y-40-Math.sin(time*0.2)*20;
 }
 
-function aiIdle(man){
-  man.neck.y+=Math.sin(time*0.05)*0.05;
+// ===== TEXT AI =====
+function command(t){
+  if(t.includes("walk"))mode="walk";
+  if(t.includes("idle"))mode="idle";
+  if(t.includes("wave"))mode="wave";
 }
 
 // ===== RECORD =====
-function record(){
-  recording=!recording;
-  if(recording) timeline=[];
-}
-
-function play(){
-  if(timeline.length===0)return;
-  playing=true; playIndex=0;
-}
-
-function capture(){
-  timeline.push(JSON.parse(JSON.stringify(men)));
-}
-
+function record(){recording=!recording; if(recording)timeline=[];}
+function play(){playing=true; playIndex=0;}
+function capture(){timeline.push(JSON.parse(JSON.stringify(men)));}
 function applyFrame(f){
   f.forEach((fm,i)=>{
-    for(let k in fm){
-      men[i][k].x=fm[k].x;
-      men[i][k].y=fm[k].y;
-    }
+    for(let k in fm){men[i][k].x=fm[k].x; men[i][k].y=fm[k].y;}
   });
 }
 
-// ===== EXPORT =====
-function exportJSON(){
-  console.log(JSON.stringify(timeline,null,2));
-  alert("Timeline JSON console’da (F12)");
-}
-function exportPNG(){
-  const a=document.createElement("a");
-  a.download="stickman.png";
-  a.href=c.toDataURL();
-  a.click();
-}
-
-// ===== MOUSE POSE =====
-let drag=null;
-c.addEventListener("mousedown",e=>{
-  const r=c.getBoundingClientRect();
-  const mx=e.clientX-r.left,my=e.clientY-r.top;
-  men.forEach(m=>{
-    for(let k in m){
-      if(Math.hypot(m[k].x-mx,m[k].y-my)<12) drag=m[k];
-    }
-  });
-});
-c.addEventListener("mousemove",e=>{
-  if(!drag)return;
-  const r=c.getBoundingClientRect();
-  drag.x=e.clientX-r.left;
-  drag.y=e.clientY-r.top;
-});
-c.addEventListener("mouseup",()=>drag=null);
+// ===== SAVE / LOAD =====
+function save(){localStorage.setItem("stickAnim",JSON.stringify(timeline)); alert("Saved");}
+function load(){timeline=JSON.parse(localStorage.getItem("stickAnim")||"[]"); alert("Loaded");}
 
 // ===== DRAW =====
-function line(a,b){
-  ctx.beginPath();
-  ctx.moveTo(a.x,a.y);
-  ctx.lineTo(b.x,b.y);
-  ctx.stroke();
-}
+function line(a,b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
 function drawMan(m){
   line(m.head,m.neck);
   line(m.neck,m.hip);
-  line(m.hip,m.legL);
-  line(m.hip,m.legR);
-  line(m.neck,m.armL);
-  line(m.neck,m.armR);
-  ctx.beginPath();
-  ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2);
-  ctx.stroke();
+  line(m.hip,m.kneeL); line(m.kneeL,m.footL);
+  line(m.hip,m.kneeR); line(m.kneeR,m.footR);
+  line(m.neck,m.elbowL); line(m.elbowL,m.handL);
+  line(m.neck,m.elbowR); line(m.elbowR,m.handR);
+  ctx.beginPath(); ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2); ctx.stroke();
 }
 
 // ===== LOOP =====
 function loop(){
   time++;
-
   if(playing){
     applyFrame(timeline[playIndex++]);
-    if(playIndex>=timeline.length) playing=false;
+    if(playIndex>=timeline.length)playing=false;
   }else{
     men.forEach(m=>{
-      if(mode==="walk") aiWalk(m);
-      else aiIdle(m);
+      if(mode==="walk")walk(m);
+      if(mode==="idle")idle(m);
+      if(mode==="wave")wave(m);
     });
   }
 
@@ -198,14 +161,18 @@ function loop(){
     for(let i=0;i<6;i++){
       stick(m.head,m.neck,35);
       stick(m.neck,m.hip,65);
-      stick(m.hip,m.legL,65);
-      stick(m.hip,m.legR,65);
-      stick(m.neck,m.armL,45);
-      stick(m.neck,m.armR,45);
+      stick(m.hip,m.kneeL,35);
+      stick(m.kneeL,m.footL,35);
+      stick(m.hip,m.kneeR,35);
+      stick(m.kneeR,m.footR,35);
+      stick(m.neck,m.elbowL,30);
+      stick(m.elbowL,m.handL,30);
+      stick(m.neck,m.elbowR,30);
+      stick(m.elbowR,m.handR,30);
     }
   });
 
-  if(recording) capture();
+  if(recording)capture();
 
   ctx.clearRect(0,0,360,640);
   ctx.strokeStyle="#ccc";
