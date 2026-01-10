@@ -49,7 +49,6 @@ canvas {
   <button onclick="run()">Generate</button>
   <button onclick="startRecord()">🎥 Start Video</button>
   <button onclick="stopRecord()">⏹ Stop & Save</button>
-  <p id="status"></p>
   <canvas id="c" width="280" height="400"></canvas>
 </div>
 
@@ -71,11 +70,10 @@ let actions = [];
 let actionIndex = 0;
 let frame = 0;
 
-let facing = 1; // 1 = o‘ngga, -1 = chapga
+let facing = 1;
 
 // ===== VIDEO RECORD =====
-let recorder;
-let chunks = [];
+let recorder, chunks = [];
 
 function startRecord() {
   const stream = c.captureStream(60);
@@ -91,7 +89,6 @@ function startRecord() {
   };
   recorder.start();
 }
-
 function stopRecord() {
   if (recorder) recorder.stop();
 }
@@ -106,32 +103,50 @@ function draw() {
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 4;
 
-  let t = (Math.sin(frame * 0.08) + 1) / 2;
-  let smooth = easeInOut(t);
+  let walkT = (Math.sin(frame * 0.08) + 1) / 2;
+  let smooth = easeInOut(walkT);
 
-  let lean = action === 'run' ? (smooth - 0.5) * 16 * facing : 0;
+  // ===== IDLE BREATH =====
+  let idle = Math.sin(frame * 0.04) * 2;
+
+  let lean =
+    action === 'run'
+      ? (smooth - 0.5) * 16 * facing
+      : idle * 0.5;
 
   // ===== HEAD =====
   ctx.beginPath();
-  ctx.arc(x + lean * 0.4, y - 50, 14, 0, Math.PI * 2);
+  ctx.arc(x + lean * 0.4, y - 50 + idle, 14, 0, Math.PI * 2);
   ctx.stroke();
 
-  // ===== HAIR (YO‘NALISHGA MOS) =====
+  // ===== HAIR (TEBRANISH) =====
+  let hairSwing =
+    (action === 'run' ? smooth * 6 : idle) * facing;
+
   ctx.beginPath();
-  ctx.moveTo(x + lean * 0.4 + facing * 6, y - 64);
+  ctx.moveTo(x + lean * 0.4 + facing * 6, y - 64 + idle);
   ctx.quadraticCurveTo(
-    x + lean * 0.4 + facing * 40,
+    x + lean * 0.4 + facing * (40 + hairSwing),
     y - 55,
-    x + lean * 0.4 + facing * 28,
+    x + lean * 0.4 + facing * (28 + hairSwing),
     y - 30
   );
   ctx.stroke();
 
-  // ===== BODY / DRESS =====
+  // ===== BODY / DRESS (TO‘LQIN) =====
+  let dressWave =
+    action === 'run' ? smooth * 6 : idle * 1.5;
+
   ctx.beginPath();
-  ctx.moveTo(x + lean, y - 35);
-  ctx.lineTo(x - 20 + lean * 0.6, y + 25);
-  ctx.lineTo(x + 20 + lean * 0.6, y + 25);
+  ctx.moveTo(x + lean, y - 35 + idle);
+  ctx.lineTo(
+    x - 22 + lean * 0.6 - dressWave * facing,
+    y + 25
+  );
+  ctx.lineTo(
+    x + 22 + lean * 0.6 - dressWave * facing,
+    y + 25
+  );
   ctx.closePath();
   ctx.fillStyle = "#ffb6c1";
   ctx.fill();
@@ -139,15 +154,15 @@ function draw() {
 
   // ===== SHOULDER =====
   let shoulderX = x + lean;
-  let shoulderY = y - 35;
+  let shoulderY = y - 35 + idle;
 
   // ===== ARMS =====
   if (action === 'run') {
     drawArm(shoulderX, shoulderY, frame * 0.15);
     drawArm(shoulderX, shoulderY, frame * 0.15 + Math.PI);
   } else {
-    drawArm(shoulderX, shoulderY, 0.6);
-    drawArm(shoulderX, shoulderY, -0.6);
+    drawArm(shoulderX, shoulderY, idle * 0.2);
+    drawArm(shoulderX, shoulderY, -idle * 0.2);
   }
 
   // ===== LEGS =====
@@ -213,7 +228,6 @@ function animate() {
 
   if (action === 'run') x += 1.4 * facing;
 
-  // devorga tegsa buriladi
   if (x > c.width - 30) facing = -1;
   if (x < 30) facing = 1;
 
