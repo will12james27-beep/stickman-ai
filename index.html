@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v33.1 (FIXED)</title>
+<title>Stickman AI – STUDIO v33.2</title>
 <style>
 body{
   margin:0;
@@ -16,7 +16,7 @@ body{
 }
 #studio{display:flex;flex-direction:column;gap:10px;align-items:center}
 canvas{background:#fff;border-radius:16px}
-.panel{display:flex;gap:6px;flex-wrap:wrap}
+.panel{display:flex;gap:6px}
 button{
   padding:6px 12px;
   border:none;
@@ -30,51 +30,47 @@ button{
 
 <div id="studio">
   <div class="panel">
-    <button onclick="setState('run')">Run</button>
+    <button onclick="state='run'">Run</button>
     <button onclick="jump()">Jump</button>
-    <button onclick="setState('idle')">Idle</button>
-    <button onclick="recordGIF()">🎞️ Export GIF</button>
+    <button onclick="state='idle'">Idle</button>
   </div>
-  <div class="small">v33.1 — camera + GIF render FIXED</div>
+  <div class="small">v33.2 — engine confirmed alive</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 <script>
-const { FFmpeg } = FFmpegWASM;
-const ffmpeg = new FFmpeg();
-
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
-ctx.lineCap="round"; ctx.lineWidth=4;
+ctx.lineCap="round";
+ctx.lineWidth=4;
 
 const W=420,H=640,ground=520;
 let time=0,state="run";
 
 // ===== CAMERA =====
-const cam={x:0,tx:0,zoom:1,tz:1};
+let camX=0;
 
 // ===== JOINT =====
 class Joint{constructor(x,y){this.x=x;this.y=y;}}
 
 // ===== MAN =====
-function createMan(x){
- return{
-  hip:new Joint(x,ground-85),
-  neck:new Joint(x,ground-155),
-  head:new Joint(x,ground-195),
-  kneeL:new Joint(x-18,ground-45),
-  kneeR:new Joint(x+18,ground-45),
-  footL:new Joint(x-18,ground),
-  footR:new Joint(x+18,ground),
-  elbowL:new Joint(x-40,ground-135),
-  elbowR:new Joint(x+40,ground-135),
-  handL:new Joint(x-55,ground-115),
-  handR:new Joint(x+55,ground-115),
-  phase:0, vel:2.2, vy:0, onGround:true
- };
-}
-const man=createMan(210);
+const man={
+ hip:new Joint(210,ground-85),
+ neck:new Joint(210,ground-155),
+ head:new Joint(210,ground-195),
+
+ kneeL:new Joint(190,ground-45),
+ kneeR:new Joint(230,ground-45),
+ footL:new Joint(190,ground),
+ footR:new Joint(230,ground),
+
+ elbowL:new Joint(170,ground-135),
+ elbowR:new Joint(250,ground-135),
+ handL:new Joint(155,ground-115),
+ handR:new Joint(265,ground-115),
+
+ phase:0, vy:0, onGround:true
+};
 
 // ===== IK =====
 function stick(a,b,l){
@@ -85,97 +81,114 @@ function stick(a,b,l){
 }
 
 // ===== STATES =====
-function setState(s){ state=s; }
 function jump(){
  if(man.onGround){
-  state="jump";
   man.vy=-15;
   man.onGround=false;
+  state="jump";
  }
 }
 
-// ===== ANIMATION =====
-function run(m){
- m.phase+=0.15;
- const s=Math.sin(m.phase);
+function run(){
+ man.phase+=0.12;
+ const s=Math.sin(man.phase);
  const stride=30;
 
- m.footL.x=m.hip.x-stride;
- m.footR.x=m.hip.x+stride;
- m.footL.y=ground-Math.max(0,s)*30;
- m.footR.y=ground-Math.max(0,-s)*30;
+ man.footL.x=man.hip.x-stride;
+ man.footR.x=man.hip.x+stride;
+ man.footL.y=ground-Math.max(0,s)*30;
+ man.footR.y=ground-Math.max(0,-s)*30;
 
- m.hip.y=ground-85-Math.abs(s)*8;
+ man.hip.y=ground-85-Math.abs(s)*8;
 
- m.neck.x=m.hip.x;
- m.neck.y=m.hip.y-70;
- m.head.x=m.neck.x;
- m.head.y=m.neck.y-40;
+ man.neck.x=man.hip.x;
+ man.neck.y=man.hip.y-70;
+ man.head.x=man.neck.x;
+ man.head.y=man.neck.y-40;
 
- m.handL.x=m.neck.x-50-s*25;
- m.handR.x=m.neck.x+50+s*25;
- m.handL.y=m.neck.y+20;
- m.handR.y=m.neck.y+20;
+ man.handL.x=man.neck.x-50-s*25;
+ man.handR.x=man.neck.x+50+s*25;
+ man.handL.y=man.neck.y+20;
+ man.handR.y=man.neck.y+20;
 
- cam.tx=m.hip.x-W/2;
- cam.tz=1+Math.abs(s)*0.04;
+ camX+=(man.hip.x-W/2-camX)*0.1;
 }
 
-function jumpState(m){
- m.vy+=0.9;
- m.hip.y+=m.vy;
- if(m.hip.y>=ground-85){
-  m.hip.y=ground-85;
-  m.vy=0;
-  m.onGround=true;
+function jumpState(){
+ man.vy+=0.9;
+ man.hip.y+=man.vy;
+ if(man.hip.y>=ground-85){
+  man.hip.y=ground-85;
+  man.vy=0;
+  man.onGround=true;
   state="run";
  }
- m.neck.y=m.hip.y-70;
- m.head.y=m.neck.y-40;
+ man.neck.y=man.hip.y-70;
+ man.head.y=man.neck.y-40;
 }
 
-function idle(m){
+function idle(){
  const b=Math.sin(time*0.05);
- m.hip.y=ground-85+b*4;
- m.neck.y=m.hip.y-70;
- m.head.y=m.neck.y-40;
+ man.hip.y=ground-85+b*4;
+ man.neck.y=man.hip.y-70;
+ man.head.y=man.neck.y-40;
 }
 
 // ===== SOLVE =====
-function solve(m){
- for(let i=0;i<5;i++){
-  stick(m.neck,m.hip,70);
-  stick(m.head,m.neck,40);
-  stick(m.hip,m.kneeL,40); stick(m.kneeL,m.footL,40);
-  stick(m.hip,m.kneeR,40); stick(m.kneeR,m.footR,40);
-  stick(m.neck,m.elbowL,35); stick(m.elbowL,m.handL,35);
-  stick(m.neck,m.elbowR,35); stick(m.elbowR,m.handR,35);
+function solve(){
+ for(let i=0;i<6;i++){
+  stick(man.neck,man.hip,70);
+  stick(man.head,man.neck,40);
+
+  stick(man.hip,man.kneeL,40);
+  stick(man.kneeL,man.footL,40);
+
+  stick(man.hip,man.kneeR,40);
+  stick(man.kneeR,man.footR,40);
+
+  stick(man.neck,man.elbowL,35);
+  stick(man.elbowL,man.handL,35);
+
+  stick(man.neck,man.elbowR,35);
+  stick(man.elbowR,man.handR,35);
  }
 }
 
 // ===== DRAW =====
-function line(a,b){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+function line(a,b){
+ ctx.beginPath();
+ ctx.moveTo(a.x,a.y);
+ ctx.lineTo(b.x,b.y);
+ ctx.stroke();
+}
 
 function draw(){
  ctx.clearRect(0,0,W,H);
- cam.x+=(cam.tx-cam.x)*0.1;
- cam.zoom+=(cam.tz-cam.zoom)*0.08;
 
  ctx.save();
- ctx.translate(W/2,H/2);
- ctx.scale(cam.zoom,cam.zoom);
- ctx.translate(-W/2-cam.x,-H/2);
+ ctx.translate(-camX,0);
 
  ctx.strokeStyle="#ccc";
- ctx.beginPath(); ctx.moveTo(-2000,ground); ctx.lineTo(2000,ground); ctx.stroke();
+ ctx.beginPath();
+ ctx.moveTo(-2000,ground);
+ ctx.lineTo(2000,ground);
+ ctx.stroke();
 
  ctx.strokeStyle="#000";
- ctx.beginPath(); ctx.arc(man.head.x,man.head.y,16,0,Math.PI*2); ctx.stroke();
- line(man.head,man.neck); line(man.neck,man.hip);
- line(man.hip,man.kneeL); line(man.kneeL,man.footL);
- line(man.hip,man.kneeR); line(man.kneeR,man.footR);
- line(man.neck,man.elbowL); line(man.elbowL,man.handL);
- line(man.neck,man.elbowR); line(man.elbowR,man.handR);
+ ctx.beginPath();
+ ctx.arc(man.head.x,man.head.y,16,0,Math.PI*2);
+ ctx.stroke();
+
+ line(man.head,man.neck);
+ line(man.neck,man.hip);
+ line(man.hip,man.kneeL);
+ line(man.kneeL,man.footL);
+ line(man.hip,man.kneeR);
+ line(man.kneeR,man.footR);
+ line(man.neck,man.elbowL);
+ line(man.elbowL,man.handL);
+ line(man.neck,man.elbowR);
+ line(man.elbowR,man.handR);
 
  ctx.restore();
 }
@@ -183,45 +196,14 @@ function draw(){
 // ===== LOOP =====
 function loop(){
  time++;
- if(state==="run")run(man);
- if(state==="jump")jumpState(man);
- if(state==="idle")idle(man);
- solve(man);
+ if(state==="run")run();
+ if(state==="jump")jumpState();
+ if(state==="idle")idle();
+ solve();
  draw();
  requestAnimationFrame(loop);
 }
 loop();
-
-// ===== GIF EXPORT (SAFE) =====
-async function recordGIF(){
- alert("GIF tayyorlanmoqda...");
-
- if(!ffmpeg.loaded){
-  await ffmpeg.load({
-   coreURL:"https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js",
-   wasmURL:"https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.wasm"
-  });
- }
-
- const frames=50;
- cam.x=0; cam.tx=0; cam.zoom=1; cam.tz=1;
-
- for(let i=0;i<frames;i++){
-  run(man);
-  solve(man);
-  draw();
-  const png=c.toDataURL("image/png").split(",")[1];
-  ffmpeg.writeFile(`f${i}.png`,Uint8Array.from(atob(png),c=>c.charCodeAt(0)));
- }
-
- await ffmpeg.exec(["-framerate","25","-i","f%d.png","out.gif"]);
- const gif=await ffmpeg.readFile("out.gif");
- const url=URL.createObjectURL(new Blob([gif.buffer],{type:"image/gif"}));
-
- const a=document.createElement("a");
- a.href=url; a.download="stickman_v33_1.gif"; a.click();
- URL.revokeObjectURL(url);
-}
 </script>
 </body>
 </html>
