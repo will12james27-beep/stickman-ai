@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v16.0</title>
+<title>Stickman AI – STUDIO v17.0</title>
 <style>
 body{
   margin:0;
@@ -14,7 +14,7 @@ body{
   align-items:center;
 }
 .box{
-  width:760px;
+  width:780px;
   background:#0b1f26;
   padding:14px;
   border-radius:18px;
@@ -48,12 +48,12 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v16.0</h3>
+<h3>🎬 Stickman AI – STUDIO v17.0</h3>
 
 <div class="panel">
 <b>🧠 AI Scene</b>
 <div class="row">
-<input id="prompt" placeholder="walk, fall, jump, dramatic zoom">
+<input id="prompt" placeholder="walk, jump, fall, cinematic zoom">
 <button onclick="runAI()">Generate</button>
 </div>
 </div>
@@ -68,7 +68,7 @@ small{text-align:center;display:block;opacity:.6}
 </div>
 
 <canvas id="c"></canvas>
-<small>v16.0 • Full Ragdoll • AI Scene • Camera • Multiplayer Ready • Asset Store Core</small>
+<small>v17.0 • Stable Ragdoll • AI Scene • Multiplayer Ready • Asset Store • Shorts AI</small>
 </div>
 
 <script>
@@ -78,7 +78,6 @@ ctx.lineCap="round";ctx.lineWidth=4;
 
 const ground=520;
 let usePhysics=true, debug=false;
-let camera={y:0,zoom:1};
 
 // ===== JOINT =====
 class Joint{
@@ -88,20 +87,21 @@ class Joint{
   }
 }
 
-// ===== STICKMAN RAGDOLL =====
+// ===== RAGDOLL =====
 class Ragdoll{
   constructor(x,y){
-    this.head=new Joint(x,y-80);
-    this.neck=new Joint(x,y-60);
-    this.hip=new Joint(x,y-20);
+    this.hip=new Joint(x,y-40);
+    this.neck=new Joint(x,y-90);
+    this.head=new Joint(x,y-115);
 
-    this.armL=new Joint(x-30,y-50);
-    this.armR=new Joint(x+30,y-50);
+    this.armL=new Joint(x-35,y-85);
+    this.armR=new Joint(x+35,y-85);
 
-    this.legL=new Joint(x-10,y+20);
-    this.legR=new Joint(x+10,y+20);
+    this.legL=new Joint(x-15,y);
+    this.legR=new Joint(x+15,y);
 
     this.mouth=3;
+    this.rootX=x;
   }
 }
 const man=new Ragdoll(180,ground);
@@ -116,20 +116,6 @@ function stick(a,b,len){
   b.x-=ox; b.y-=oy;
 }
 
-// ===== AI SCENE =====
-function runAI(){
-  const p=prompt.value;
-  if(p.includes("fall")){
-    man.hip.vy=15;
-  }
-  if(p.includes("jump")){
-    man.hip.vy=-18;
-  }
-  if(p.includes("zoom")){
-    camera.zoom=1.2;
-  }
-}
-
 // ===== PHYSICS =====
 function physics(j){
   j.vy+=0.8;
@@ -138,16 +124,28 @@ function physics(j){
   if(j.y>ground){j.y=ground;j.vy=0;}
 }
 
+// ===== AI SCENE =====
+function runAI(){
+  const p=prompt.value;
+  if(p.includes("jump")) man.hip.vy=-18;
+  if(p.includes("fall")) man.hip.vy=20;
+}
+
 // ===== DRAW =====
-function drawJoint(j){
+function line(a,b){
   ctx.beginPath();
-  ctx.arc(j.x,j.y,2,0,6.28);
-  ctx.fill();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.stroke();
 }
 
 function draw(){
-  ctx.setTransform(camera.zoom,0,0,camera.zoom,0,-camera.y);
+  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,c.width,c.height);
+
+  // safe area
+  ctx.strokeStyle="#ddd";
+  ctx.strokeRect(20,40,320,560);
 
   // ground
   ctx.strokeStyle="#aaa";
@@ -156,8 +154,8 @@ function draw(){
   ctx.lineTo(360,ground);
   ctx.stroke();
 
-  // bones
   ctx.strokeStyle="#000";
+
   line(man.head,man.neck);
   line(man.neck,man.hip);
   line(man.neck,man.armL);
@@ -171,6 +169,7 @@ function draw(){
   ctx.stroke();
 
   // face
+  ctx.fillStyle="#000";
   ctx.beginPath();
   ctx.arc(man.head.x-4,man.head.y-3,2,0,6.28);
   ctx.arc(man.head.x+4,man.head.y-3,2,0,6.28);
@@ -181,15 +180,13 @@ function draw(){
 
   if(debug){
     ctx.fillStyle="red";
-    [man.head,man.neck,man.hip,man.armL,man.armR,man.legL,man.legR].forEach(drawJoint);
+    [man.head,man.neck,man.hip,man.armL,man.armR,man.legL,man.legR]
+      .forEach(j=>{
+        ctx.beginPath();
+        ctx.arc(j.x,j.y,2,0,6.28);
+        ctx.fill();
+      });
   }
-}
-
-function line(a,b){
-  ctx.beginPath();
-  ctx.moveTo(a.x,a.y);
-  ctx.lineTo(b.x,b.y);
-  ctx.stroke();
 }
 
 // ===== LOOP =====
@@ -199,12 +196,18 @@ function loop(){
       if(j instanceof Joint) physics(j);
     });
 
-    stick(man.head,man.neck,20);
-    stick(man.neck,man.hip,36);
-    stick(man.neck,man.armL,30);
-    stick(man.neck,man.armR,30);
-    stick(man.hip,man.legL,40);
-    stick(man.hip,man.legR,40);
+    // SOLVER ITERATIONS (FIX)
+    for(let i=0;i<8;i++){
+      stick(man.head,man.neck,22);
+      stick(man.neck,man.hip,48);
+      stick(man.neck,man.armL,34);
+      stick(man.neck,man.armR,34);
+      stick(man.hip,man.legL,48);
+      stick(man.hip,man.legR,48);
+
+      // ROOT STABILIZER
+      man.hip.x += (man.rootX - man.hip.x)*0.02;
+    }
   }
 
   man.mouth=3+Math.sin(Date.now()/120)*2;
@@ -217,8 +220,7 @@ loop();
 function togglePhysics(){usePhysics=!usePhysics;}
 function toggleDebug(){debug=!debug;}
 function saveScene(){
-  const data=JSON.stringify(man);
-  localStorage.setItem("scene",data);
+  localStorage.setItem("scene",JSON.stringify(man));
   alert("Scene saved");
 }
 </script>
