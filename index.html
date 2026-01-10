@@ -84,10 +84,15 @@ function draw() {
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 3;
 
-  let swing =
-  (action === 'run' || action === 'jump')
-    ? Math.sin(frame * 0.15) * 10
-    : 0;
+  let swing;
+
+if (action === 'run') {
+  swing = Math.sin(frame * 0.15) * 12;
+} else if (action === 'jump') {
+  swing = 6; // sakraganda oyoq-qo‘l ochiq ko‘rinsin
+} else {
+  swing = 4; // turganda ham biroz ko‘rinsin
+}
 
   // head
   ctx.beginPath();
