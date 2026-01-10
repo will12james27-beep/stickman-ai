@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v37.1 (Crowd Blending)</title>
+<title>Stickman AI – STUDIO v38.0 (MP4 Export)</title>
 <style>
 body{
  margin:0;
@@ -28,9 +28,7 @@ canvas{
  display:flex;
  gap:10px;
  align-items:center;
-}
-input[type=range]{
- width:260px;
+ flex-wrap:wrap;
 }
 button{
  padding:6px 12px;
@@ -38,10 +36,7 @@ button{
  border-radius:6px;
  cursor:pointer;
 }
-.small{
- font-size:12px;
- opacity:.7;
-}
+.small{font-size:12px;opacity:.7}
 </style>
 </head>
 <body>
@@ -49,21 +44,23 @@ button{
 <div id="studio">
   <div class="panel">
     <button onclick="playing=!playing">Play</button>
-    <span>Blend</span>
-    <input id="blend" type="range" min="0" max="100" value="0">
+    <button onclick="exportMP4()">Export MP4</button>
   </div>
 
-  <div class="small">v37.1 — Multi-character animation blending</div>
+  <div class="small">v38.0 — MP4 export (ffmpeg.wasm)</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+
 <script>
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log:true });
+
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 ctx.lineCap="round";
 ctx.lineWidth=4;
-
-const blendSlider=document.getElementById("blend");
 
 const W=420,H=640,ground=520;
 
@@ -73,9 +70,9 @@ class Joint{
  clone(){return {x:this.x,y:this.y};}
 }
 
-// ===== STICKMAN FACTORY =====
+// ===== STICKMAN =====
 function createMan(x){
- const base={
+ const j={
   hip:new Joint(x,ground-85),
   neck:new Joint(x,ground-155),
   head:new Joint(x,ground-195),
@@ -91,26 +88,34 @@ function createMan(x){
   handR:new Joint(x+60,ground-115),
  };
  return{
-  joints:base,
-  idlePose:clonePose(base),
+  joints:j,
+  base:clonePose(j),
   phase:Math.random(),
   speed:0.8+Math.random()*0.4
  };
 }
 
-function clonePose(joints){
+function clonePose(j){
  const p={};
- for(let k in joints) p[k]=joints[k].clone();
+ for(let k in j) p[k]=j[k].clone();
  return p;
 }
 
 // ===== CROWD =====
 const crowd=[];
-for(let i=0;i<5;i++){
- crowd.push(createMan(140+i*60));
+for(let i=0;i<5;i++) crowd.push(createMan(140+i*60));
+
+// ===== ANIMATION =====
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function blendPose(a,b,w){
+ const p={};
+ for(let k in a){
+  p[k]={x:lerp(a[k].x,b[k].x,w),y:lerp(a[k].y,b[k].y,w)};
+ }
+ return p;
 }
 
-// ===== RUN POSE (procedural) =====
 function sampleRun(base,phase){
  const s=Math.sin(phase);
  const p=clonePose(base);
@@ -125,20 +130,6 @@ function sampleRun(base,phase){
  p.neck.y=p.hip.y-70;
  p.head.y=p.neck.y-40;
 
- return p;
-}
-
-// ===== BLEND =====
-function lerp(a,b,t){return a+(b-a)*t;}
-
-function blendPose(a,b,w){
- const p={};
- for(let k in a){
-  p[k]={
-   x:lerp(a[k].x,b[k].x,w),
-   y:lerp(a[k].y,b[k].y,w)
-  };
- }
  return p;
 }
 
@@ -177,31 +168,7 @@ function line(a,b){
  ctx.stroke();
 }
 
-function drawMan(j){
- ctx.beginPath();
- ctx.arc(j.head.x,j.head.y,14,0,Math.PI*2);
- ctx.stroke();
-
- line(j.head,j.neck);
- line(j.neck,j.hip);
-
- line(j.hip,j.kneeL);
- line(j.kneeL,j.footL);
-
- line(j.hip,j.kneeR);
- line(j.kneeR,j.footR);
-
- line(j.neck,j.elbowL);
- line(j.elbowL,j.handL);
-
- line(j.neck,j.elbowR);
- line(j.elbowR,j.handR);
-}
-
-// ===== LOOP =====
-let playing=true;
-
-function loop(){
+function draw(){
  ctx.clearRect(0,0,W,H);
 
  ctx.strokeStyle="#ccc";
@@ -212,26 +179,83 @@ function loop(){
 
  ctx.strokeStyle="#000";
 
- const w=blendSlider.value/100;
-
  crowd.forEach(m=>{
-  if(playing) m.phase+=0.08*m.speed;
+  const run=sampleRun(m.base,m.phase);
+  const pose=blendPose(m.base,run,1);
 
-  const runPose=sampleRun(m.joints,m.phase);
-  const finalPose=blendPose(m.idlePose,runPose,w);
-
-  for(let k in finalPose){
-   m.joints[k].x=finalPose[k].x;
-   m.joints[k].y=finalPose[k].y;
+  for(let k in pose){
+   m.joints[k].x=pose[k].x;
+   m.joints[k].y=pose[k].y;
   }
 
   solve(m.joints);
-  drawMan(m.joints);
- });
 
+  ctx.beginPath();
+  ctx.arc(m.joints.head.x,m.joints.head.y,14,0,Math.PI*2);
+  ctx.stroke();
+
+  line(m.joints.head,m.joints.neck);
+  line(m.joints.neck,m.joints.hip);
+  line(m.joints.hip,m.joints.kneeL);
+  line(m.joints.kneeL,m.joints.footL);
+  line(m.joints.hip,m.joints.kneeR);
+  line(m.joints.kneeR,m.joints.footR);
+  line(m.joints.neck,m.joints.elbowL);
+  line(m.joints.elbowL,m.joints.handL);
+  line(m.joints.neck,m.joints.elbowR);
+  line(m.joints.elbowR,m.joints.handR);
+ });
+}
+
+// ===== LOOP =====
+let playing=true;
+
+function loop(){
+ if(playing){
+  crowd.forEach(m=>m.phase+=0.08*m.speed);
+ }
+ draw();
  requestAnimationFrame(loop);
 }
 loop();
+
+// ===== EXPORT MP4 =====
+async function exportMP4(){
+ if(!ffmpeg.isLoaded()){
+  alert("FFmpeg yuklanmoqda... kuting");
+  await ffmpeg.load();
+ }
+
+ const fps=24;
+ const frames=96; // 4 sekund
+ let i=0;
+
+ for(let f=0;f<frames;f++){
+  crowd.forEach(m=>m.phase+=0.08*m.speed);
+  draw();
+  const data=c.toDataURL("image/png");
+  ffmpeg.FS("writeFile",`f${String(i).padStart(3,"0")}.png`,
+    await fetchFile(data));
+  i++;
+ }
+
+ await ffmpeg.run(
+  "-framerate",String(fps),
+  "-i","f%03d.png",
+  "-pix_fmt","yuv420p",
+  "out.mp4"
+ );
+
+ const video=ffmpeg.FS("readFile","out.mp4");
+ const url=URL.createObjectURL(
+  new Blob([video.buffer],{type:"video/mp4"})
+ );
+
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="stickman.mp4";
+ a.click();
+}
 </script>
 </body>
 </html>
