@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v17.2</title>
+<title>Stickman AI – STUDIO v17.3</title>
 <style>
 body{
   margin:0;
@@ -50,18 +50,19 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v17.2</h3>
+<h3>🎬 Stickman AI – STUDIO v17.3</h3>
 
 <div class="panel">
 <b>🎮 Controls</b>
 <div class="row">
 <button onclick="togglePhysics()">💥 Ragdoll</button>
 <button onclick="toggleDebug()">🦴 Debug</button>
+<button onclick="toggleWalk()">🚶 Walk</button>
 </div>
 </div>
 
 <canvas id="c"></canvas>
-<small>v17.2 • Stable Ragdoll Core • Ground Safe • No Sink Bug</small>
+<small>v17.3 • Full Ground Lock • Balance AI • Walk Stub • AI Motion Ready</small>
 </div>
 
 <script>
@@ -77,6 +78,8 @@ const GRAVITY = 0.6;
 
 let usePhysics = true;
 let debug = false;
+let walking = false;
+let t = 0;
 
 // ===== JOINT =====
 class Joint{
@@ -89,15 +92,15 @@ class Joint{
 // ===== RAGDOLL =====
 class Ragdoll{
   constructor(x,y){
-    this.hip  = new Joint(x, y-40);
-    this.neck = new Joint(x, y-90);
-    this.head = new Joint(x, y-115);
+    this.hip  = new Joint(x, y-48);
+    this.neck = new Joint(x, y-96);
+    this.head = new Joint(x, y-120);
 
-    this.armL = new Joint(x-35, y-85);
-    this.armR = new Joint(x+35, y-85);
+    this.armL = new Joint(x-34, y-90);
+    this.armR = new Joint(x+34, y-90);
 
-    this.legL = new Joint(x-15, y);
-    this.legR = new Joint(x+15, y);
+    this.legL = new Joint(x-14, y);
+    this.legR = new Joint(x+14, y);
 
     this.rootX = x;
   }
@@ -122,21 +125,32 @@ function physics(j){
   j.y  += j.vy;
 }
 
-function footCollision(j){
+// 🌍 GLOBAL GROUND CLAMP (KEY FIX)
+function groundClamp(j){
   if(j.y > ground){
     j.y = ground;
     j.vy = 0;
-    j.vx *= 0.6;
   }
 }
 
-// 🔒 HIP GROUND LOCK (KEY FIX)
-function hipCollision(){
-  const minHipY = ground - 48;
-  if(man.hip.y > minHipY){
-    man.hip.y = minHipY;
-    man.hip.vy = 0;
-  }
+// 🧠 BALANCE AI (prevents collapse)
+function balanceAI(){
+  const targetY = ground - 48;
+  man.hip.y += (targetY - man.hip.y) * 0.15;
+  man.hip.x += (man.rootX - man.hip.x) * 0.08;
+}
+
+// 🚶 WALK STUB (simple procedural)
+function walkCycle(){
+  t += 0.15;
+  man.legL.x = man.hip.x - 14 + Math.sin(t)*10;
+  man.legR.x = man.hip.x + 14 - Math.sin(t)*10;
+}
+
+// 🧠 AI MOTION STUB
+function runAIMotion(text){
+  if(text.includes("walk")) walking = true;
+  if(text.includes("stop")) walking = false;
 }
 
 // ===== DRAW =====
@@ -150,7 +164,6 @@ function line(a,b){
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
 
-  // ground
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
   ctx.moveTo(0,ground);
@@ -171,12 +184,13 @@ function draw(){
 
   if(debug){
     ctx.fillStyle="red";
-    [man.head,man.neck,man.hip,man.armL,man.armR,man.legL,man.legR]
-      .forEach(j=>{
+    Object.values(man).forEach(j=>{
+      if(j instanceof Joint){
         ctx.beginPath();
         ctx.arc(j.x,j.y,2,0,6.28);
         ctx.fill();
-      });
+      }
+    });
   }
 }
 
@@ -184,27 +198,36 @@ function draw(){
 function loop(){
   if(usePhysics){
 
-    // 1️⃣ gravity
+    // 1️⃣ physics
     Object.values(man).forEach(j=>{
       if(j instanceof Joint) physics(j);
     });
 
-    // 2️⃣ constraints
-    for(let i=0;i<12;i++){
-      stick(man.head,man.neck,22);
+    // 2️⃣ constraints (PASS 1)
+    for(let i=0;i<10;i++){
+      stick(man.head,man.neck,24);
       stick(man.neck,man.hip,48);
-      stick(man.neck,man.armL,34);
-      stick(man.neck,man.armR,34);
+      stick(man.neck,man.armL,36);
+      stick(man.neck,man.armR,36);
       stick(man.hip,man.legL,48);
       stick(man.hip,man.legR,48);
-
-      man.hip.x += (man.rootX - man.hip.x)*0.05;
     }
 
-    // 3️⃣ ground safety
-    footCollision(man.legL);
-    footCollision(man.legR);
-    hipCollision();
+    // 3️⃣ ground clamp ALL joints
+    Object.values(man).forEach(j=>{
+      if(j instanceof Joint) groundClamp(j);
+    });
+
+    // 4️⃣ constraints (PASS 2 – anti sink)
+    for(let i=0;i<6;i++){
+      stick(man.head,man.neck,24);
+      stick(man.neck,man.hip,48);
+      stick(man.hip,man.legL,48);
+      stick(man.hip,man.legR,48);
+    }
+
+    balanceAI();
+    if(walking) walkCycle();
   }
 
   draw();
@@ -212,9 +235,10 @@ function loop(){
 }
 loop();
 
-// ===== UTILS =====
+// ===== UI =====
 function togglePhysics(){usePhysics=!usePhysics;}
 function toggleDebug(){debug=!debug;}
+function toggleWalk(){walking=!walking;}
 </script>
 </body>
 </html>
