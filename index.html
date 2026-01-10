@@ -86,12 +86,18 @@ function draw() {
 
   let swing;
 
+let swing = 0;
+
 if (action === 'run') {
   swing = Math.sin(frame * 0.15) * 12;
-} else if (action === 'jump') {
-  swing = 6; // sakraganda oyoq-qo‘l ochiq ko‘rinsin
-} else {
-  swing = 4; // turganda ham biroz ko‘rinsin
+}
+
+if (action === 'jump') {
+  swing = 6; // sakrayotganda qotib turadi
+}
+
+if (action === 'stand') {
+  swing = 4;
 }
 
   // head
