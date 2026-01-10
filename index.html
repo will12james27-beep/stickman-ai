@@ -108,11 +108,24 @@ if (action === 'run') {
   ctx.lineTo(x, y);
   ctx.stroke();
 
-  // arms
-  ctx.beginPath();
+// arms
+ctx.beginPath();
+
+if (action === 'jump') {
+  // qo'llar yuqoriga
+  ctx.moveTo(x, y - 20);
+  ctx.lineTo(x - 12, y - 40);
+
+  ctx.moveTo(x, y - 20);
+  ctx.lineTo(x + 12, y - 40);
+} else {
+  // run / stand
   ctx.moveTo(x - swing, y - 15);
   ctx.lineTo(x + swing, y - 15);
-  ctx.stroke();
+}
+
+ctx.stroke();
+
 
   // legs
   ctx.beginPath();
