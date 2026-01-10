@@ -108,22 +108,32 @@ if (action === 'run') {
   ctx.lineTo(x, y);
   ctx.stroke();
 
-// arms
+// ===== ARMS =====
+const armLen = 20;
+let armSwing = 0;
+
+if (action === 'run') {
+  armSwing = Math.sin(frame * 0.15) * 0.8;
+}
+
 ctx.beginPath();
 
-if (action === 'jump') {
-  // qo'llar yuqoriga
-  ctx.moveTo(x, y - 20);
-  ctx.lineTo(x - 12, y - 40);
+// LEFT ARM (oyoqlarga qarama-qarshi)
+ctx.moveTo(x, y - 22);
+ctx.lineTo(
+  x + Math.sin(-armSwing) * armLen,
+  y - 22 + Math.cos(-armSwing) * armLen
+);
 
-  ctx.moveTo(x, y - 20);
-  ctx.lineTo(x + 12, y - 40);
-} else {
-  // run / stand
-  ctx.moveTo(x - swing, y - 15);
-  ctx.lineTo(x + swing, y - 15);
-} 
-  ctx.stroke();
+// RIGHT ARM
+ctx.moveTo(x, y - 22);
+ctx.lineTo(
+  x + Math.sin(armSwing) * armLen,
+  y - 22 + Math.cos(armSwing) * armLen
+);
+
+ctx.stroke();
+
   
 // NEW LEGS
 if (action === 'jump') {
