@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v38.0 (MP4 Export)</title>
+<title>Stickman AI – STUDIO v38.1</title>
 <style>
 body{
  margin:0;
@@ -27,8 +27,6 @@ canvas{
 .panel{
  display:flex;
  gap:10px;
- align-items:center;
- flex-wrap:wrap;
 }
 button{
  padding:6px 12px;
@@ -42,13 +40,12 @@ button{
 <body>
 
 <div id="studio">
-  <div class="panel">
-    <button onclick="playing=!playing">Play</button>
-    <button onclick="exportMP4()">Export MP4</button>
-  </div>
-
-  <div class="small">v38.0 — MP4 export (ffmpeg.wasm)</div>
-  <canvas id="c" width="420" height="640"></canvas>
+ <div class="panel">
+  <button onclick="playing=!playing">Play</button>
+  <button onclick="exportMP4()">Export MP4</button>
+ </div>
+ <div class="small">v38.1 — MP4 export (fixed)</div>
+ <canvas id="c" width="420" height="640"></canvas>
 </div>
 
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
@@ -67,26 +64,27 @@ const W=420,H=640,ground=520;
 // ===== JOINT =====
 class Joint{
  constructor(x,y){this.x=x;this.y=y;}
- clone(){return {x:this.x,y:this.y};}
+ clone(){ return new Joint(this.x,this.y); }
 }
 
-// ===== STICKMAN =====
+// ===== CREATE MAN =====
 function createMan(x){
  const j={
   hip:new Joint(x,ground-85),
   neck:new Joint(x,ground-155),
   head:new Joint(x,ground-195),
 
-  kneeL:new Joint(x-20,ground-45),
-  kneeR:new Joint(x+20,ground-45),
-  footL:new Joint(x-20,ground),
-  footR:new Joint(x+20,ground),
+  kneeL:new Joint(x-18,ground-45),
+  kneeR:new Joint(x+18,ground-45),
+  footL:new Joint(x-18,ground),
+  footR:new Joint(x+18,ground),
 
   elbowL:new Joint(x-40,ground-135),
   elbowR:new Joint(x+40,ground-135),
   handL:new Joint(x-60,ground-115),
   handR:new Joint(x+60,ground-115),
  };
+
  return{
   joints:j,
   base:clonePose(j),
@@ -103,19 +101,9 @@ function clonePose(j){
 
 // ===== CROWD =====
 const crowd=[];
-for(let i=0;i<5;i++) crowd.push(createMan(140+i*60));
+for(let i=0;i<5;i++) crowd.push(createMan(120+i*60));
 
-// ===== ANIMATION =====
-function lerp(a,b,t){return a+(b-a)*t;}
-
-function blendPose(a,b,w){
- const p={};
- for(let k in a){
-  p[k]={x:lerp(a[k].x,b[k].x,w),y:lerp(a[k].y,b[k].y,w)};
- }
- return p;
-}
-
+// ===== RUN SAMPLE =====
 function sampleRun(base,phase){
  const s=Math.sin(phase);
  const p=clonePose(base);
@@ -135,7 +123,8 @@ function sampleRun(base,phase){
 
 // ===== IK =====
 function stick(a,b,l){
- const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
+ const dx=b.x-a.x,dy=b.y-a.y;
+ const d=Math.hypot(dx,dy)||1;
  const diff=(d-l)/d*0.5;
  a.x+=dx*diff; a.y+=dy*diff;
  b.x-=dx*diff; b.y-=dy*diff;
@@ -180,14 +169,11 @@ function draw(){
  ctx.strokeStyle="#000";
 
  crowd.forEach(m=>{
-  const run=sampleRun(m.base,m.phase);
-  const pose=blendPose(m.base,run,1);
-
+  const pose=sampleRun(m.base,m.phase);
   for(let k in pose){
    m.joints[k].x=pose[k].x;
    m.joints[k].y=pose[k].y;
   }
-
   solve(m.joints);
 
   ctx.beginPath();
@@ -196,12 +182,16 @@ function draw(){
 
   line(m.joints.head,m.joints.neck);
   line(m.joints.neck,m.joints.hip);
+
   line(m.joints.hip,m.joints.kneeL);
   line(m.joints.kneeL,m.joints.footL);
+
   line(m.joints.hip,m.joints.kneeR);
   line(m.joints.kneeR,m.joints.footR);
+
   line(m.joints.neck,m.joints.elbowL);
   line(m.joints.elbowL,m.joints.handL);
+
   line(m.joints.neck,m.joints.elbowR);
   line(m.joints.elbowR,m.joints.handR);
  });
@@ -209,11 +199,8 @@ function draw(){
 
 // ===== LOOP =====
 let playing=true;
-
 function loop(){
- if(playing){
-  crowd.forEach(m=>m.phase+=0.08*m.speed);
- }
+ if(playing) crowd.forEach(m=>m.phase+=0.08*m.speed);
  draw();
  requestAnimationFrame(loop);
 }
@@ -222,21 +209,17 @@ loop();
 // ===== EXPORT MP4 =====
 async function exportMP4(){
  if(!ffmpeg.isLoaded()){
-  alert("FFmpeg yuklanmoqda... kuting");
+  alert("FFmpeg yuklanmoqda...");
   await ffmpeg.load();
  }
 
- const fps=24;
- const frames=96; // 4 sekund
- let i=0;
-
- for(let f=0;f<frames;f++){
+ const fps=24, frames=96;
+ for(let i=0;i<frames;i++){
   crowd.forEach(m=>m.phase+=0.08*m.speed);
   draw();
   const data=c.toDataURL("image/png");
   ffmpeg.FS("writeFile",`f${String(i).padStart(3,"0")}.png`,
-    await fetchFile(data));
-  i++;
+   await fetchFile(data));
  }
 
  await ffmpeg.run(
@@ -247,10 +230,7 @@ async function exportMP4(){
  );
 
  const video=ffmpeg.FS("readFile","out.mp4");
- const url=URL.createObjectURL(
-  new Blob([video.buffer],{type:"video/mp4"})
- );
-
+ const url=URL.createObjectURL(new Blob([video.buffer],{type:"video/mp4"}));
  const a=document.createElement("a");
  a.href=url;
  a.download="stickman.mp4";
