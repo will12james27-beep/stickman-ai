@@ -1,17 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stickman AI – STUDIO v20.1</title>
+<style>
+body{
+  margin:0;
+  background:#02080c;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+canvas{
+  background:#fff;
+  border-radius:12px;
+}
+</style>
+</head>
+<body>
+
+<!-- 🔴 SHU BO‘LISHI SHART -->
+<canvas id="c" width="360" height="640"></canvas>
+
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
 
 const c=document.getElementById("c");
+if(!c){
+  alert("Canvas topilmadi!");
+  return;
+}
 const ctx=c.getContext("2d");
-c.width=360; c.height=640;
-ctx.lineCap="round"; ctx.lineWidth=4;
+
+ctx.lineCap="round";
+ctx.lineWidth=4;
 
 const ground=520;
 const GRAVITY=0.9;
 
 let debug=false;
 let time=0;
-let state="idle"; // idle | walk | sit | jump | ragdoll | play
+let state="idle";
 
 // ===== TIMELINE =====
 let recording=false;
@@ -46,13 +76,6 @@ function stick(a,b,l){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-function physics(j){
-  j.vy+=GRAVITY;
-  j.x+=j.vx;
-  j.y+=j.vy;
-  if(j.y>ground){ j.y=ground; j.vy=0; }
-}
-
 // ===== CONTROLLERS =====
 function balance(){
   man.hip.y += ((ground-70)-man.hip.y)*0.25;
@@ -69,34 +92,6 @@ function walk(){
   man.legR.y=ground-Math.max(0,-s*12);
 }
 
-// ===== AI COMMAND =====
-window.aiCommand=function(cmd){
-  cmd=cmd.trim();
-  if(cmd==="walk") state="walk";
-  if(cmd==="stop") state="idle";
-  if(cmd==="sit") state="sit";
-  if(cmd==="jump"){
-    man.hip.vy=-15;
-    state="jump";
-  }
-  const i=document.getElementById("cmd");
-  if(i) i.value="";
-};
-
-// ===== UI =====
-window.toggleRagdoll=()=> state = state==="ragdoll" ? "idle" : "ragdoll";
-window.toggleDebug=()=> debug=!debug;
-window.toggleRecord=()=>{
-  recording=!recording;
-  if(recording) timeline=[];
-};
-window.playTimeline=()=>{
-  if(timeline.length){
-    state="play";
-    playIndex=0;
-  }
-};
-
 // ===== DRAW =====
 function line(a,b){
   ctx.beginPath();
@@ -107,6 +102,7 @@ function line(a,b){
 
 function draw(){
   ctx.clearRect(0,0,360,640);
+
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
   ctx.moveTo(0,ground);
@@ -122,38 +118,14 @@ function draw(){
   line(man.neck,man.armR);
 
   ctx.beginPath();
-  ctx.arc(man.head.x,man.head.y,14,0,6.28);
+  ctx.arc(man.head.x,man.head.y,14,0,Math.PI*2);
   ctx.stroke();
-
-  if(debug){
-    ctx.fillStyle="red";
-    Object.values(man).forEach(j=>{
-      ctx.beginPath();
-      ctx.arc(j.x,j.y,2,0,6.28);
-      ctx.fill();
-    });
-  }
 }
 
 // ===== LOOP =====
 function loop(){
-
-  if(state==="play"){
-    const f=timeline[playIndex++];
-    if(!f) state="idle";
-    else Object.keys(man).forEach(k=>{
-      man[k].x=f[k].x;
-      man[k].y=f[k].y;
-    });
-  }
-  else if(state==="ragdoll" || state==="jump"){
-    Object.values(man).forEach(j=>physics(j));
-  }
-  else{
-    if(state==="walk") walk();
-    if(state==="sit") man.hip.y=ground-40;
-    balance();
-  }
+  if(state==="walk") walk();
+  balance();
 
   for(let i=0;i<8;i++){
     stick(man.head,man.neck,35);
@@ -164,14 +136,6 @@ function loop(){
     stick(man.neck,man.armR,45);
   }
 
-  if(recording){
-    const frame={};
-    Object.keys(man).forEach(k=>{
-      frame[k]={x:man[k].x,y:man[k].y};
-    });
-    timeline.push(frame);
-  }
-
   draw();
   requestAnimationFrame(loop);
 }
@@ -179,3 +143,5 @@ loop();
 
 });
 </script>
+</body>
+</html>
