@@ -2,20 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – Level 2</title>
+<title>Stickman AI – Level 2 FIXED</title>
 <style>
 body{
   margin:0;
   background:radial-gradient(#0f2b33,#07161b);
   display:flex;
   justify-content:center;
-  align-items:center;
-  height:100vh;
+  align-items:flex-start;
+  min-height:100vh;
   font-family:Arial;
   color:#fff;
+  padding:10px;
 }
 .box{
   width:380px;
+  max-height:95vh;
+  overflow:auto;
   padding:14px;
   border-radius:18px;
   background:#0b1f26;
@@ -32,6 +35,7 @@ input,button{
 }
 button{background:cyan;cursor:pointer}
 canvas{
+  display:block;
   background:#fff;
   margin-top:10px;
   border-radius:10px;
@@ -45,7 +49,7 @@ small{opacity:.7}
 <body>
 <div class="box">
   <h3>🎬 Stickman AI – Level 2</h3>
-  <input id="text" placeholder="girl run 3s jump 1s stand 2s">
+  <input id="text" placeholder="run 3 jump 1 stand 2">
   <button onclick="generate()">Generate Timeline</button>
   <button onclick="startRecord()">🎥 Start</button>
   <button onclick="stopRecord()">⏹ Save</button>
@@ -56,7 +60,8 @@ small{opacity:.7}
 <script>
 const c=document.getElementById('c');
 const ctx=c.getContext('2d');
-ctx.lineCap="round";ctx.lineJoin="round";
+ctx.lineCap="round";
+ctx.lineJoin="round";
 
 const ground=c.height-120;
 
@@ -67,10 +72,8 @@ class Stickman{
     this.y=ground;
     this.vy=0;
     this.facing=1;
-    this.targetFacing=1;
     this.action='stand';
     this.type=type;
-    this.emotion='happy';
   }
 }
 
@@ -96,7 +99,7 @@ function startRecord(){
   recorder.onstop=()=>{
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
-    a.download='stickman_level2.webm';
+    a.download='stickman_fixed.webm';
     a.click();
   };
   recorder.start();
@@ -106,27 +109,26 @@ function stopRecord(){recorder&&recorder.stop();}
 // ===== DRAW =====
 function drawStickman(ch){
   let walk=Math.sin(frame*0.1);
-  let idle=Math.sin(frame*0.05)*1.5;
-  let lean=ch.action==='run'?walk*10*ch.facing:idle;
+  let lean=ch.action==='run'?walk*10:0;
 
   // HEAD
   ctx.beginPath();
-  ctx.arc(ch.x+lean*.3,ch.y-50+idle,14,0,Math.PI*2);
+  ctx.arc(ch.x+lean*.3,ch.y-50,14,0,Math.PI*2);
   ctx.stroke();
 
   // FACE
   ctx.beginPath();
-  ctx.arc(ch.x+lean*.3,ch.y-46+idle,5,0,Math.PI);
+  ctx.arc(ch.x+lean*.3,ch.y-46,5,0,Math.PI);
   ctx.stroke();
 
   // HAIR
   if(ch.type==='girl'){
     ctx.beginPath();
-    ctx.moveTo(ch.x+ch.facing*6,ch.y-64);
+    ctx.moveTo(ch.x+6,ch.y-64);
     ctx.quadraticCurveTo(
-      ch.x+ch.facing*36,
+      ch.x+36,
       ch.y-52,
-      ch.x+ch.facing*24,
+      ch.x+24,
       ch.y-30
     );
     ctx.stroke();
@@ -168,10 +170,15 @@ function drawLeg(x,y,p){
 // ===== ENGINE =====
 function animate(){
   frame++;
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle="#000";ctx.lineWidth=4;
 
-  // TIMELINE PLAY
+  // ✅ REAL WHITE BACKGROUND (VIDEO FIX)
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,c.width,c.height);
+
+  ctx.strokeStyle="#000";
+  ctx.lineWidth=4;
+
+  // TIMELINE
   if(timeline.length){
     let cur=timeline[timeIndex];
     characters.forEach(ch=>ch.action=cur.action);
@@ -183,9 +190,10 @@ function animate(){
   }
 
   characters.forEach(ch=>{
-    if(ch.action==='run') ch.x+=1.2*ch.facing;
+    if(ch.action==='run') ch.x+=1.2;
     if(ch.action==='jump'&&ch.y===ground) ch.vy=-12;
-    ch.vy+=0.6; ch.y+=ch.vy;
+    ch.vy+=0.6;
+    ch.y+=ch.vy;
     if(ch.y>ground){ch.y=ground;ch.vy=0;}
     drawStickman(ch);
   });
@@ -201,9 +209,10 @@ function generate(){
 
   let parts=document.getElementById('text').value.toLowerCase().split(' ');
   for(let i=0;i<parts.length;i+=2){
-    let act=parts[i];
-    let sec=parseFloat(parts[i+1])||1;
-    timeline.push({action:act,frames:sec*60});
+    timeline.push({
+      action:parts[i],
+      frames:(parseFloat(parts[i+1])||1)*60
+    });
   }
 }
 
