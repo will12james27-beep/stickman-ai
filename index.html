@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v21.0</title>
+<title>Stickman AI – STUDIO v22.0</title>
 <style>
 body{
   margin:0;
@@ -11,7 +11,6 @@ body{
   justify-content:center;
   align-items:center;
   height:100vh;
-  color:white;
   font-family:Arial;
 }
 canvas{
@@ -24,6 +23,7 @@ canvas{
   left:10px;
   display:flex;
   gap:6px;
+  flex-wrap:wrap;
 }
 button{
   padding:6px 10px;
@@ -36,11 +36,12 @@ button{
 <body>
 
 <div class="panel">
-  <button onclick="state='walk'">Walk</button>
-  <button onclick="state='idle'">Idle</button>
+  <button onclick="mode='walk'">AI Walk</button>
+  <button onclick="mode='idle'">AI Idle</button>
   <button onclick="record()">● Rec</button>
   <button onclick="play()">▶ Play</button>
-  <button onclick="exportData()">⤓ Export</button>
+  <button onclick="exportJSON()">⤓ JSON</button>
+  <button onclick="exportPNG()">🖼 PNG</button>
 </div>
 
 <canvas id="c" width="360" height="640"></canvas>
@@ -48,19 +49,16 @@ button{
 <script>
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
-
 ctx.lineCap="round";
 ctx.lineWidth=4;
 
 const ground=520;
 let time=0;
-let state="idle";
+let mode="idle";
 
 // ===== TIMELINE =====
-let recording=false;
-let playing=false;
-let timeline=[];
-let playIndex=0;
+let recording=false, playing=false;
+let timeline=[], playIndex=0;
 
 // ===== JOINT =====
 class Joint{
@@ -68,16 +66,20 @@ class Joint{
   clone(){return {x:this.x,y:this.y}}
 }
 
-// ===== MAN =====
-const man={
-  hip:new Joint(180,ground-70),
-  neck:new Joint(180,ground-135),
-  head:new Joint(180,ground-170),
-  legL:new Joint(165,ground),
-  legR:new Joint(195,ground),
-  armL:new Joint(140,ground-135),
-  armR:new Joint(220,ground-135)
-};
+// ===== STICKMAN FACTORY =====
+function createMan(x){
+  return {
+    hip:new Joint(x,ground-70),
+    neck:new Joint(x,ground-135),
+    head:new Joint(x,ground-170),
+    legL:new Joint(x-15,ground),
+    legR:new Joint(x+15,ground),
+    armL:new Joint(x-40,ground-135),
+    armR:new Joint(x+40,ground-135)
+  };
+}
+
+const men=[createMan(140),createMan(220)];
 
 // ===== UTILS =====
 function stick(a,b,l){
@@ -88,63 +90,76 @@ function stick(a,b,l){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== ANIMATIONS =====
-function idle(){
-  const s=Math.sin(time*0.05)*2;
-  man.neck.y+=s*0.05;
-}
-
-function walk(){
-  time++;
+// ===== AI ANIMATION =====
+function aiWalk(man){
   const s=Math.sin(time*0.12);
-  man.hip.x+=1.2;
-
-  man.legL.x=man.hip.x-15+s*22;
-  man.legR.x=man.hip.x+15-s*22;
+  man.hip.x+=0.6;
+  man.legL.x=man.hip.x-15+s*20;
+  man.legR.x=man.hip.x+15-s*20;
   man.legL.y=ground-Math.max(0,s*14);
   man.legR.y=ground-Math.max(0,-s*14);
-
-  man.armL.x=man.neck.x-30-s*18;
-  man.armR.x=man.neck.x+30+s*18;
+  man.armL.x=man.neck.x-35-s*15;
+  man.armR.x=man.neck.x+35+s*15;
 }
 
-// ===== RECORD / PLAY =====
+function aiIdle(man){
+  man.neck.y+=Math.sin(time*0.05)*0.05;
+}
+
+// ===== RECORD =====
 function record(){
   recording=!recording;
-  if(recording){timeline=[];}
+  if(recording) timeline=[];
 }
 
 function play(){
   if(timeline.length===0)return;
-  playing=true;
-  playIndex=0;
+  playing=true; playIndex=0;
 }
 
 function capture(){
-  timeline.push({
-    hip:man.hip.clone(),
-    neck:man.neck.clone(),
-    head:man.head.clone(),
-    legL:man.legL.clone(),
-    legR:man.legR.clone(),
-    armL:man.armL.clone(),
-    armR:man.armR.clone()
-  });
+  timeline.push(JSON.parse(JSON.stringify(men)));
 }
 
 function applyFrame(f){
-  for(let k in f){
-    man[k].x=f[k].x;
-    man[k].y=f[k].y;
-  }
+  f.forEach((fm,i)=>{
+    for(let k in fm){
+      men[i][k].x=fm[k].x;
+      men[i][k].y=fm[k].y;
+    }
+  });
 }
 
 // ===== EXPORT =====
-function exportData(){
-  const data=JSON.stringify(timeline,null,2);
-  console.log(data);
-  alert("Timeline console’da (F12) chiqarildi");
+function exportJSON(){
+  console.log(JSON.stringify(timeline,null,2));
+  alert("Timeline JSON console’da (F12)");
 }
+function exportPNG(){
+  const a=document.createElement("a");
+  a.download="stickman.png";
+  a.href=c.toDataURL();
+  a.click();
+}
+
+// ===== MOUSE POSE =====
+let drag=null;
+c.addEventListener("mousedown",e=>{
+  const r=c.getBoundingClientRect();
+  const mx=e.clientX-r.left,my=e.clientY-r.top;
+  men.forEach(m=>{
+    for(let k in m){
+      if(Math.hypot(m[k].x-mx,m[k].y-my)<12) drag=m[k];
+    }
+  });
+});
+c.addEventListener("mousemove",e=>{
+  if(!drag)return;
+  const r=c.getBoundingClientRect();
+  drag.x=e.clientX-r.left;
+  drag.y=e.clientY-r.top;
+});
+c.addEventListener("mouseup",()=>drag=null);
 
 // ===== DRAW =====
 function line(a,b){
@@ -153,23 +168,15 @@ function line(a,b){
   ctx.lineTo(b.x,b.y);
   ctx.stroke();
 }
-
-function draw(){
-  ctx.clearRect(0,0,360,640);
-
-  ctx.strokeStyle="#ccc";
-  line({x:0,y:ground},{x:360,y:ground});
-
-  ctx.strokeStyle="#000";
-  line(man.head,man.neck);
-  line(man.neck,man.hip);
-  line(man.hip,man.legL);
-  line(man.hip,man.legR);
-  line(man.neck,man.armL);
-  line(man.neck,man.armR);
-
+function drawMan(m){
+  line(m.head,m.neck);
+  line(m.neck,m.hip);
+  line(m.hip,m.legL);
+  line(m.hip,m.legR);
+  line(m.neck,m.armL);
+  line(m.neck,m.armR);
   ctx.beginPath();
-  ctx.arc(man.head.x,man.head.y,14,0,Math.PI*2);
+  ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2);
   ctx.stroke();
 }
 
@@ -178,25 +185,34 @@ function loop(){
   time++;
 
   if(playing){
-    applyFrame(timeline[playIndex]);
-    playIndex++;
+    applyFrame(timeline[playIndex++]);
     if(playIndex>=timeline.length) playing=false;
   }else{
-    if(state==="walk") walk();
-    else idle();
+    men.forEach(m=>{
+      if(mode==="walk") aiWalk(m);
+      else aiIdle(m);
+    });
   }
 
-  for(let i=0;i<6;i++){
-    stick(man.head,man.neck,35);
-    stick(man.neck,man.hip,65);
-    stick(man.hip,man.legL,65);
-    stick(man.hip,man.legR,65);
-    stick(man.neck,man.armL,45);
-    stick(man.neck,man.armR,45);
-  }
+  men.forEach(m=>{
+    for(let i=0;i<6;i++){
+      stick(m.head,m.neck,35);
+      stick(m.neck,m.hip,65);
+      stick(m.hip,m.legL,65);
+      stick(m.hip,m.legR,65);
+      stick(m.neck,m.armL,45);
+      stick(m.neck,m.armR,45);
+    }
+  });
 
   if(recording) capture();
-  draw();
+
+  ctx.clearRect(0,0,360,640);
+  ctx.strokeStyle="#ccc";
+  line({x:0,y:ground},{x:360,y:ground});
+  ctx.strokeStyle="#000";
+  men.forEach(drawMan);
+
   requestAnimationFrame(loop);
 }
 loop();
