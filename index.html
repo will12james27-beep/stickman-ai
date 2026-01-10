@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v36.2 (Timeline Scrub)</title>
+<title>Stickman AI – STUDIO v36.3 (Pose Snapshot)</title>
 <style>
 body{
   margin:0;
@@ -51,12 +51,12 @@ button{
   <div class="panel">
     <button onclick="togglePlay()">Play / Pause</button>
     <button onclick="resetTime()">Reset</button>
-    <button onclick="clearKeys()">Clear Keys</button>
+    <button onclick="clearKeys()">Clear Poses</button>
   </div>
 
   <input id="slider" type="range" min="0" max="1000" value="0">
 
-  <div class="small">v36.2 — Timeline scrub + keyframes</div>
+  <div class="small">v36.3 — Pose Snapshot (click canvas)</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -71,7 +71,15 @@ const slider=document.getElementById("slider");
 const W=420,H=640,ground=520;
 
 // ===== JOINT =====
-class Joint{constructor(x,y){this.x=x;this.y=y;}}
+class Joint{
+ constructor(x,y){
+  this.x=x;
+  this.y=y;
+ }
+ clone(){
+  return {x:this.x,y:this.y};
+ }
+}
 
 // ===== STICKMAN =====
 const man={
@@ -95,11 +103,7 @@ const timeline={
  fps:24,
  duration:2,
  time:0,
- tracks:{
-  hipY:[],
-  legSwing:[],
-  armSwing:[]
- }
+ poses:[]
 };
 
 let playing=false;
@@ -107,18 +111,29 @@ let playing=false;
 // ===== INTERPOLATION =====
 function lerp(a,b,t){return a+(b-a)*t;}
 
-function sample(track,time){
- if(track.length===0) return 0;
- if(track.length===1) return track[0].v;
+function interpPose(a,b,t){
+ const p={};
+ for(let k in a){
+  p[k]={
+   x:lerp(a[k].x,b[k].x,t),
+   y:lerp(a[k].y,b[k].y,t)
+  };
+ }
+ return p;
+}
 
- let a=track[0],b=track[track.length-1];
- for(let i=0;i<track.length-1;i++){
-  if(time>=track[i].t && time<=track[i+1].t){
-   a=track[i]; b=track[i+1]; break;
+function samplePose(time){
+ if(timeline.poses.length===0) return null;
+ if(timeline.poses.length===1) return timeline.poses[0].pose;
+
+ let a=timeline.poses[0],b=timeline.poses[timeline.poses.length-1];
+ for(let i=0;i<timeline.poses.length-1;i++){
+  if(time>=timeline.poses[i].t && time<=timeline.poses[i+1].t){
+   a=timeline.poses[i]; b=timeline.poses[i+1]; break;
   }
  }
  const t=(time-a.t)/(b.t-a.t||1);
- return lerp(a.v,b.v,t);
+ return interpPose(a.pose,b.pose,t);
 }
 
 // ===== IK =====
@@ -129,29 +144,13 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== APPLY TIMELINE =====
-function applyTimeline(){
- const hipY = sample(timeline.tracks.hipY,timeline.time) || ground-85;
- const leg  = sample(timeline.tracks.legSwing,timeline.time);
- const arm  = sample(timeline.tracks.armSwing,timeline.time);
-
- man.hip.x=210;
- man.hip.y=hipY;
-
- man.neck.x=man.hip.x;
- man.neck.y=man.hip.y-70;
- man.head.x=man.neck.x;
- man.head.y=man.neck.y-40;
-
- man.footL.x=man.hip.x-22;
- man.footR.x=man.hip.x+22;
- man.footL.y=ground-Math.max(0,leg)*30;
- man.footR.y=ground-Math.max(0,-leg)*30;
-
- man.handL.x=man.neck.x-45+arm*25;
- man.handR.x=man.neck.x+45-arm*25;
- man.handL.y=man.neck.y+20;
- man.handR.y=man.neck.y+20;
+// ===== APPLY POSE =====
+function applyPose(p){
+ if(!p) return;
+ for(let k in p){
+  man[k].x=p[k].x;
+  man[k].y=p[k].y;
+ }
 }
 
 // ===== SOLVE =====
@@ -174,26 +173,23 @@ function solve(){
  }
 }
 
-// ===== KEYFRAME =====
-function addKeyframe(){
- timeline.tracks.hipY.push({t:timeline.time,v:man.hip.y});
- timeline.tracks.legSwing.push({t:timeline.time,v:Math.sign(man.footR.y-man.footL.y)});
- timeline.tracks.armSwing.push({t:timeline.time,v:Math.sign(man.handL.x-man.handR.x)});
- for(let k in timeline.tracks){
-  timeline.tracks[k].sort((a,b)=>a.t-b.t);
+// ===== POSE SNAPSHOT =====
+function addPose(){
+ const pose={};
+ for(let k in man){
+  pose[k]=man[k].clone();
  }
+ timeline.poses.push({t:timeline.time,pose});
+ timeline.poses.sort((a,b)=>a.t-b.t);
 }
 
 function clearKeys(){
- for(let k in timeline.tracks) timeline.tracks[k]=[];
+ timeline.poses=[];
 }
 
 // ===== UI =====
-function togglePlay(){ playing=!playing; }
-function resetTime(){
- timeline.time=0;
- slider.value=0;
-}
+function togglePlay(){playing=!playing;}
+function resetTime(){timeline.time=0;slider.value=0;}
 
 slider.oninput=()=>{
  playing=false;
@@ -239,7 +235,7 @@ function draw(){
 }
 
 // ===== EVENTS =====
-c.addEventListener("click",addKeyframe);
+c.addEventListener("click",addPose);
 
 // ===== LOOP =====
 function loop(){
@@ -248,9 +244,12 @@ function loop(){
   if(timeline.time>timeline.duration) timeline.time=0;
   slider.value=(timeline.time/timeline.duration)*1000;
  }
- applyTimeline();
+
+ const pose=samplePose(timeline.time);
+ applyPose(pose);
  solve();
  draw();
+
  requestAnimationFrame(loop);
 }
 loop();
