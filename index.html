@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v33.0 (GIF Export)</title>
+<title>Stickman AI – STUDIO v33.1 (FIXED)</title>
 <style>
 body{
   margin:0;
@@ -35,7 +35,7 @@ button{
     <button onclick="setState('idle')">Idle</button>
     <button onclick="recordGIF()">🎞️ Export GIF</button>
   </div>
-  <div class="small">Canvas → Frames → ffmpeg.wasm → GIF</div>
+  <div class="small">v33.1 — camera + GIF render FIXED</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -49,7 +49,7 @@ const ctx=c.getContext("2d");
 ctx.lineCap="round"; ctx.lineWidth=4;
 
 const W=420,H=640,ground=520;
-let time=0,state="run",jumpQueued=false;
+let time=0,state="run";
 
 // ===== CAMERA =====
 const cam={x:0,tx:0,zoom:1,tz:1};
@@ -71,10 +71,10 @@ function createMan(x){
   elbowR:new Joint(x+40,ground-135),
   handL:new Joint(x-55,ground-115),
   handR:new Joint(x+55,ground-115),
-  phase:0, vel:0, vy:0, onGround:true
+  phase:0, vel:2.2, vy:0, onGround:true
  };
 }
-const man=createMan(200);
+const man=createMan(210);
 
 // ===== IK =====
 function stick(a,b,l){
@@ -86,49 +86,44 @@ function stick(a,b,l){
 
 // ===== STATES =====
 function setState(s){ state=s; }
-function jump(){ if(man.onGround){ state="jump"; man.vy=-15; man.onGround=false; }}
-
-// ===== RUN =====
-function run(m){
- m.vel+=(2.2-m.vel)*0.08;
- m.phase+=m.vel*0.04;
- const s=Math.sin(m.phase);
- const stride=32;
- const left=s>0;
-
- if(left){
-  m.footL.x=m.hip.x-stride; m.footL.y=ground;
-  m.footR.x=m.hip.x+stride+s*22;
-  m.footR.y=ground-Math.max(0,-s)*32;
- }else{
-  m.footR.x=m.hip.x+stride; m.footR.y=ground;
-  m.footL.x=m.hip.x-stride+s*22;
-  m.footL.y=ground-Math.max(0,s)*32;
+function jump(){
+ if(man.onGround){
+  state="jump";
+  man.vy=-15;
+  man.onGround=false;
  }
+}
 
- m.hip.x+=m.vel;
- m.hip.y=ground-85-Math.abs(s)*10;
+// ===== ANIMATION =====
+function run(m){
+ m.phase+=0.15;
+ const s=Math.sin(m.phase);
+ const stride=30;
+
+ m.footL.x=m.hip.x-stride;
+ m.footR.x=m.hip.x+stride;
+ m.footL.y=ground-Math.max(0,s)*30;
+ m.footR.y=ground-Math.max(0,-s)*30;
+
+ m.hip.y=ground-85-Math.abs(s)*8;
 
  m.neck.x=m.hip.x;
  m.neck.y=m.hip.y-70;
  m.head.x=m.neck.x;
  m.head.y=m.neck.y-40;
 
- m.handL.x=m.neck.x-55-s*28;
- m.handR.x=m.neck.x+55+s*28;
+ m.handL.x=m.neck.x-50-s*25;
+ m.handR.x=m.neck.x+50+s*25;
  m.handL.y=m.neck.y+20;
  m.handR.y=m.neck.y+20;
 
  cam.tx=m.hip.x-W/2;
- cam.tz=1+Math.abs(s)*0.05;
+ cam.tz=1+Math.abs(s)*0.04;
 }
 
-// ===== JUMP =====
 function jumpState(m){
- m.vy+=0.8;
+ m.vy+=0.9;
  m.hip.y+=m.vy;
- m.hip.x+=m.vel;
-
  if(m.hip.y>=ground-85){
   m.hip.y=ground-85;
   m.vy=0;
@@ -139,7 +134,6 @@ function jumpState(m){
  m.head.y=m.neck.y-40;
 }
 
-// ===== IDLE =====
 function idle(m){
  const b=Math.sin(time*0.05);
  m.hip.y=ground-85+b*4;
@@ -149,7 +143,7 @@ function idle(m){
 
 // ===== SOLVE =====
 function solve(m){
- for(let i=0;i<6;i++){
+ for(let i=0;i<5;i++){
   stick(m.neck,m.hip,70);
   stick(m.head,m.neck,40);
   stick(m.hip,m.kneeL,40); stick(m.kneeL,m.footL,40);
@@ -161,18 +155,11 @@ function solve(m){
 
 // ===== DRAW =====
 function line(a,b){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
-function drawMan(m){
- ctx.beginPath(); ctx.arc(m.head.x,m.head.y,16,0,Math.PI*2); ctx.stroke();
- line(m.head,m.neck); line(m.neck,m.hip);
- line(m.hip,m.kneeL); line(m.kneeL,m.footL);
- line(m.hip,m.kneeR); line(m.kneeR,m.footR);
- line(m.neck,m.elbowL); line(m.elbowL,m.handL);
- line(m.neck,m.elbowR); line(m.elbowR,m.handR);
-}
+
 function draw(){
  ctx.clearRect(0,0,W,H);
- cam.x+=(cam.tx-cam.x)*0.08;
- cam.zoom+=(cam.tz-cam.zoom)*0.05;
+ cam.x+=(cam.tx-cam.x)*0.1;
+ cam.zoom+=(cam.tz-cam.zoom)*0.08;
 
  ctx.save();
  ctx.translate(W/2,H/2);
@@ -181,26 +168,33 @@ function draw(){
 
  ctx.strokeStyle="#ccc";
  ctx.beginPath(); ctx.moveTo(-2000,ground); ctx.lineTo(2000,ground); ctx.stroke();
+
  ctx.strokeStyle="#000";
- drawMan(man);
+ ctx.beginPath(); ctx.arc(man.head.x,man.head.y,16,0,Math.PI*2); ctx.stroke();
+ line(man.head,man.neck); line(man.neck,man.hip);
+ line(man.hip,man.kneeL); line(man.kneeL,man.footL);
+ line(man.hip,man.kneeR); line(man.kneeR,man.footR);
+ line(man.neck,man.elbowL); line(man.elbowL,man.handL);
+ line(man.neck,man.elbowR); line(man.elbowR,man.handR);
+
  ctx.restore();
 }
 
 // ===== LOOP =====
-function step(){
+function loop(){
  time++;
  if(state==="run")run(man);
  if(state==="jump")jumpState(man);
  if(state==="idle")idle(man);
  solve(man);
  draw();
- requestAnimationFrame(step);
+ requestAnimationFrame(loop);
 }
-step();
+loop();
 
-// ===== GIF EXPORT =====
+// ===== GIF EXPORT (SAFE) =====
 async function recordGIF(){
- alert("GIF tayyorlanmoqda... 3–5 soniya kut ⏳");
+ alert("GIF tayyorlanmoqda...");
 
  if(!ffmpeg.loaded){
   await ffmpeg.load({
@@ -209,27 +203,23 @@ async function recordGIF(){
   });
  }
 
- const frames=60;
+ const frames=50;
+ cam.x=0; cam.tx=0; cam.zoom=1; cam.tz=1;
+
  for(let i=0;i<frames;i++){
-  step();
+  run(man);
+  solve(man);
+  draw();
   const png=c.toDataURL("image/png").split(",")[1];
-  ffmpeg.writeFile(`f${i}.png`, Uint8Array.from(atob(png),c=>c.charCodeAt(0)));
+  ffmpeg.writeFile(`f${i}.png`,Uint8Array.from(atob(png),c=>c.charCodeAt(0)));
  }
 
- await ffmpeg.exec([
-  "-framerate","30",
-  "-i","f%d.png",
-  "-vf","scale=420:-1",
-  "out.gif"
- ]);
-
+ await ffmpeg.exec(["-framerate","25","-i","f%d.png","out.gif"]);
  const gif=await ffmpeg.readFile("out.gif");
- const blob=new Blob([gif.buffer],{type:"image/gif"});
- const url=URL.createObjectURL(blob);
+ const url=URL.createObjectURL(new Blob([gif.buffer],{type:"image/gif"}));
+
  const a=document.createElement("a");
- a.href=url;
- a.download="stickman_v33.gif";
- a.click();
+ a.href=url; a.download="stickman_v33_1.gif"; a.click();
  URL.revokeObjectURL(url);
 }
 </script>
