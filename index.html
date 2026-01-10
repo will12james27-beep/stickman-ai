@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v29.0 (Stable Core)</title>
+<title>Stickman AI – STUDIO v30.0 (Real Motion Core)</title>
 <style>
 body{
   margin:0;
@@ -45,7 +45,9 @@ const W=420,H=640,ground=520;
 let time=0,mode="walk",camX=0;
 
 // ===== JOINT =====
-class Joint{constructor(x,y){this.x=x;this.y=y;}}
+class Joint{
+  constructor(x,y){this.x=x;this.y=y;}
+}
 
 // ===== STICKMAN =====
 function createMan(x){
@@ -65,13 +67,15 @@ function createMan(x){
     handR:new Joint(x+55,ground-115),
 
     phase:0,
-    speed:1.15
+    speed:1.2,
+    pelvisRot:0,
+    headLag:0
   };
 }
 
 const men=[createMan(200)];
 
-// ===== IK SOLVER =====
+// ===== IK =====
 function stick(a,b,len){
   const dx=b.x-a.x, dy=b.y-a.y;
   const d=Math.hypot(dx,dy)||1;
@@ -80,46 +84,51 @@ function stick(a,b,len){
   b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== WALK (STABLE ENGINE) =====
+// ===== WALK v30 (REAL) =====
 function walk(m){
-  m.phase+=0.045;
+  m.phase+=0.04;
   const s=Math.sin(m.phase);
-  const stride=26;
+  const c=Math.cos(m.phase);
+  const stride=28;
 
-  const leftLock=s>0;
+  const leftPlant=s>0;
 
-  // --- FOOT LOCK ---
-  if(leftLock){
+  // --- FOOT PLANT ---
+  if(leftPlant){
     m.footL.x=m.hip.x-stride;
     m.footL.y=ground;
 
-    m.footR.x=m.hip.x+stride+s*22;
-    m.footR.y=ground-Math.max(0,-s)*28;
+    m.footR.x=m.hip.x+stride+s*26;
+    m.footR.y=ground-Math.max(0,-s)*32;
   }else{
     m.footR.x=m.hip.x+stride;
     m.footR.y=ground;
 
-    m.footL.x=m.hip.x-stride+s*22;
-    m.footL.y=ground-Math.max(0,s)*28;
+    m.footL.x=m.hip.x-stride+s*26;
+    m.footL.y=ground-Math.max(0,s)*32;
   }
 
-  // --- HIP ---
+  // --- PELVIS ---
+  m.pelvisRot=s*6;
   m.hip.x+=m.speed;
-  m.hip.y=ground-85-Math.abs(s)*8;
+  m.hip.y=ground-85-Math.abs(s)*10;
 
-  // --- UPPER BODY (STABLE) ---
-  m.neck.x=m.hip.x;
+  // --- SPINE ---
+  m.neck.x=m.hip.x+m.pelvisRot*0.2;
   m.neck.y=m.hip.y-70;
-  m.head.x=m.neck.x;
+
+  // --- HEAD LAG ---
+  m.headLag+=(s*4-m.headLag)*0.1;
+  m.head.x=m.neck.x+m.headLag;
   m.head.y=m.neck.y-40;
 
   // --- ARMS ---
-  m.handL.x=m.neck.x-45-s*20;
-  m.handR.x=m.neck.x+45+s*20;
-  m.handL.y=m.neck.y+20;
-  m.handR.y=m.neck.y+20;
+  m.handL.x=m.neck.x-45-s*26;
+  m.handR.x=m.neck.x+45+s*26;
+  m.handL.y=m.neck.y+18+c*4;
+  m.handR.y=m.neck.y+18-c*4;
 
-  camX+=((m.hip.x-W/2)-camX)*0.08;
+  camX+=((m.hip.x-W/2)-camX)*0.06;
 }
 
 // ===== IDLE =====
@@ -133,14 +142,14 @@ function idle(m){
 // ===== WAVE =====
 function wave(m){
   idle(m);
-  m.handR.y=m.neck.y-50-Math.sin(time*0.25)*25;
-  m.handR.x=m.neck.x+50;
+  m.handR.y=m.neck.y-55-Math.sin(time*0.3)*30;
+  m.handR.x=m.neck.x+55;
 }
 
 // ===== SOLVE =====
 function solve(){
   men.forEach(m=>{
-    for(let i=0;i<6;i++){
+    for(let i=0;i<7;i++){
       stick(m.neck,m.hip,70);
       stick(m.head,m.neck,40);
 
