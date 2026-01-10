@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v17.1</title>
+<title>Stickman AI – STUDIO v17.2</title>
 <style>
 body{
   margin:0;
@@ -29,12 +29,14 @@ h3{text-align:center}
 }
 .row{display:flex;gap:6px}
 .row>*{flex:1}
-button,input{
+button{
   padding:8px;
   border:none;
   border-radius:8px;
+  background:cyan;
+  font-weight:bold;
+  cursor:pointer;
 }
-button{background:cyan;font-weight:bold;cursor:pointer}
 canvas{
   display:block;
   margin:10px auto;
@@ -48,7 +50,7 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v17.1</h3>
+<h3>🎬 Stickman AI – STUDIO v17.2</h3>
 
 <div class="panel">
 <b>🎮 Controls</b>
@@ -59,18 +61,22 @@ small{text-align:center;display:block;opacity:.6}
 </div>
 
 <canvas id="c"></canvas>
-<small>v17.1 • Stable Standing Ragdoll • No Auto Fall</small>
+<small>v17.2 • Stable Ragdoll Core • Ground Safe • No Sink Bug</small>
 </div>
 
 <script>
-const c=document.getElementById("c"),ctx=c.getContext("2d");
-c.width=360;c.height=640;
-ctx.lineCap="round";ctx.lineWidth=4;
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+c.width = 360;
+c.height = 640;
+ctx.lineCap = "round";
+ctx.lineWidth = 4;
 
-const ground=520;
-let usePhysics=true, debug=false;
-let physicsReady=false;
-setTimeout(()=>physicsReady=true,500);
+const ground = 520;
+const GRAVITY = 0.6;
+
+let usePhysics = true;
+let debug = false;
 
 // ===== JOINT =====
 class Joint{
@@ -83,20 +89,21 @@ class Joint{
 // ===== RAGDOLL =====
 class Ragdoll{
   constructor(x,y){
-    this.hip=new Joint(x,y-20);
-    this.neck=new Joint(x,y-70);
-    this.head=new Joint(x,y-95);
+    this.hip  = new Joint(x, y-40);
+    this.neck = new Joint(x, y-90);
+    this.head = new Joint(x, y-115);
 
-    this.armL=new Joint(x-35,y-65);
-    this.armR=new Joint(x+35,y-65);
+    this.armL = new Joint(x-35, y-85);
+    this.armR = new Joint(x+35, y-85);
 
-    this.legL=new Joint(x-12,y+40);
-    this.legR=new Joint(x+12,y+40);
+    this.legL = new Joint(x-15, y);
+    this.legR = new Joint(x+15, y);
 
-    this.rootX=x;
+    this.rootX = x;
   }
 }
-const man=new Ragdoll(180,ground);
+
+const man = new Ragdoll(180, ground);
 
 // ===== CONSTRAINT =====
 function stick(a,b,len){
@@ -110,15 +117,25 @@ function stick(a,b,len){
 
 // ===== PHYSICS =====
 function physics(j){
-  j.vy+=0.8;
-  j.x+=j.vx;
-  j.y+=j.vy;
+  j.vy += GRAVITY;
+  j.x  += j.vx;
+  j.y  += j.vy;
 }
+
 function footCollision(j){
-  if(j.y>ground){
-    j.y=ground;
-    j.vy=0;
-    j.vx*=0.5;
+  if(j.y > ground){
+    j.y = ground;
+    j.vy = 0;
+    j.vx *= 0.6;
+  }
+}
+
+// 🔒 HIP GROUND LOCK (KEY FIX)
+function hipCollision(){
+  const minHipY = ground - 48;
+  if(man.hip.y > minHipY){
+    man.hip.y = minHipY;
+    man.hip.vy = 0;
   }
 }
 
@@ -129,9 +146,11 @@ function line(a,b){
   ctx.lineTo(b.x,b.y);
   ctx.stroke();
 }
+
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
 
+  // ground
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
   ctx.moveTo(0,ground);
@@ -163,24 +182,29 @@ function draw(){
 
 // ===== LOOP =====
 function loop(){
-  if(usePhysics && physicsReady){
+  if(usePhysics){
+
+    // 1️⃣ gravity
     Object.values(man).forEach(j=>{
       if(j instanceof Joint) physics(j);
     });
 
-    for(let i=0;i<10;i++){
+    // 2️⃣ constraints
+    for(let i=0;i<12;i++){
       stick(man.head,man.neck,22);
       stick(man.neck,man.hip,48);
       stick(man.neck,man.armL,34);
       stick(man.neck,man.armR,34);
-      stick(man.hip,man.legL,52);
-      stick(man.hip,man.legR,52);
+      stick(man.hip,man.legL,48);
+      stick(man.hip,man.legR,48);
 
-      man.hip.x += (man.rootX - man.hip.x)*0.04;
+      man.hip.x += (man.rootX - man.hip.x)*0.05;
     }
 
+    // 3️⃣ ground safety
     footCollision(man.legL);
     footCollision(man.legR);
+    hipCollision();
   }
 
   draw();
@@ -188,6 +212,7 @@ function loop(){
 }
 loop();
 
+// ===== UTILS =====
 function togglePhysics(){usePhysics=!usePhysics;}
 function toggleDebug(){debug=!debug;}
 </script>
