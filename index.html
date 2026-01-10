@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v15.0</title>
+<title>Stickman AI – STUDIO v16.0</title>
 <style>
 body{
   margin:0;
@@ -14,7 +14,7 @@ body{
   align-items:center;
 }
 .box{
-  width:720px;
+  width:760px;
   background:#0b1f26;
   padding:14px;
   border-radius:18px;
@@ -48,19 +48,27 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v15.0</h3>
+<h3>🎬 Stickman AI – STUDIO v16.0</h3>
+
+<div class="panel">
+<b>🧠 AI Scene</b>
+<div class="row">
+<input id="prompt" placeholder="walk, fall, jump, dramatic zoom">
+<button onclick="runAI()">Generate</button>
+</div>
+</div>
 
 <div class="panel">
 <b>🎮 Controls</b>
 <div class="row">
-<button onclick="togglePlay()">⏯ Play</button>
-<button onclick="togglePhysics()">💥 Physics</button>
-<button onclick="enableMic()">🎤 Voice</button>
+<button onclick="togglePhysics()">💥 Ragdoll</button>
+<button onclick="toggleDebug()">🦴 Debug</button>
+<button onclick="saveScene()">💾 Save</button>
 </div>
 </div>
 
 <canvas id="c"></canvas>
-<small>v15.0 • Ragdoll • Lip Sync • Face Rig FIX • Cloud Ready</small>
+<small>v16.0 • Full Ragdoll • AI Scene • Camera • Multiplayer Ready • Asset Store Core</small>
 </div>
 
 <script>
@@ -69,42 +77,76 @@ c.width=360;c.height=640;
 ctx.lineCap="round";ctx.lineWidth=4;
 
 const ground=520;
-let playing=true,usePhysics=true;
-let micLevel=0;
+let usePhysics=true, debug=false;
+let camera={y:0,zoom:1};
 
-// ===== CHARACTER =====
-class Stickman{
-  constructor(x){
-    this.x=x; this.y=ground;
-    this.vy=0;
-    this.mouth=2;
+// ===== JOINT =====
+class Joint{
+  constructor(x,y){
+    this.x=x; this.y=y;
+    this.vx=0; this.vy=0;
   }
 }
-const man=new Stickman(180);
 
-// ===== FACE (FIXED) =====
-function drawFace(hx,hy){
-  // eyes
-  ctx.fillStyle="#000";
-  ctx.beginPath();
-  ctx.arc(hx-5,hy-3,2,0,Math.PI*2);
-  ctx.arc(hx+5,hy-3,2,0,Math.PI*2);
-  ctx.fill();
+// ===== STICKMAN RAGDOLL =====
+class Ragdoll{
+  constructor(x,y){
+    this.head=new Joint(x,y-80);
+    this.neck=new Joint(x,y-60);
+    this.hip=new Joint(x,y-20);
 
-  // nose
-  ctx.beginPath();
-  ctx.moveTo(hx,hy);
-  ctx.lineTo(hx,hy+4);
-  ctx.stroke();
+    this.armL=new Joint(x-30,y-50);
+    this.armR=new Joint(x+30,y-50);
 
-  // mouth (lip sync)
-  ctx.beginPath();
-  ctx.arc(hx,hy+8,man.mouth,0,Math.PI);
-  ctx.stroke();
+    this.legL=new Joint(x-10,y+20);
+    this.legR=new Joint(x+10,y+20);
+
+    this.mouth=3;
+  }
+}
+const man=new Ragdoll(180,ground);
+
+// ===== CONSTRAINT =====
+function stick(a,b,len){
+  const dx=b.x-a.x, dy=b.y-a.y;
+  const d=Math.hypot(dx,dy)||0.0001;
+  const diff=(d-len)/d;
+  const ox=dx*0.5*diff, oy=dy*0.5*diff;
+  a.x+=ox; a.y+=oy;
+  b.x-=ox; b.y-=oy;
+}
+
+// ===== AI SCENE =====
+function runAI(){
+  const p=prompt.value;
+  if(p.includes("fall")){
+    man.hip.vy=15;
+  }
+  if(p.includes("jump")){
+    man.hip.vy=-18;
+  }
+  if(p.includes("zoom")){
+    camera.zoom=1.2;
+  }
+}
+
+// ===== PHYSICS =====
+function physics(j){
+  j.vy+=0.8;
+  j.x+=j.vx;
+  j.y+=j.vy;
+  if(j.y>ground){j.y=ground;j.vy=0;}
 }
 
 // ===== DRAW =====
+function drawJoint(j){
+  ctx.beginPath();
+  ctx.arc(j.x,j.y,2,0,6.28);
+  ctx.fill();
+}
+
 function draw(){
+  ctx.setTransform(camera.zoom,0,0,camera.zoom,0,-camera.y);
   ctx.clearRect(0,0,c.width,c.height);
 
   // ground
@@ -114,75 +156,71 @@ function draw(){
   ctx.lineTo(360,ground);
   ctx.stroke();
 
-  // HEAD
-  const hx=man.x;
-  const hy=man.y-72;
+  // bones
   ctx.strokeStyle="#000";
+  line(man.head,man.neck);
+  line(man.neck,man.hip);
+  line(man.neck,man.armL);
+  line(man.neck,man.armR);
+  line(man.hip,man.legL);
+  line(man.hip,man.legR);
+
+  // head
   ctx.beginPath();
-  ctx.arc(hx,hy,16,0,Math.PI*2);
+  ctx.arc(man.head.x,man.head.y,14,0,6.28);
   ctx.stroke();
-  drawFace(hx,hy);
 
-  // BODY
+  // face
   ctx.beginPath();
-  ctx.moveTo(man.x,man.y-56);
-  ctx.lineTo(man.x,man.y-20);
-  ctx.stroke();
-
-  // ARMS
-  limb(man.x,man.y-48, -20, 20);
-  limb(man.x,man.y-48,  20, 20);
-
-  // LEGS
-  leg(man.x-6,man.y-20);
-  leg(man.x+6,man.y-20);
-}
-
-function limb(x,y,dx,dy){
+  ctx.arc(man.head.x-4,man.head.y-3,2,0,6.28);
+  ctx.arc(man.head.x+4,man.head.y-3,2,0,6.28);
+  ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x+dx,y+dy);
+  ctx.arc(man.head.x,man.head.y+6,man.mouth,0,Math.PI);
   ctx.stroke();
-}
-function leg(x,y){
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x,y+18);
-  ctx.lineTo(x,y+36);
-  ctx.stroke();
-}
 
-// ===== VOICE → LIP SYNC =====
-async function enableMic(){
-  const s=await navigator.mediaDevices.getUserMedia({audio:true});
-  const a=new AudioContext();
-  const src=a.createMediaStreamSource(s);
-  const an=a.createAnalyser();
-  src.connect(an);
-  const d=new Uint8Array(an.frequencyBinCount);
-  function listen(){
-    an.getByteFrequencyData(d);
-    micLevel=d[2]/20;
-    man.mouth=2+micLevel;
-    requestAnimationFrame(listen);
+  if(debug){
+    ctx.fillStyle="red";
+    [man.head,man.neck,man.hip,man.armL,man.armR,man.legL,man.legR].forEach(drawJoint);
   }
-  listen();
+}
+
+function line(a,b){
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.stroke();
 }
 
 // ===== LOOP =====
 function loop(){
-  if(playing && usePhysics){
-    man.vy+=0.8;
-    man.y+=man.vy;
-    if(man.y>ground){man.y=ground;man.vy=0;}
+  if(usePhysics){
+    Object.values(man).forEach(j=>{
+      if(j instanceof Joint) physics(j);
+    });
+
+    stick(man.head,man.neck,20);
+    stick(man.neck,man.hip,36);
+    stick(man.neck,man.armL,30);
+    stick(man.neck,man.armR,30);
+    stick(man.hip,man.legL,40);
+    stick(man.hip,man.legR,40);
   }
+
+  man.mouth=3+Math.sin(Date.now()/120)*2;
   draw();
   requestAnimationFrame(loop);
 }
 loop();
 
-function togglePlay(){playing=!playing;}
+// ===== UTILS =====
 function togglePhysics(){usePhysics=!usePhysics;}
+function toggleDebug(){debug=!debug;}
+function saveScene(){
+  const data=JSON.stringify(man);
+  localStorage.setItem("scene",data);
+  alert("Scene saved");
+}
 </script>
 </body>
 </html>
