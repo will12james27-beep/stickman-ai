@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Studio v37.2 — Keyframe Editor</title>
+<title>Stickman Studio v37.4 — Timeline</title>
 <style>
 body{
  margin:0;
@@ -28,12 +28,17 @@ canvas{
  display:flex;
  gap:6px;
  align-items:center;
+ flex-wrap:wrap;
+ justify-content:center;
 }
 button{
  padding:5px 10px;
  border:none;
  border-radius:6px;
  cursor:pointer;
+}
+input[type=range]{
+ width:260px;
 }
 .small{font-size:12px;opacity:.7}
 </style>
@@ -42,13 +47,15 @@ button{
 
 <div id="studio">
  <div class="panel">
-  <button onclick="playing=!playing">Play / Pause</button>
+  <button onclick="togglePlay()">Play / Pause</button>
   <button onclick="addKey()">Add Keyframe</button>
   <button onclick="delKey()">Delete Keyframe</button>
   <span class="small">Frame: <span id="f">0</span></span>
  </div>
 
- <div class="small">v37.2 — Keyframe editor (core)</div>
+ <input id="timeline" type="range" min="0" max="119" value="0">
+
+ <div class="small">v37.4 — Timeline scrubber</div>
  <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -66,7 +73,7 @@ class Joint{
  clone(){return new Joint(this.x,this.y);}
 }
 
-// ===== ENGINE =====
+// ===== IK =====
 function stick(a,b,l){
  const dx=b.x-a.x,dy=b.y-a.y;
  const d=Math.hypot(dx,dy)||1;
@@ -75,17 +82,16 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
+// ===== MAN =====
 function createMan(x){
  return{
   hip:new Joint(x,ground-85),
   neck:new Joint(x,ground-155),
   head:new Joint(x,ground-195),
-
   kneeL:new Joint(x-18,ground-45),
   kneeR:new Joint(x+18,ground-45),
   footL:new Joint(x-18,ground),
   footR:new Joint(x+18,ground),
-
   elbowL:new Joint(x-40,ground-135),
   elbowR:new Joint(x+40,ground-135),
   handL:new Joint(x-60,ground-115),
@@ -99,9 +105,7 @@ function clonePose(m){
  for(let k in m) p[k]=m[k].clone();
  return p;
 }
-
 function lerp(a,b,t){return a+(b-a)*t;}
-
 function blendPose(a,b,t){
  const p={};
  for(let k in a){
@@ -112,7 +116,6 @@ function blendPose(a,b,t){
  }
  return p;
 }
-
 function applyPose(m,p){
  for(let k in p){
   m[k].x=p[k].x;
@@ -125,14 +128,12 @@ const timeline={
  duration:120,
  tracks:{ man0:[] }
 };
-
 function addKeyframe(frame,pose){
  timeline.tracks.man0 =
   timeline.tracks.man0.filter(k=>k.frame!==frame);
  timeline.tracks.man0.push({frame,pose});
  timeline.tracks.man0.sort((a,b)=>a.frame-b.frame);
 }
-
 function deleteKeyframe(frame){
  timeline.tracks.man0 =
   timeline.tracks.man0.filter(k=>k.frame!==frame);
@@ -142,7 +143,7 @@ function deleteKeyframe(frame){
 const man=createMan(210);
 addKeyframe(0,clonePose(man));
 
-// ===== IK =====
+// ===== SOLVE =====
 function solve(m){
  for(let i=0;i<6;i++){
   stick(m.neck,m.hip,70);
@@ -165,12 +166,10 @@ function line(a,b){
  ctx.lineTo(b.x,b.y);
  ctx.stroke();
 }
-
 function drawMan(m){
  ctx.beginPath();
  ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2);
  ctx.stroke();
-
  line(m.head,m.neck);
  line(m.neck,m.hip);
  line(m.hip,m.kneeL);
@@ -186,29 +185,35 @@ function drawMan(m){
 // ===== PLAYBACK =====
 let frame=0;
 let playing=true;
+const slider=document.getElementById("timeline");
 
 function getPoseAtFrame(f){
  const keys=timeline.tracks.man0;
  if(keys.length===0) return clonePose(man);
 
  let k0=keys[0], k1=keys[keys.length-1];
-
  for(let i=0;i<keys.length-1;i++){
   if(f>=keys[i].frame && f<=keys[i+1].frame){
-   k0=keys[i];
-   k1=keys[i+1];
-   break;
+   k0=keys[i]; k1=keys[i+1]; break;
   }
  }
-
  if(k0===k1) return clonePose(k0.pose);
-
  const t=(f-k0.frame)/(k1.frame-k0.frame);
  return blendPose(k0.pose,k1.pose,t);
 }
 
+function togglePlay(){ playing=!playing; }
+
+slider.oninput=()=>{
+ frame=+slider.value;
+ playing=false;
+};
+
 function loop(){
- if(playing) frame=(frame+1)%timeline.duration;
+ if(playing){
+  frame=(frame+1)%timeline.duration;
+  slider.value=frame;
+ }
  document.getElementById("f").innerText=frame;
 
  const pose=getPoseAtFrame(frame);
@@ -229,14 +234,9 @@ function loop(){
 }
 loop();
 
-// ===== UI ACTIONS =====
-function addKey(){
- addKeyframe(frame,clonePose(man));
-}
-
-function delKey(){
- deleteKeyframe(frame);
-}
+// ===== UI =====
+function addKey(){ addKeyframe(frame,clonePose(man)); }
+function delKey(){ deleteKeyframe(frame); }
 </script>
 
 </body>
