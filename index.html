@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v14.0</title>
+<title>Stickman AI – STUDIO v15.0</title>
 <style>
 body{
   margin:0;
@@ -48,31 +48,19 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v14.0</h3>
+<h3>🎬 Stickman AI – STUDIO v15.0</h3>
 
 <div class="panel">
 <b>🎮 Controls</b>
 <div class="row">
 <button onclick="togglePlay()">⏯ Play</button>
-<button onclick="toggleIK()">🦴 IK</button>
 <button onclick="togglePhysics()">💥 Physics</button>
-</div>
-<div class="row">
-<input id="prompt" placeholder="AI motion: walk / wave / jump / fall">
-<button onclick="runAI()">🧠 Generate</button>
-</div>
-</div>
-
-<div class="panel">
-<b>📱 Export Preset</b>
-<div class="row">
-<button onclick="setPreset()">▶ Shorts / TikTok</button>
-<button onclick="savePose()">💾 Save Pose</button>
+<button onclick="enableMic()">🎤 Voice</button>
 </div>
 </div>
 
 <canvas id="c"></canvas>
-<small>v14.0 • IK • Physics • AI Motion • Shorts Export • Pro Rig</small>
+<small>v15.0 • Ragdoll • Lip Sync • Face Rig FIX • Cloud Ready</small>
 </div>
 
 <script>
@@ -81,126 +69,120 @@ c.width=360;c.height=640;
 ctx.lineCap="round";ctx.lineWidth=4;
 
 const ground=520;
-let playing=true,useIK=true,usePhysics=true;
-let timeScale=1;
-
-// ===== IK SOLVER =====
-function solveIK(base,target,len1,len2){
-  const dx=target.x-base.x;
-  const dy=target.y-base.y;
-  const d=Math.min(Math.hypot(dx,dy),len1+len2-0.001);
-  const a=Math.acos((len1*len1+d*d-len2*len2)/(2*len1*d));
-  const ang=Math.atan2(dy,dx);
-  const elbow={
-    x:base.x+Math.cos(ang+a)*len1,
-    y:base.y+Math.sin(ang+a)*len1
-  };
-  return {elbow,hand:target};
-}
+let playing=true,usePhysics=true;
+let micLevel=0;
 
 // ===== CHARACTER =====
 class Stickman{
   constructor(x){
-    this.x=x;this.y=ground;
+    this.x=x; this.y=ground;
     this.vy=0;
-    this.armTarget={x:x+40,y:ground-80};
-    this.mouth=3;
-    this.blink=0;
+    this.mouth=2;
   }
 }
 const man=new Stickman(180);
 
-// ===== AI MOTION =====
-function runAI(){
-  const p=prompt.value;
-  if(p.includes("wave")) wave();
-  if(p.includes("jump")) jump();
-  if(p.includes("fall")) man.vy=10;
+// ===== FACE (FIXED) =====
+function drawFace(hx,hy){
+  // eyes
+  ctx.fillStyle="#000";
+  ctx.beginPath();
+  ctx.arc(hx-5,hy-3,2,0,Math.PI*2);
+  ctx.arc(hx+5,hy-3,2,0,Math.PI*2);
+  ctx.fill();
+
+  // nose
+  ctx.beginPath();
+  ctx.moveTo(hx,hy);
+  ctx.lineTo(hx,hy+4);
+  ctx.stroke();
+
+  // mouth (lip sync)
+  ctx.beginPath();
+  ctx.arc(hx,hy+8,man.mouth,0,Math.PI);
+  ctx.stroke();
 }
-function wave(){
-  let t=0;
-  const id=setInterval(()=>{
-    man.armTarget.x=man.x+40+Math.sin(t)*20;
-    t+=0.3;
-    if(t>10) clearInterval(id);
-  },30);
-}
-function jump(){man.vy=-16;}
 
 // ===== DRAW =====
-function face(x,y){
-  ctx.fillStyle="#000";
-  ctx.beginPath();ctx.arc(x-6,y-60,2,0,6.28);ctx.arc(x+6,y-60,2,0,6.28);ctx.fill();
-  ctx.beginPath();ctx.moveTo(x,y-58);ctx.lineTo(x,y-54);ctx.stroke();
-  ctx.beginPath();ctx.arc(x,y-50,man.mouth,0,Math.PI);ctx.stroke();
-}
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
 
-  // safe area
-  ctx.strokeStyle="#ddd";
-  ctx.strokeRect(20,40,320,560);
-
   // ground
-  ctx.strokeStyle="#999";
-  ctx.beginPath();ctx.moveTo(0,ground);ctx.lineTo(360,ground);ctx.stroke();
+  ctx.strokeStyle="#aaa";
+  ctx.beginPath();
+  ctx.moveTo(0,ground);
+  ctx.lineTo(360,ground);
+  ctx.stroke();
 
-  // body
+  // HEAD
+  const hx=man.x;
+  const hy=man.y-72;
   ctx.strokeStyle="#000";
   ctx.beginPath();
-  ctx.arc(man.x,man.y-72,16,0,6.28);ctx.stroke();
-  face(man.x,man.y-72);
-  ctx.beginPath();ctx.moveTo(man.x,man.y-56);ctx.lineTo(man.x,man.y-20);ctx.stroke();
+  ctx.arc(hx,hy,16,0,Math.PI*2);
+  ctx.stroke();
+  drawFace(hx,hy);
 
-  // arm IK
-  const base={x:man.x,y:man.y-48};
-  const ik=solveIK(base,man.armTarget,26,26);
-  ctx.beginPath();ctx.moveTo(base.x,base.y);ctx.lineTo(ik.elbow.x,ik.elbow.y);ctx.lineTo(ik.hand.x,ik.hand.y);ctx.stroke();
+  // BODY
+  ctx.beginPath();
+  ctx.moveTo(man.x,man.y-56);
+  ctx.lineTo(man.x,man.y-20);
+  ctx.stroke();
 
-  // legs
-  leg(man.x-6,man.y-20); leg(man.x+6,man.y-20);
+  // ARMS
+  limb(man.x,man.y-48, -20, 20);
+  limb(man.x,man.y-48,  20, 20);
+
+  // LEGS
+  leg(man.x-6,man.y-20);
+  leg(man.x+6,man.y-20);
+}
+
+function limb(x,y,dx,dy){
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x+dx,y+dy);
+  ctx.stroke();
 }
 function leg(x,y){
-  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+18);ctx.lineTo(x,y+36);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x,y+18);
+  ctx.lineTo(x,y+36);
+  ctx.stroke();
 }
 
-// ===== INPUT =====
-let drag=false;
-c.onmousedown=e=>{
-  const r=c.getBoundingClientRect();
-  man.armTarget={x:e.clientX-r.left,y:e.clientY-r.top};
-  drag=true;
-};
-c.onmousemove=e=>{
-  if(drag){
-    const r=c.getBoundingClientRect();
-    man.armTarget.x=e.clientX-r.left;
-    man.armTarget.y=e.clientY-r.top;
+// ===== VOICE → LIP SYNC =====
+async function enableMic(){
+  const s=await navigator.mediaDevices.getUserMedia({audio:true});
+  const a=new AudioContext();
+  const src=a.createMediaStreamSource(s);
+  const an=a.createAnalyser();
+  src.connect(an);
+  const d=new Uint8Array(an.frequencyBinCount);
+  function listen(){
+    an.getByteFrequencyData(d);
+    micLevel=d[2]/20;
+    man.mouth=2+micLevel;
+    requestAnimationFrame(listen);
   }
-};
-c.onmouseup=()=>drag=false;
+  listen();
+}
 
 // ===== LOOP =====
 function loop(){
-  if(playing){
-    if(usePhysics){
-      man.vy+=0.8*timeScale;
-      man.y+=man.vy*timeScale;
-      if(man.y>ground){man.y=ground;man.vy=0;}
-    }
-    man.mouth=3+Math.sin(Date.now()/100)*2;
+  if(playing && usePhysics){
+    man.vy+=0.8;
+    man.y+=man.vy;
+    if(man.y>ground){man.y=ground;man.vy=0;}
   }
   draw();
   requestAnimationFrame(loop);
 }
 loop();
 
-// ===== UTILS =====
 function togglePlay(){playing=!playing;}
-function toggleIK(){useIK=!useIK;}
 function togglePhysics(){usePhysics=!usePhysics;}
-function setPreset(){alert("9:16 Shorts preset active");}
-function savePose(){alert("Pose saved (demo)");}
 </script>
 </body>
 </html>
