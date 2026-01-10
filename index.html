@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v10.2</title>
+<title>Stickman AI – STUDIO v10.3</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -16,7 +16,7 @@ body{
   align-items:center;
 }
 .box{
-  width:520px;
+  width:540px;
   max-width:95%;
   background:#0b1f26;
   padding:16px;
@@ -24,7 +24,7 @@ body{
   box-shadow:0 0 40px #00ffff55;
 }
 h3{text-align:center}
-input,button{
+input,button,select{
   width:100%;
   padding:9px;
   margin-top:6px;
@@ -42,6 +42,12 @@ canvas{
 }
 .row{display:flex;gap:8px}
 .row>*{flex:1}
+.panel{
+  background:#072028;
+  padding:8px;
+  border-radius:10px;
+  margin-top:8px;
+}
 .hidden{display:none}
 small{text-align:center;opacity:.7;display:block}
 </style>
@@ -50,7 +56,7 @@ small{text-align:center;opacity:.7;display:block}
 <body>
 <div class="box">
 
-<h3>🎬 Stickman AI – STUDIO v10.2</h3>
+<h3>🎬 Stickman AI – STUDIO v10.3</h3>
 
 <div id="loginBox">
 <input id="username" placeholder="Username">
@@ -64,7 +70,30 @@ small{text-align:center;opacity:.7;display:block}
 <button onclick="logout()" style="width:auto">Logout</button>
 </div>
 
-<input id="aiText" placeholder="girl run 2 jump 1 | boy stand 3 | camera follow | background sky">
+<!-- SCENE EDITOR -->
+<div class="panel">
+<b>🎞 Scene Editor</b>
+<input id="aiText" placeholder="girl run 2 | boy stand 2 | camera follow | background sky">
+<div class="row">
+<button onclick="addScene()">➕ Scene</button>
+<button onclick="playStory()">▶ Story</button>
+</div>
+</div>
+
+<!-- CHARACTER DESIGN -->
+<div class="panel">
+<b>🧍 Character</b>
+<div class="row">
+<select onchange="girl.style=this.value">
+<option value="dress">Girl Dress</option>
+<option value="sport">Girl Sport</option>
+</select>
+<select onchange="boy.style=this.value">
+<option value="shirt">Boy Shirt</option>
+<option value="hoodie">Boy Hoodie</option>
+</select>
+</div>
+</div>
 
 <div class="row">
 <button onclick="parseAI()">🧠 Generate</button>
@@ -73,7 +102,12 @@ small{text-align:center;opacity:.7;display:block}
 
 <canvas id="c"></canvas>
 
-<small>v10.2 • Animation Fix • Jump • Scene • Camera</small>
+<div class="row">
+<button onclick="startRecord()">🎥 Record</button>
+<button onclick="stopRecord()">💾 Save GIF</button>
+</div>
+
+<small>v10.3 • Rig Fix • Scene • Character • Story • Export</small>
 </div>
 </div>
 
@@ -107,13 +141,15 @@ start();
 // ===== STICKMAN =====
 class Stickman{
   constructor(x,type){
-    this.baseX=x; this.x=x; this.y=ground;
+    this.baseX=x;
+    this.x=x; this.y=ground;
     this.vy=0;
     this.type=type;
+    this.style="default";
     this.timeline=[];
     this.ti=0; this.tf=0;
-    this.dir=1; this.speed=1;
     this.action="stand";
+    this.dir=1; this.speed=1;
   }
 }
 const girl=new Stickman(140,"girl");
@@ -128,41 +164,47 @@ function drawBG(){
 
 function draw(ch){
   const x=ch.x-camX;
+  const hipY=ch.y-10;
   let swing=0;
-
-  if(ch.action==="run") swing=Math.sin(ch.tf*0.25)*12;
+  if(ch.action==="run") swing=Math.sin(ch.tf*0.25)*14;
   if(ch.action==="stand") swing=Math.sin(ch.tf*0.05)*2;
 
   // head
   ctx.beginPath();
-  ctx.arc(x,ch.y-50,12,0,Math.PI*2);
+  ctx.arc(x,ch.y-52,12,0,Math.PI*2);
   ctx.stroke();
 
-  // body
+  // torso
   ctx.beginPath();
-  ctx.moveTo(x,ch.y-38);
-  ctx.lineTo(x,ch.y-10);
+  ctx.moveTo(x,ch.y-40);
+  ctx.lineTo(x,hipY);
   ctx.stroke();
 
   // arms
-  limb(x,ch.y-32,swing*0.03);
-  limb(x,ch.y-32,-swing*0.03);
+  limb(x,ch.y-34,swing*0.03,18);
+  limb(x,ch.y-34,-swing*0.03,18);
 
-  // legs
-  leg(x-5,ch.y-10,swing*0.04);
-  leg(x+5,ch.y-10,-swing*0.04);
+  // legs (FIXED – 2 JOINTS)
+  leg2(x-6,hipY,swing*0.04);
+  leg2(x+6,hipY,-swing*0.04);
 }
 
-function limb(x,y,a){
+function limb(x,y,a,l){
   ctx.beginPath();
   ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(a)*16,y+Math.cos(a)*16);
+  ctx.lineTo(x+Math.sin(a)*l,y+Math.cos(a)*l);
   ctx.stroke();
 }
-function leg(x,y,a){
+
+function leg2(x,y,a){
+  const kneeY=y+14;
+  const footY=y+32;
+  const dx=Math.sin(a)*10;
+
   ctx.beginPath();
   ctx.moveTo(x,y);
-  ctx.lineTo(x+Math.sin(a)*14,y+28);
+  ctx.lineTo(x+dx,kneeY);
+  ctx.lineTo(x+dx,footY);
   ctx.stroke();
 }
 
@@ -173,18 +215,8 @@ function animate(){
       const cur=ch.timeline[ch.ti]||{action:"stand",frames:9999};
       ch.action=cur.action;
       ch.tf++;
-
-      if(ch.tf>cur.frames){
-        ch.tf=0;
-        ch.ti++;
-      }
-
+      if(ch.tf>cur.frames){ch.tf=0;ch.ti++;}
       if(ch.action==="run") ch.x+=ch.speed*ch.dir;
-      if(ch.action==="jump" && ch.vy===0) ch.vy=-12;
-
-      ch.vy+=0.6;
-      ch.y+=ch.vy;
-      if(ch.y>ground){ch.y=ground;ch.vy=0;}
     });
   }
 
@@ -199,14 +231,25 @@ function animate(){
 }
 animate();
 
-// ===== AI PARSER =====
+// ===== SCENE / AI =====
+let scenes=[];
+function addScene(){scenes.push(aiText.value);}
+function playStory(){
+  let i=0;
+  function next(){
+    if(i>=scenes.length) return;
+    aiText.value=scenes[i++];
+    parseAI();
+    setTimeout(next,2000);
+  }
+  next();
+}
+
 function parseAI(){
   chars.forEach(ch=>{
     ch.timeline=[];
     ch.ti=0; ch.tf=0;
     ch.x=ch.baseX;
-    ch.y=ground;
-    ch.vy=0;
   });
 
   aiText.value.toLowerCase().split("|").forEach(b=>{
@@ -225,6 +268,21 @@ function parseAI(){
   });
 }
 
+// ===== EXPORT =====
+let recorder,chunks=[];
+function startRecord(){
+  recorder=new MediaRecorder(c.captureStream(60));
+  chunks=[];
+  recorder.ondataavailable=e=>chunks.push(e.data);
+  recorder.onstop=()=>{
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob(chunks,{type:"video/webm"}));
+    a.download="stickman_story.webm";
+    a.click();
+  };
+  recorder.start();
+}
+function stopRecord(){recorder&&recorder.stop();}
 function togglePlay(){playing=!playing;}
 </script>
 </body>
