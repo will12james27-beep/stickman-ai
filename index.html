@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v28.0</title>
+<title>Stickman AI – STUDIO v28.1</title>
 <style>
 body{
   margin:0;
@@ -12,13 +12,16 @@ body{
   justify-content:center;
   align-items:center;
   font-family:Arial;
-  color:white;
 }
 #studio{display:flex;flex-direction:column;gap:10px;align-items:center}
 canvas{background:#fff;border-radius:16px}
-.panel{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-button,input{padding:6px 10px;border-radius:6px;border:none;cursor:pointer}
-input[type=range]{width:140px}
+.panel{display:flex;gap:6px}
+button{
+  padding:6px 12px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -33,142 +36,162 @@ input[type=range]{width:140px}
 </div>
 
 <script>
-const c=document.getElementById("c"),ctx=c.getContext("2d");
-ctx.lineCap="round"; ctx.lineWidth=4;
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
+ctx.lineCap="round";
+ctx.lineWidth=4;
 
-const W=420,H=640,ground=520;
-let time=0,mode="walk",camX=0;
+const W=420, H=640, ground=520;
+let time=0, mode="walk", camX=0;
 
 // ===== JOINT =====
-class Joint{constructor(x,y){this.x=x;this.y=y;}}
+class Joint{
+  constructor(x,y){this.x=x;this.y=y;}
+}
 
-// ===== MAN =====
+// ===== STICKMAN =====
 function createMan(x){
- return{
-  hip:new Joint(x,ground-80),
-  neck:new Joint(x,ground-150),
-  head:new Joint(x,ground-190),
-  kneeL:new Joint(x-20,ground-40),
-  kneeR:new Joint(x+20,ground-40),
-  footL:new Joint(x-20,ground),
-  footR:new Joint(x+20,ground),
-  elbowL:new Joint(x-45,ground-130),
-  elbowR:new Joint(x+45,ground-130),
-  handL:new Joint(x-60,ground-105),
-  handR:new Joint(x+60,ground-105),
-  step:0
- };
+  return{
+    hip:new Joint(x,ground-80),
+    neck:new Joint(x,ground-150),
+    head:new Joint(x,ground-190),
+    kneeL:new Joint(x-20,ground-40),
+    kneeR:new Joint(x+20,ground-40),
+    footL:new Joint(x-20,ground),
+    footR:new Joint(x+20,ground),
+    elbowL:new Joint(x-45,ground-130),
+    elbowR:new Joint(x+45,ground-130),
+    handL:new Joint(x-60,ground-105),
+    handR:new Joint(x+60,ground-105),
+    step:0
+  };
 }
 
 const men=[createMan(200)];
 
 // ===== IK =====
-function stick(a,b,l){
- const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
- const diff=(d-l)/d*0.5;
- a.x+=dx*diff; a.y+=dy*diff;
- b.x-=dx*diff; b.y-=dy*diff;
+function stick(a,b,len){
+  const dx=b.x-a.x, dy=b.y-a.y;
+  const d=Math.hypot(dx,dy)||1;
+  const diff=(d-len)/d*0.5;
+  a.x+=dx*diff; a.y+=dy*diff;
+  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== WALK (FIXED) =====
+// ===== WALK (STABLE) =====
 function walk(m){
- m.step+=0.06;
- const s=Math.sin(m.step);
- const stepLen=26;
+  m.step+=0.06;
+  const s=Math.sin(m.step);
+  const stride=28;
 
- // FOOT LOCK SYSTEM
- const leftOnGround=s>0;
- const rightOnGround=!leftOnGround;
+  const leftDown=s>0;
 
- if(leftOnGround){
-   m.footL.x=m.hip.x-stepLen;
-   m.footL.y=ground;
-   m.footR.x=m.hip.x+stepLen+s*22;
-   m.footR.y=ground-Math.max(0,-s)*28;
- }else{
-   m.footR.x=m.hip.x+stepLen;
-   m.footR.y=ground;
-   m.footL.x=m.hip.x-stepLen+s*22;
-   m.footL.y=ground-Math.max(0,s)*28;
- }
+  if(leftDown){
+    m.footL.x=m.hip.x-stride;
+    m.footL.y=ground;
+    m.footR.x=m.hip.x+stride+s*24;
+    m.footR.y=ground-Math.max(0,-s)*30;
+  }else{
+    m.footR.x=m.hip.x+stride;
+    m.footR.y=ground;
+    m.footL.x=m.hip.x-stride+s*24;
+    m.footL.y=ground-Math.max(0,s)*30;
+  }
 
- // HIP follows grounded foot
- m.hip.x+=(leftOnGround?1.1:1.1);
- m.hip.y=ground-80-Math.abs(s)*10;
+  m.hip.x+=1.2;
+  m.hip.y=ground-80-Math.abs(s)*10;
 
- // ARMS
- m.handL.x=m.neck.x-45-s*22;
- m.handR.x=m.neck.x+45+s*22;
+  m.handL.x=m.neck.x-45-s*22;
+  m.handR.x=m.neck.x+45+s*22;
 
- camX=m.hip.x-W/2;
+  camX=m.hip.x-W/2;
 }
 
 // ===== IDLE =====
 function idle(m){
- m.hip.y+=Math.sin(time*0.05)*0.5;
- m.neck.y+=Math.sin(time*0.07)*0.5;
+  m.hip.y+=Math.sin(time*0.05)*0.4;
+  m.neck.y+=Math.sin(time*0.07)*0.4;
 }
 
 // ===== WAVE =====
 function wave(m){
- m.handR.y=m.neck.y-60-Math.sin(time*0.3)*30;
- m.handR.x=m.neck.x+55;
+  m.handR.y=m.neck.y-60-Math.sin(time*0.3)*30;
+  m.handR.x=m.neck.x+55;
 }
 
 // ===== SOLVE =====
 function solve(){
- men.forEach(m=>{
-  for(let i=0;i<8;i++){
-   stick(m.head,m.neck,40);
-   stick(m.neck,m.hip,75);
-   stick(m.hip,m.kneeL,40); stick(m.kneeL,m.footL,40);
-   stick(m.hip,m.kneeR,40); stick(m.kneeR,m.footR,40);
-   stick(m.neck,m.elbowL,35); stick(m.elbowL,m.handL,35);
-   stick(m.neck,m.elbowR,35); stick(m.elbowR,m.handR,35);
-  }
- });
+  men.forEach(m=>{
+    for(let i=0;i<8;i++){
+      stick(m.head,m.neck,40);
+      stick(m.neck,m.hip,75);
+      stick(m.hip,m.kneeL,40); stick(m.kneeL,m.footL,40);
+      stick(m.hip,m.kneeR,40); stick(m.kneeR,m.footR,40);
+      stick(m.neck,m.elbowL,35); stick(m.elbowL,m.handL,35);
+      stick(m.neck,m.elbowR,35); stick(m.elbowR,m.handR,35);
+    }
+  });
 }
 
 // ===== DRAW =====
 function line(a,b){
- ctx.beginPath();ctx.moveTo(a.x,b.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.stroke();
 }
+
 function drawMan(m){
- ctx.beginPath(); ctx.arc(m.head.x,m.head.y,16,0,Math.PI*2); ctx.stroke();
- line(m.head,m.neck); line(m.neck,m.hip);
- line(m.hip,m.kneeL); line(m.kneeL,m.footL);
- line(m.hip,m.kneeR); line(m.kneeR,m.footR);
- line(m.neck,m.elbowL); line(m.elbowL,m.handL);
- line(m.neck,m.elbowR); line(m.elbowR,m.handR);
+  ctx.beginPath();
+  ctx.arc(m.head.x,m.head.y,16,0,Math.PI*2);
+  ctx.stroke();
+
+  line(m.head,m.neck);
+  line(m.neck,m.hip);
+
+  line(m.hip,m.kneeL);
+  line(m.kneeL,m.footL);
+
+  line(m.hip,m.kneeR);
+  line(m.kneeR,m.footR);
+
+  line(m.neck,m.elbowL);
+  line(m.elbowL,m.handL);
+
+  line(m.neck,m.elbowR);
+  line(m.elbowR,m.handR);
 }
 
 function draw(){
- ctx.clearRect(0,0,W,H);
- ctx.strokeStyle="#ccc";
- ctx.beginPath();
- ctx.moveTo(-camX,ground);
- ctx.lineTo(W-camX,ground);
- ctx.stroke();
+  ctx.clearRect(0,0,W,H);
 
- ctx.strokeStyle="#000";
- ctx.save(); ctx.translate(-camX,0);
- men.forEach(drawMan);
- ctx.restore();
+  ctx.strokeStyle="#ccc";
+  ctx.beginPath();
+  ctx.moveTo(-camX,ground);
+  ctx.lineTo(W-camX,ground);
+  ctx.stroke();
+
+  ctx.strokeStyle="#000";
+  ctx.save();
+  ctx.translate(-camX,0);
+  men.forEach(drawMan);
+  ctx.restore();
 }
 
 // ===== LOOP =====
 function loop(){
- time++;
- men.forEach(m=>{
-  if(mode==="walk")walk(m);
-  if(mode==="idle")idle(m);
-  if(mode==="wave")wave(m);
- });
- solve();
- draw();
- requestAnimationFrame(loop);
+  time++;
+  men.forEach(m=>{
+    if(mode==="walk") walk(m);
+    if(mode==="idle") idle(m);
+    if(mode==="wave") wave(m);
+  });
+  solve();
+  draw();
+  requestAnimationFrame(loop);
 }
 loop();
 </script>
+
 </body>
 </html>
