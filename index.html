@@ -145,6 +145,25 @@ if (action === 'jump') {
 }
 
 }
+function drawArm(shoulderX, shoulderY, phase) {
+  const upper = 14;
+  const lower = 14;
+
+  const a1 = Math.sin(phase) * 0.8;
+  const a2 = Math.sin(phase + 0.6) * 0.6;
+
+  const elbowX = shoulderX + Math.sin(a1) * upper;
+  const elbowY = shoulderY + Math.cos(a1) * upper;
+
+  const handX = elbowX + Math.sin(a2) * lower;
+  const handY = elbowY + Math.cos(a2) * lower;
+
+  ctx.beginPath();
+  ctx.moveTo(shoulderX, shoulderY);
+  ctx.lineTo(elbowX, elbowY);
+  ctx.lineTo(handX, handY);
+  ctx.stroke();
+}
 
 
 function drawLeg(hipX, hipY, dir) {
