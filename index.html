@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v37.0 (Animation Blending)</title>
+<title>Stickman AI – STUDIO v37.1 (Crowd Blending)</title>
 <style>
 body{
  margin:0;
@@ -26,7 +26,7 @@ canvas{
 }
 .panel{
  display:flex;
- gap:8px;
+ gap:10px;
  align-items:center;
 }
 input[type=range]{
@@ -53,9 +53,7 @@ button{
     <input id="blend" type="range" min="0" max="100" value="0">
   </div>
 
-  <input id="slider" type="range" min="0" max="1000" value="0">
-
-  <div class="small">v37.0 — Idle ↔ Run blending</div>
+  <div class="small">v37.1 — Multi-character animation blending</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -65,7 +63,6 @@ const ctx=c.getContext("2d");
 ctx.lineCap="round";
 ctx.lineWidth=4;
 
-const slider=document.getElementById("slider");
 const blendSlider=document.getElementById("blend");
 
 const W=420,H=640,ground=520;
@@ -76,93 +73,64 @@ class Joint{
  clone(){return {x:this.x,y:this.y};}
 }
 
-// ===== STICKMAN =====
-function createMan(){
+// ===== STICKMAN FACTORY =====
+function createMan(x){
+ const base={
+  hip:new Joint(x,ground-85),
+  neck:new Joint(x,ground-155),
+  head:new Joint(x,ground-195),
+
+  kneeL:new Joint(x-20,ground-45),
+  kneeR:new Joint(x+20,ground-45),
+  footL:new Joint(x-20,ground),
+  footR:new Joint(x+20,ground),
+
+  elbowL:new Joint(x-40,ground-135),
+  elbowR:new Joint(x+40,ground-135),
+  handL:new Joint(x-60,ground-115),
+  handR:new Joint(x+60,ground-115),
+ };
  return{
-  hip:new Joint(210,ground-85),
-  neck:new Joint(210,ground-155),
-  head:new Joint(210,ground-195),
-
-  kneeL:new Joint(190,ground-45),
-  kneeR:new Joint(230,ground-45),
-  footL:new Joint(190,ground),
-  footR:new Joint(230,ground),
-
-  elbowL:new Joint(170,ground-135),
-  elbowR:new Joint(250,ground-135),
-  handL:new Joint(150,ground-115),
-  handR:new Joint(270,ground-115),
+  joints:base,
+  idlePose:clonePose(base),
+  phase:Math.random(),
+  speed:0.8+Math.random()*0.4
  };
 }
 
-const man=createMan();
-
-// ===== IDLE POSE =====
-const idlePose={};
-for(let k in man) idlePose[k]=man[k].clone();
-
-// ===== RUN ANIMATION (POSES) =====
-const runTimeline={
- duration:1,
- poses:[
-  {t:0, pose:null},
-  {t:0.5, pose:null},
-  {t:1, pose:null}
- ]
-};
-
-// generate run poses
-function buildRun(){
- const phases=[-1,1,-1];
- runTimeline.poses.forEach((p,i)=>{
-  const m=createMan();
-  const s=phases[i];
-
-  m.footL.y=ground-Math.max(0,s)*30;
-  m.footR.y=ground-Math.max(0,-s)*30;
-
-  m.handL.x-=s*25;
-  m.handR.x+=s*25;
-
-  m.hip.y=ground-85-Math.abs(s)*8;
-  m.neck.y=m.hip.y-70;
-  m.head.y=m.neck.y-40;
-
-  const pose={};
-  for(let k in m) pose[k]=m[k].clone();
-  p.pose=pose;
- });
-}
-buildRun();
-
-// ===== INTERPOLATION =====
-function lerp(a,b,t){return a+(b-a)*t;}
-
-function interpPose(a,b,t){
+function clonePose(joints){
  const p={};
- for(let k in a){
-  p[k]={
-   x:lerp(a[k].x,b[k].x,t),
-   y:lerp(a[k].y,b[k].y,t)
-  };
- }
+ for(let k in joints) p[k]=joints[k].clone();
  return p;
 }
 
-function sampleRun(time){
- let a=runTimeline.poses[0],b=runTimeline.poses.at(-1);
- for(let i=0;i<runTimeline.poses.length-1;i++){
-  if(time>=runTimeline.poses[i].t && time<=runTimeline.poses[i+1].t){
-   a=runTimeline.poses[i];
-   b=runTimeline.poses[i+1];
-   break;
-  }
- }
- const t=(time-a.t)/(b.t-a.t||1);
- return interpPose(a.pose,b.pose,t);
+// ===== CROWD =====
+const crowd=[];
+for(let i=0;i<5;i++){
+ crowd.push(createMan(140+i*60));
+}
+
+// ===== RUN POSE (procedural) =====
+function sampleRun(base,phase){
+ const s=Math.sin(phase);
+ const p=clonePose(base);
+
+ p.footL.y=ground-Math.max(0,s)*30;
+ p.footR.y=ground-Math.max(0,-s)*30;
+
+ p.handL.x-=s*25;
+ p.handR.x+=s*25;
+
+ p.hip.y=ground-85-Math.abs(s)*8;
+ p.neck.y=p.hip.y-70;
+ p.head.y=p.neck.y-40;
+
+ return p;
 }
 
 // ===== BLEND =====
+function lerp(a,b,t){return a+(b-a)*t;}
+
 function blendPose(a,b,w){
  const p={};
  for(let k in a){
@@ -182,30 +150,22 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-function solve(){
+function solve(j){
  for(let i=0;i<6;i++){
-  stick(man.neck,man.hip,70);
-  stick(man.head,man.neck,40);
+  stick(j.neck,j.hip,70);
+  stick(j.head,j.neck,40);
 
-  stick(man.hip,man.kneeL,40);
-  stick(man.kneeL,man.footL,40);
+  stick(j.hip,j.kneeL,40);
+  stick(j.kneeL,j.footL,40);
 
-  stick(man.hip,man.kneeR,40);
-  stick(man.kneeR,man.footR,40);
+  stick(j.hip,j.kneeR,40);
+  stick(j.kneeR,j.footR,40);
 
-  stick(man.neck,man.elbowL,35);
-  stick(man.elbowL,man.handL,35);
+  stick(j.neck,j.elbowL,35);
+  stick(j.elbowL,j.handL,35);
 
-  stick(man.neck,man.elbowR,35);
-  stick(man.elbowR,man.handR,35);
- }
-}
-
-// ===== APPLY =====
-function applyPose(p){
- for(let k in p){
-  man[k].x=p[k].x;
-  man[k].y=p[k].y;
+  stick(j.neck,j.elbowR,35);
+  stick(j.elbowR,j.handR,35);
  }
 }
 
@@ -217,7 +177,31 @@ function line(a,b){
  ctx.stroke();
 }
 
-function draw(){
+function drawMan(j){
+ ctx.beginPath();
+ ctx.arc(j.head.x,j.head.y,14,0,Math.PI*2);
+ ctx.stroke();
+
+ line(j.head,j.neck);
+ line(j.neck,j.hip);
+
+ line(j.hip,j.kneeL);
+ line(j.kneeL,j.footL);
+
+ line(j.hip,j.kneeR);
+ line(j.kneeR,j.footR);
+
+ line(j.neck,j.elbowL);
+ line(j.elbowL,j.handL);
+
+ line(j.neck,j.elbowR);
+ line(j.elbowR,j.handR);
+}
+
+// ===== LOOP =====
+let playing=true;
+
+function loop(){
  ctx.clearRect(0,0,W,H);
 
  ctx.strokeStyle="#ccc";
@@ -227,44 +211,23 @@ function draw(){
  ctx.stroke();
 
  ctx.strokeStyle="#000";
- ctx.beginPath();
- ctx.arc(man.head.x,man.head.y,16,0,Math.PI*2);
- ctx.stroke();
 
- line(man.head,man.neck);
- line(man.neck,man.hip);
-
- line(man.hip,man.kneeL);
- line(man.kneeL,man.footL);
-
- line(man.hip,man.kneeR);
- line(man.kneeR,man.footR);
-
- line(man.neck,man.elbowL);
- line(man.elbowL,man.handL);
-
- line(man.neck,man.elbowR);
- line(man.elbowR,man.handR);
-}
-
-// ===== LOOP =====
-let time=0;
-let playing=true;
-
-function loop(){
- if(playing){
-  time+=1/60;
-  if(time>runTimeline.duration) time=0;
-  slider.value=(time/runTimeline.duration)*1000;
- }
-
- const runPose=sampleRun(time);
  const w=blendSlider.value/100;
 
- const finalPose=blendPose(idlePose,runPose,w);
- applyPose(finalPose);
- solve();
- draw();
+ crowd.forEach(m=>{
+  if(playing) m.phase+=0.08*m.speed;
+
+  const runPose=sampleRun(m.joints,m.phase);
+  const finalPose=blendPose(m.idlePose,runPose,w);
+
+  for(let k in finalPose){
+   m.joints[k].x=finalPose[k].x;
+   m.joints[k].y=finalPose[k].y;
+  }
+
+  solve(m.joints);
+  drawMan(m.joints);
+ });
 
  requestAnimationFrame(loop);
 }
