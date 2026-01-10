@@ -15,7 +15,7 @@ body {
   color: white;
 }
 .box {
-  width: 320px;
+  width: 340px;
   padding: 20px;
   border-radius: 20px;
   background: #0b1f26;
@@ -28,6 +28,7 @@ input, button {
   border-radius: 8px;
   border: none;
   font-size: 16px;
+  margin-top: 6px;
 }
 button {
   background: cyan;
@@ -46,6 +47,8 @@ canvas {
   <h2>🤖 Stickman AI</h2>
   <input id="text" placeholder="run jump">
   <button onclick="run()">Generate</button>
+  <button onclick="startRecord()">🎥 Start Video</button>
+  <button onclick="stopRecord()">⏹ Stop & Save</button>
   <p id="status"></p>
   <canvas id="c" width="280" height="400"></canvas>
 </div>
@@ -66,20 +69,54 @@ let actions = [];
 let actionIndex = 0;
 let frame = 0;
 
+// ===== VIDEO RECORD =====
+let recorder;
+let chunks = [];
+
+function startRecord() {
+  const stream = c.captureStream(60);
+  recorder = new MediaRecorder(stream);
+  chunks = [];
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stickman.webm';
+    a.click();
+  };
+  recorder.start();
+  document.getElementById('status').innerText = 'Recording...';
+}
+
+function stopRecord() {
+  recorder.stop();
+  document.getElementById('status').innerText = 'Video saved ✅';
+}
+
+// ===== EASING =====
+function easeInOut(t) {
+  return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+}
+
 function draw() {
   ctx.clearRect(0, 0, c.width, c.height);
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 3;
 
+  let t = (Math.sin(frame * 0.08) + 1) / 2;
+  let smooth = easeInOut(t);
+
   // ===== BODY LEAN =====
   let lean = 0;
   if (action === 'run') {
-    lean = Math.sin(frame * 0.15) * 6;
+    lean = (smooth - 0.5) * 14;
   }
 
   // ===== HEAD =====
   ctx.beginPath();
-  ctx.arc(x + lean * 0.5, y - 35, 10, 0, Math.PI * 2);
+  ctx.arc(x + lean * 0.4, y - 35, 10, 0, Math.PI * 2);
   ctx.stroke();
 
   // ===== BODY =====
@@ -90,18 +127,16 @@ function draw() {
 
   // ===== SHOULDER =====
   let shoulderX = x + lean;
-  let shoulderY = y - 22 + Math.sin(frame * 0.15) * 2;
+  let shoulderY = y - 22 + smooth * 3;
 
   // ===== ARMS =====
-  const phase = frame * 0.15;
-
   if (action === 'jump') {
     drawArm(shoulderX, shoulderY, -1.5);
-    drawArm(shoulderX, shoulderY,  1.5);
+    drawArm(shoulderX, shoulderY, 1.5);
   }
   else if (action === 'run') {
-    drawArm(shoulderX, shoulderY, phase + Math.PI);
-    drawArm(shoulderX, shoulderY, phase);
+    drawArm(shoulderX, shoulderY, frame * 0.15 + Math.PI);
+    drawArm(shoulderX, shoulderY, frame * 0.15);
   }
   else {
     drawArm(shoulderX, shoulderY, 0.3);
@@ -138,14 +173,12 @@ function drawArm(sx, sy, phase) {
   ctx.stroke();
 }
 
-// ===== NEXT STEP INCLUDED: FOOT IMPACT / WEIGHT =====
 function drawLeg(hx, hy, dir) {
   const thigh = 18;
   const calf = 18;
 
   let phase = frame * 0.15 + dir;
-
-  let lift = Math.max(0, Math.sin(phase)) * 4;
+  let lift = Math.max(0, Math.sin(phase)) * 6;
 
   const a1 = Math.sin(phase) * 0.6;
   const a2 = Math.sin(phase + 0.8) * 0.6;
@@ -168,16 +201,12 @@ function animate() {
 
   if (actions.length > 1 && frame % 120 === 0) {
     actionIndex++;
-    if (actionIndex < actions.length) {
-      action = actions[actionIndex];
-    }
+    if (actionIndex < actions.length) action = actions[actionIndex];
   }
 
-  if (action === 'run') x += 1.5;
+  if (action === 'run') x += 1.4;
 
-  if (action === 'jump' && y === ground) {
-    velocityY = -11;
-  }
+  if (action === 'jump' && y === ground) velocityY = -11;
 
   velocityY += gravity;
   y += velocityY;
@@ -206,10 +235,6 @@ function run() {
   if (actions.length === 0) actions.push('stand');
 
   action = actions[0];
-
-  setTimeout(() => {
-    document.getElementById('status').innerText = 'Done ✅';
-  }, 400);
 }
 
 animate();
