@@ -102,15 +102,24 @@ if (action === 'run') {
   ctx.arc(x, y - 35, 10, 0, Math.PI * 2);
   ctx.stroke();
 
-  // body
-  ctx.beginPath();
-  ctx.moveTo(x, y - 25);
-  ctx.lineTo(x, y);
-  ctx.stroke();
+// ===== BODY LEAN =====
+let lean = 0;
+
+if (action === 'run') {
+  lean = Math.sin(frame * 0.15) * 6;
+}
+
+ctx.beginPath();
+ctx.moveTo(x, y - 25);
+ctx.lineTo(x + lean, y);
+ctx.stroke();
+
 
 // ===== ARMS =====
-const armLen = 20;
-let armSwing = 0;
+const phase = frame * 0.15;
+
+drawArm(shoulderX, shoulderY, phase + Math.PI);
+drawArm(shoulderX, shoulderY, phase);
 
 if (action === 'run') {
   armSwing = Math.sin(frame * 0.15) * 0.8;
