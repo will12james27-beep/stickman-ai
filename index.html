@@ -1,20 +1,25 @@
 <script>
+document.addEventListener("DOMContentLoaded",()=>{
+
 const c=document.getElementById("c");
+if(!c) return;
 const ctx=c.getContext("2d");
-c.width=360; c.height=640;
-ctx.lineCap="round"; ctx.lineWidth=4;
+
+c.width=360; 
+c.height=640;
+ctx.lineCap="round"; 
+ctx.lineWidth=4;
 
 const ground=520;
 const GRAVITY=0.9;
 
 let debug=false;
 let time=0;
-let state="idle"; // idle | walk | jump | sit | ragdoll | play
+let state="idle";
 
 // ===== TIMELINE =====
 let recording=false;
 let timeline=[];
-let playing=false;
 let playIndex=0;
 
 // ===== JOINT =====
@@ -76,36 +81,25 @@ function walk(){
   man.legR.y = ground - Math.max(0,-step*12);
 }
 
-// ===== AI COMMANDS =====
-function aiCommand(cmd){
+// ===== AI COMMAND =====
+window.aiCommand=function(cmd){
   cmd=cmd.trim();
   if(cmd==="walk") state="walk";
   if(cmd==="stop") state="idle";
-  if(cmd==="jump"){
-    man.hip.vy=-16;
-    state="jump";
-  }
+  if(cmd==="jump"){ man.hip.vy=-16; state="jump"; }
   if(cmd==="sit") state="sit";
-  document.getElementById("cmd").value="";
+
+  const cmdInput=document.getElementById("cmd");
+  if(cmdInput) cmdInput.value="";
 }
 
 // ===== UI =====
-function toggleRagdoll(){
+window.toggleRagdoll=function(){
   state = state==="ragdoll" ? "idle" : "ragdoll";
 }
-function toggleDebug(){debug=!debug;}
-
-// ===== TIMELINE =====
-function toggleRecord(){
-  recording=!recording;
-  if(recording) timeline=[];
-}
-function playTimeline(){
-  if(!timeline.length) return;
-  playing=true;
-  state="play";
-  playIndex=0;
-}
+window.toggleDebug=function(){debug=!debug;}
+window.toggleRecord=function(){recording=!recording; if(recording) timeline=[];}
+window.playTimeline=function(){ if(timeline.length){ state="play"; playIndex=0; }}
 
 // ===== DRAW =====
 function line(a,b){
@@ -117,6 +111,7 @@ function line(a,b){
 
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
+
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
   ctx.moveTo(0,ground);
@@ -149,7 +144,7 @@ function draw(){
 function loop(){
   if(state==="play"){
     const f=timeline[playIndex++];
-    if(!f){ state="idle"; }
+    if(!f) state="idle";
     else Object.keys(f).forEach(k=>{
       man[k].x=f[k].x;
       man[k].y=f[k].y;
@@ -180,4 +175,6 @@ function loop(){
   requestAnimationFrame(loop);
 }
 loop();
+
+});
 </script>
