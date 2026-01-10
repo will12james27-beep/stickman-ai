@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v36.3 (Pose Snapshot)</title>
+<title>Stickman AI – STUDIO v37.0 (Animation Blending)</title>
 <style>
 body{
-  margin:0;
-  background:#0b0f14;
-  height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  font-family:Arial;
-  color:white;
+ margin:0;
+ background:#0b0f14;
+ height:100vh;
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ font-family:Arial;
+ color:white;
 }
 #studio{
  display:flex;
@@ -23,15 +23,14 @@ body{
 canvas{
  background:#fff;
  border-radius:16px;
- cursor:pointer;
 }
 .panel{
  display:flex;
- gap:6px;
+ gap:8px;
  align-items:center;
 }
 input[type=range]{
- width:300px;
+ width:260px;
 }
 button{
  padding:6px 12px;
@@ -49,14 +48,14 @@ button{
 
 <div id="studio">
   <div class="panel">
-    <button onclick="togglePlay()">Play / Pause</button>
-    <button onclick="resetTime()">Reset</button>
-    <button onclick="clearKeys()">Clear Poses</button>
+    <button onclick="playing=!playing">Play</button>
+    <span>Blend</span>
+    <input id="blend" type="range" min="0" max="100" value="0">
   </div>
 
   <input id="slider" type="range" min="0" max="1000" value="0">
 
-  <div class="small">v36.3 — Pose Snapshot (click canvas)</div>
+  <div class="small">v37.0 — Idle ↔ Run blending</div>
   <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -67,46 +66,74 @@ ctx.lineCap="round";
 ctx.lineWidth=4;
 
 const slider=document.getElementById("slider");
+const blendSlider=document.getElementById("blend");
 
 const W=420,H=640,ground=520;
 
 // ===== JOINT =====
 class Joint{
- constructor(x,y){
-  this.x=x;
-  this.y=y;
- }
- clone(){
-  return {x:this.x,y:this.y};
- }
+ constructor(x,y){this.x=x;this.y=y;}
+ clone(){return {x:this.x,y:this.y};}
 }
 
 // ===== STICKMAN =====
-const man={
- hip:new Joint(210,ground-85),
- neck:new Joint(210,ground-155),
- head:new Joint(210,ground-195),
+function createMan(){
+ return{
+  hip:new Joint(210,ground-85),
+  neck:new Joint(210,ground-155),
+  head:new Joint(210,ground-195),
 
- kneeL:new Joint(190,ground-45),
- kneeR:new Joint(230,ground-45),
- footL:new Joint(190,ground),
- footR:new Joint(230,ground),
+  kneeL:new Joint(190,ground-45),
+  kneeR:new Joint(230,ground-45),
+  footL:new Joint(190,ground),
+  footR:new Joint(230,ground),
 
- elbowL:new Joint(170,ground-135),
- elbowR:new Joint(250,ground-135),
- handL:new Joint(150,ground-115),
- handR:new Joint(270,ground-115),
+  elbowL:new Joint(170,ground-135),
+  elbowR:new Joint(250,ground-135),
+  handL:new Joint(150,ground-115),
+  handR:new Joint(270,ground-115),
+ };
+}
+
+const man=createMan();
+
+// ===== IDLE POSE =====
+const idlePose={};
+for(let k in man) idlePose[k]=man[k].clone();
+
+// ===== RUN ANIMATION (POSES) =====
+const runTimeline={
+ duration:1,
+ poses:[
+  {t:0, pose:null},
+  {t:0.5, pose:null},
+  {t:1, pose:null}
+ ]
 };
 
-// ===== TIMELINE =====
-const timeline={
- fps:24,
- duration:2,
- time:0,
- poses:[]
-};
+// generate run poses
+function buildRun(){
+ const phases=[-1,1,-1];
+ runTimeline.poses.forEach((p,i)=>{
+  const m=createMan();
+  const s=phases[i];
 
-let playing=false;
+  m.footL.y=ground-Math.max(0,s)*30;
+  m.footR.y=ground-Math.max(0,-s)*30;
+
+  m.handL.x-=s*25;
+  m.handR.x+=s*25;
+
+  m.hip.y=ground-85-Math.abs(s)*8;
+  m.neck.y=m.hip.y-70;
+  m.head.y=m.neck.y-40;
+
+  const pose={};
+  for(let k in m) pose[k]=m[k].clone();
+  p.pose=pose;
+ });
+}
+buildRun();
 
 // ===== INTERPOLATION =====
 function lerp(a,b,t){return a+(b-a)*t;}
@@ -122,18 +149,29 @@ function interpPose(a,b,t){
  return p;
 }
 
-function samplePose(time){
- if(timeline.poses.length===0) return null;
- if(timeline.poses.length===1) return timeline.poses[0].pose;
-
- let a=timeline.poses[0],b=timeline.poses[timeline.poses.length-1];
- for(let i=0;i<timeline.poses.length-1;i++){
-  if(time>=timeline.poses[i].t && time<=timeline.poses[i+1].t){
-   a=timeline.poses[i]; b=timeline.poses[i+1]; break;
+function sampleRun(time){
+ let a=runTimeline.poses[0],b=runTimeline.poses.at(-1);
+ for(let i=0;i<runTimeline.poses.length-1;i++){
+  if(time>=runTimeline.poses[i].t && time<=runTimeline.poses[i+1].t){
+   a=runTimeline.poses[i];
+   b=runTimeline.poses[i+1];
+   break;
   }
  }
  const t=(time-a.t)/(b.t-a.t||1);
  return interpPose(a.pose,b.pose,t);
+}
+
+// ===== BLEND =====
+function blendPose(a,b,w){
+ const p={};
+ for(let k in a){
+  p[k]={
+   x:lerp(a[k].x,b[k].x,w),
+   y:lerp(a[k].y,b[k].y,w)
+  };
+ }
+ return p;
 }
 
 // ===== IK =====
@@ -144,16 +182,6 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
-// ===== APPLY POSE =====
-function applyPose(p){
- if(!p) return;
- for(let k in p){
-  man[k].x=p[k].x;
-  man[k].y=p[k].y;
- }
-}
-
-// ===== SOLVE =====
 function solve(){
  for(let i=0;i<6;i++){
   stick(man.neck,man.hip,70);
@@ -173,28 +201,13 @@ function solve(){
  }
 }
 
-// ===== POSE SNAPSHOT =====
-function addPose(){
- const pose={};
- for(let k in man){
-  pose[k]=man[k].clone();
+// ===== APPLY =====
+function applyPose(p){
+ for(let k in p){
+  man[k].x=p[k].x;
+  man[k].y=p[k].y;
  }
- timeline.poses.push({t:timeline.time,pose});
- timeline.poses.sort((a,b)=>a.t-b.t);
 }
-
-function clearKeys(){
- timeline.poses=[];
-}
-
-// ===== UI =====
-function togglePlay(){playing=!playing;}
-function resetTime(){timeline.time=0;slider.value=0;}
-
-slider.oninput=()=>{
- playing=false;
- timeline.time=(slider.value/1000)*timeline.duration;
-};
 
 // ===== DRAW =====
 function line(a,b){
@@ -234,19 +247,22 @@ function draw(){
  line(man.elbowR,man.handR);
 }
 
-// ===== EVENTS =====
-c.addEventListener("click",addPose);
-
 // ===== LOOP =====
+let time=0;
+let playing=true;
+
 function loop(){
  if(playing){
-  timeline.time+=1/timeline.fps;
-  if(timeline.time>timeline.duration) timeline.time=0;
-  slider.value=(timeline.time/timeline.duration)*1000;
+  time+=1/60;
+  if(time>runTimeline.duration) time=0;
+  slider.value=(time/runTimeline.duration)*1000;
  }
 
- const pose=samplePose(timeline.time);
- applyPose(pose);
+ const runPose=sampleRun(time);
+ const w=blendSlider.value/100;
+
+ const finalPose=blendPose(idlePose,runPose,w);
+ applyPose(finalPose);
  solve();
  draw();
 
