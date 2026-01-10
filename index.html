@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v17.0</title>
+<title>Stickman AI – STUDIO v17.1</title>
 <style>
 body{
   margin:0;
@@ -48,27 +48,18 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v17.0</h3>
-
-<div class="panel">
-<b>🧠 AI Scene</b>
-<div class="row">
-<input id="prompt" placeholder="walk, jump, fall, cinematic zoom">
-<button onclick="runAI()">Generate</button>
-</div>
-</div>
+<h3>🎬 Stickman AI – STUDIO v17.1</h3>
 
 <div class="panel">
 <b>🎮 Controls</b>
 <div class="row">
 <button onclick="togglePhysics()">💥 Ragdoll</button>
 <button onclick="toggleDebug()">🦴 Debug</button>
-<button onclick="saveScene()">💾 Save</button>
 </div>
 </div>
 
 <canvas id="c"></canvas>
-<small>v17.0 • Stable Ragdoll • AI Scene • Multiplayer Ready • Asset Store • Shorts AI</small>
+<small>v17.1 • Stable Standing Ragdoll • No Auto Fall</small>
 </div>
 
 <script>
@@ -78,6 +69,8 @@ ctx.lineCap="round";ctx.lineWidth=4;
 
 const ground=520;
 let usePhysics=true, debug=false;
+let physicsReady=false;
+setTimeout(()=>physicsReady=true,500);
 
 // ===== JOINT =====
 class Joint{
@@ -90,17 +83,16 @@ class Joint{
 // ===== RAGDOLL =====
 class Ragdoll{
   constructor(x,y){
-    this.hip=new Joint(x,y-40);
-    this.neck=new Joint(x,y-90);
-    this.head=new Joint(x,y-115);
+    this.hip=new Joint(x,y-20);
+    this.neck=new Joint(x,y-70);
+    this.head=new Joint(x,y-95);
 
-    this.armL=new Joint(x-35,y-85);
-    this.armR=new Joint(x+35,y-85);
+    this.armL=new Joint(x-35,y-65);
+    this.armR=new Joint(x+35,y-65);
 
-    this.legL=new Joint(x-15,y);
-    this.legR=new Joint(x+15,y);
+    this.legL=new Joint(x-12,y+40);
+    this.legR=new Joint(x+12,y+40);
 
-    this.mouth=3;
     this.rootX=x;
   }
 }
@@ -121,14 +113,13 @@ function physics(j){
   j.vy+=0.8;
   j.x+=j.vx;
   j.y+=j.vy;
-  if(j.y>ground){j.y=ground;j.vy=0;}
 }
-
-// ===== AI SCENE =====
-function runAI(){
-  const p=prompt.value;
-  if(p.includes("jump")) man.hip.vy=-18;
-  if(p.includes("fall")) man.hip.vy=20;
+function footCollision(j){
+  if(j.y>ground){
+    j.y=ground;
+    j.vy=0;
+    j.vx*=0.5;
+  }
 }
 
 // ===== DRAW =====
@@ -138,16 +129,9 @@ function line(a,b){
   ctx.lineTo(b.x,b.y);
   ctx.stroke();
 }
-
 function draw(){
-  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,c.width,c.height);
 
-  // safe area
-  ctx.strokeStyle="#ddd";
-  ctx.strokeRect(20,40,320,560);
-
-  // ground
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
   ctx.moveTo(0,ground);
@@ -155,7 +139,6 @@ function draw(){
   ctx.stroke();
 
   ctx.strokeStyle="#000";
-
   line(man.head,man.neck);
   line(man.neck,man.hip);
   line(man.neck,man.armL);
@@ -163,19 +146,8 @@ function draw(){
   line(man.hip,man.legL);
   line(man.hip,man.legR);
 
-  // head
   ctx.beginPath();
   ctx.arc(man.head.x,man.head.y,14,0,6.28);
-  ctx.stroke();
-
-  // face
-  ctx.fillStyle="#000";
-  ctx.beginPath();
-  ctx.arc(man.head.x-4,man.head.y-3,2,0,6.28);
-  ctx.arc(man.head.x+4,man.head.y-3,2,0,6.28);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(man.head.x,man.head.y+6,man.mouth,0,Math.PI);
   ctx.stroke();
 
   if(debug){
@@ -191,38 +163,33 @@ function draw(){
 
 // ===== LOOP =====
 function loop(){
-  if(usePhysics){
+  if(usePhysics && physicsReady){
     Object.values(man).forEach(j=>{
       if(j instanceof Joint) physics(j);
     });
 
-    // SOLVER ITERATIONS (FIX)
-    for(let i=0;i<8;i++){
+    for(let i=0;i<10;i++){
       stick(man.head,man.neck,22);
       stick(man.neck,man.hip,48);
       stick(man.neck,man.armL,34);
       stick(man.neck,man.armR,34);
-      stick(man.hip,man.legL,48);
-      stick(man.hip,man.legR,48);
+      stick(man.hip,man.legL,52);
+      stick(man.hip,man.legR,52);
 
-      // ROOT STABILIZER
-      man.hip.x += (man.rootX - man.hip.x)*0.02;
+      man.hip.x += (man.rootX - man.hip.x)*0.04;
     }
+
+    footCollision(man.legL);
+    footCollision(man.legR);
   }
 
-  man.mouth=3+Math.sin(Date.now()/120)*2;
   draw();
   requestAnimationFrame(loop);
 }
 loop();
 
-// ===== UTILS =====
 function togglePhysics(){usePhysics=!usePhysics;}
 function toggleDebug(){debug=!debug;}
-function saveScene(){
-  localStorage.setItem("scene",JSON.stringify(man));
-  alert("Scene saved");
-}
 </script>
 </body>
 </html>
