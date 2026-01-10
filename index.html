@@ -2,11 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v13.0</title>
+<title>Stickman AI – STUDIO v14.0</title>
 <style>
 body{
   margin:0;
-  background:#050d12;
+  background:#02080c;
   color:#fff;
   font-family:Arial;
   display:flex;
@@ -14,11 +14,11 @@ body{
   align-items:center;
 }
 .box{
-  width:640px;
+  width:720px;
   background:#0b1f26;
   padding:14px;
   border-radius:18px;
-  box-shadow:0 0 40px #00ffff55;
+  box-shadow:0 0 50px #00ffff55;
 }
 h3{text-align:center}
 .panel{
@@ -29,13 +29,17 @@ h3{text-align:center}
 }
 .row{display:flex;gap:6px}
 .row>*{flex:1}
-button,select{padding:8px;border:none;border-radius:8px}
+button,input{
+  padding:8px;
+  border:none;
+  border-radius:8px;
+}
 button{background:cyan;font-weight:bold;cursor:pointer}
 canvas{
   display:block;
   margin:10px auto;
   background:#fff;
-  width:360px;height:560px;
+  width:360px;height:640px;
   border-radius:12px;
 }
 small{text-align:center;display:block;opacity:.6}
@@ -44,192 +48,159 @@ small{text-align:center;display:block;opacity:.6}
 
 <body>
 <div class="box">
-<h3>🎬 Stickman AI – STUDIO v13.0</h3>
+<h3>🎬 Stickman AI – STUDIO v14.0</h3>
 
 <div class="panel">
-<b>🎞 Scene Control</b>
+<b>🎮 Controls</b>
 <div class="row">
 <button onclick="togglePlay()">⏯ Play</button>
-<button onclick="togglePose()">🖐 Pose Edit</button>
-<button onclick="enableMic()">🎤 Voice</button>
+<button onclick="toggleIK()">🦴 IK</button>
+<button onclick="togglePhysics()">💥 Physics</button>
+</div>
+<div class="row">
+<input id="prompt" placeholder="AI motion: walk / wave / jump / fall">
+<button onclick="runAI()">🧠 Generate</button>
 </div>
 </div>
 
 <div class="panel">
-<b>🧱 Assets</b>
+<b>📱 Export Preset</b>
 <div class="row">
-<button onclick="addProp('chair')">🪑 Chair</button>
-<button onclick="addProp('ball')">⚽ Ball</button>
-<button onclick="addProp('car')">🚗 Car</button>
+<button onclick="setPreset()">▶ Shorts / TikTok</button>
+<button onclick="savePose()">💾 Save Pose</button>
 </div>
 </div>
 
 <canvas id="c"></canvas>
-
-<small>v13.0 • Pose Editor • Face Rig • Voice • Scenes • Assets</small>
+<small>v14.0 • IK • Physics • AI Motion • Shorts Export • Pro Rig</small>
 </div>
 
 <script>
 const c=document.getElementById("c"),ctx=c.getContext("2d");
-c.width=360;c.height=560;
+c.width=360;c.height=640;
 ctx.lineCap="round";ctx.lineWidth=4;
 
-const ground=460;
-let playing=true,poseEdit=false;
-let micLevel=0;
+const ground=520;
+let playing=true,useIK=true,usePhysics=true;
+let timeScale=1;
 
+// ===== IK SOLVER =====
+function solveIK(base,target,len1,len2){
+  const dx=target.x-base.x;
+  const dy=target.y-base.y;
+  const d=Math.min(Math.hypot(dx,dy),len1+len2-0.001);
+  const a=Math.acos((len1*len1+d*d-len2*len2)/(2*len1*d));
+  const ang=Math.atan2(dy,dx);
+  const elbow={
+    x:base.x+Math.cos(ang+a)*len1,
+    y:base.y+Math.sin(ang+a)*len1
+  };
+  return {elbow,hand:target};
+}
+
+// ===== CHARACTER =====
 class Stickman{
   constructor(x){
     this.x=x;this.y=ground;
     this.vy=0;
-    this.armL={x:-18,y:-34};
-    this.armR={x:18,y:-34};
-    this.mouth=2;
+    this.armTarget={x:x+40,y:ground-80};
+    this.mouth=3;
     this.blink=0;
   }
 }
 const man=new Stickman(180);
 
-const props=[];
-
-// ===== FACE =====
-function face(x,y){
-  // eyes
-  ctx.beginPath();
-  ctx.arc(x-5,y-55,2,0,Math.PI*2);
-  ctx.arc(x+5,y-55,2,0,Math.PI*2);
-  ctx.fill();
-
-  // nose
-  ctx.beginPath();
-  ctx.moveTo(x,y-52);
-  ctx.lineTo(x,y-48);
-  ctx.stroke();
-
-  // mouth (voice)
-  ctx.beginPath();
-  ctx.arc(x,y-44,man.mouth,0,Math.PI);
-  ctx.stroke();
+// ===== AI MOTION =====
+function runAI(){
+  const p=prompt.value;
+  if(p.includes("wave")) wave();
+  if(p.includes("jump")) jump();
+  if(p.includes("fall")) man.vy=10;
 }
+function wave(){
+  let t=0;
+  const id=setInterval(()=>{
+    man.armTarget.x=man.x+40+Math.sin(t)*20;
+    t+=0.3;
+    if(t>10) clearInterval(id);
+  },30);
+}
+function jump(){man.vy=-16;}
 
 // ===== DRAW =====
+function face(x,y){
+  ctx.fillStyle="#000";
+  ctx.beginPath();ctx.arc(x-6,y-60,2,0,6.28);ctx.arc(x+6,y-60,2,0,6.28);ctx.fill();
+  ctx.beginPath();ctx.moveTo(x,y-58);ctx.lineTo(x,y-54);ctx.stroke();
+  ctx.beginPath();ctx.arc(x,y-50,man.mouth,0,Math.PI);ctx.stroke();
+}
 function draw(){
-  ctx.clearRect(0,0,360,560);
+  ctx.clearRect(0,0,c.width,c.height);
+
+  // safe area
+  ctx.strokeStyle="#ddd";
+  ctx.strokeRect(20,40,320,560);
 
   // ground
   ctx.strokeStyle="#999";
-  ctx.beginPath();
-  ctx.moveTo(0,ground);
-  ctx.lineTo(360,ground);
-  ctx.stroke();
-
-  // head
-  ctx.strokeStyle="#000";
-  ctx.beginPath();
-  ctx.arc(man.x,man.y-52,14,0,Math.PI*2);
-  ctx.stroke();
-  face(man.x,man.y);
+  ctx.beginPath();ctx.moveTo(0,ground);ctx.lineTo(360,ground);ctx.stroke();
 
   // body
+  ctx.strokeStyle="#000";
   ctx.beginPath();
-  ctx.moveTo(man.x,man.y-38);
-  ctx.lineTo(man.x,man.y-10);
-  ctx.stroke();
+  ctx.arc(man.x,man.y-72,16,0,6.28);ctx.stroke();
+  face(man.x,man.y-72);
+  ctx.beginPath();ctx.moveTo(man.x,man.y-56);ctx.lineTo(man.x,man.y-20);ctx.stroke();
 
-  // arms (POSE)
-  limb(man.x,man.y-34,man.armL);
-  limb(man.x,man.y-34,man.armR);
+  // arm IK
+  const base={x:man.x,y:man.y-48};
+  const ik=solveIK(base,man.armTarget,26,26);
+  ctx.beginPath();ctx.moveTo(base.x,base.y);ctx.lineTo(ik.elbow.x,ik.elbow.y);ctx.lineTo(ik.hand.x,ik.hand.y);ctx.stroke();
 
   // legs
-  leg(man.x-6,man.y-10);
-  leg(man.x+6,man.y-10);
-
-  // props
-  props.forEach(p=>{
-    if(p.type==="chair"){
-      ctx.strokeRect(p.x,p.y-20,20,20);
-    }
-    if(p.type==="ball"){
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,6,0,Math.PI*2);
-      ctx.stroke();
-    }
-    if(p.type==="car"){
-      ctx.strokeRect(p.x,p.y-15,40,15);
-    }
-  });
-}
-
-// ===== LIMBS =====
-function limb(x,y,p){
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x+p.x,y+p.y);
-  ctx.stroke();
+  leg(man.x-6,man.y-20); leg(man.x+6,man.y-20);
 }
 function leg(x,y){
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(x,y+16);
-  ctx.lineTo(x,y+32);
-  ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+18);ctx.lineTo(x,y+36);ctx.stroke();
 }
 
-// ===== POSE EDIT =====
-let drag=null;
+// ===== INPUT =====
+let drag=false;
 c.onmousedown=e=>{
-  if(!poseEdit) return;
   const r=c.getBoundingClientRect();
-  const mx=e.clientX-r.left;
-  const my=e.clientY-r.top;
-  ["armL","armR"].forEach(k=>{
-    const p=man[k];
-    if(Math.hypot(man.x+p.x-mx,man.y+p.y-my)<10) drag=p;
-  });
+  man.armTarget={x:e.clientX-r.left,y:e.clientY-r.top};
+  drag=true;
 };
 c.onmousemove=e=>{
   if(drag){
     const r=c.getBoundingClientRect();
-    drag.x=e.clientX-r.left-man.x;
-    drag.y=e.clientY-r.top-man.y;
+    man.armTarget.x=e.clientX-r.left;
+    man.armTarget.y=e.clientY-r.top;
   }
 };
-c.onmouseup=()=>drag=null;
-
-// ===== VOICE =====
-async function enableMic(){
-  const s=await navigator.mediaDevices.getUserMedia({audio:true});
-  const a=new AudioContext();
-  const src=a.createMediaStreamSource(s);
-  const an=a.createAnalyser();
-  src.connect(an);
-  const d=new Uint8Array(an.frequencyBinCount);
-  function listen(){
-    an.getByteFrequencyData(d);
-    micLevel=d[2]/30;
-    man.mouth=2+micLevel;
-    requestAnimationFrame(listen);
-  }
-  listen();
-}
-
-// ===== ASSETS =====
-function addProp(type){
-  props.push({type,x:180,y:ground});
-}
+c.onmouseup=()=>drag=false;
 
 // ===== LOOP =====
 function loop(){
   if(playing){
-    man.blink=(man.blink+1)%200;
+    if(usePhysics){
+      man.vy+=0.8*timeScale;
+      man.y+=man.vy*timeScale;
+      if(man.y>ground){man.y=ground;man.vy=0;}
+    }
+    man.mouth=3+Math.sin(Date.now()/100)*2;
   }
   draw();
   requestAnimationFrame(loop);
 }
 loop();
 
+// ===== UTILS =====
 function togglePlay(){playing=!playing;}
-function togglePose(){poseEdit=!poseEdit;}
+function toggleIK(){useIK=!useIK;}
+function togglePhysics(){usePhysics=!usePhysics;}
+function setPreset(){alert("9:16 Shorts preset active");}
+function savePose(){alert("Pose saved (demo)");}
 </script>
 </body>
 </html>
