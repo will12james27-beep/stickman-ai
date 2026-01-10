@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – STUDIO v31.3 (Ground Impact)</title>
+<title>Stickman AI – STUDIO v31.4 (Torso & Shoulder Lead)</title>
 <style>
 body{
   margin:0;
@@ -71,12 +71,14 @@ function createMan(x){
     accel:0.06,
     decel:0.08,
 
-    // REALISM
-    sway:0,
-    headLag:0,
+    // CINEMATIC CORE
     impact:0,
     impactVel:0,
-    prevFootLock:false
+    prevFoot:false,
+
+    hipRot:0,
+    shoulderRot:0,
+    headRot:0
   };
 }
 
@@ -93,13 +95,8 @@ function stick(a,b,len){
 
 // ===== SPEED =====
 function updateSpeed(m){
-  if(m.vel < m.targetVel){
-    m.vel += m.accel;
-    if(m.vel > m.targetVel) m.vel = m.targetVel;
-  }else if(m.vel > m.targetVel){
-    m.vel -= m.decel;
-    if(m.vel < m.targetVel) m.vel = m.targetVel;
-  }
+  if(m.vel < m.targetVel) m.vel += m.accel;
+  if(m.vel > m.targetVel) m.vel -= m.decel;
 }
 
 // ===== WALK =====
@@ -110,10 +107,9 @@ function walk(m){
   m.phase += m.vel * 0.04;
   const s = Math.sin(m.phase);
   const stride = 26;
-
   const leftLock = s > 0;
 
-  // --- FOOT LOCK ---
+  // FOOT LOCK
   if(leftLock){
     m.footL.x = m.hip.x - stride;
     m.footL.y = ground;
@@ -128,36 +124,37 @@ function walk(m){
     m.footL.y = ground - Math.max(0,s)*28;
   }
 
-  // --- GROUND IMPACT DETECT ---
-  if(leftLock !== m.prevFootLock){
-    m.impactVel = 6; // STEP FORCE
-  }
-  m.prevFootLock = leftLock;
-
-  // --- IMPACT PHYSICS ---
-  m.impactVel -= m.impact * 0.35;
-  m.impactVel *= 0.65;
+  // IMPACT
+  if(leftLock !== m.prevFoot) m.impactVel = 6;
+  m.prevFoot = leftLock;
+  m.impactVel *= 0.6;
   m.impact += m.impactVel;
   m.impact *= 0.7;
 
-  // --- HIP ---
+  // HIP MOVE
   m.hip.x += m.vel;
   m.hip.y = ground-85 - Math.abs(s)*8 + m.impact;
 
-  // --- BALANCE SWAY ---
-  m.sway += ((-s*8) - m.sway) * 0.15;
+  // ===== ROTATION SYSTEM =====
+  // hips rotate opposite of step
+  m.hipRot += ((-s*10) - m.hipRot) * 0.12;
 
-  // --- SPINE ---
-  m.neck.x = m.hip.x + m.sway;
+  // shoulders rotate opposite hips
+  m.shoulderRot += ((s*14) - m.shoulderRot) * 0.15;
+
+  // head counter-rotates shoulders
+  m.headRot += ((-m.shoulderRot*0.6) - m.headRot) * 0.18;
+
+  // SPINE
+  m.neck.x = m.hip.x + m.shoulderRot;
   m.neck.y = m.hip.y - 70;
 
-  m.headLag += ((-m.sway*0.6) - m.headLag) * 0.12;
-  m.head.x = m.neck.x + m.headLag;
+  m.head.x = m.neck.x + m.headRot;
   m.head.y = m.neck.y - 40;
 
-  // --- ARMS ---
-  m.handL.x = m.neck.x - 45 - s*22;
-  m.handR.x = m.neck.x + 45 + s*22;
+  // ARMS FOLLOW SHOULDERS
+  m.handL.x = m.neck.x - 45 - s*22 + m.shoulderRot*0.4;
+  m.handR.x = m.neck.x + 45 + s*22 + m.shoulderRot*0.4;
   m.handL.y = m.neck.y + 20;
   m.handR.y = m.neck.y + 20;
 
@@ -169,16 +166,16 @@ function idle(m){
   m.targetVel = 0;
   updateSpeed(m);
 
-  m.impact *= 0.8;
   const b = Math.sin(time*0.05);
+  m.hip.y = ground-85 + b*4;
 
-  m.hip.y = ground-85 + b*4 + m.impact;
+  m.hipRot *= 0.85;
+  m.shoulderRot *= 0.85;
+  m.headRot *= 0.85;
 
-  m.sway *= 0.85;
-
-  m.neck.x = m.hip.x + m.sway;
+  m.neck.x = m.hip.x + m.shoulderRot;
   m.neck.y = m.hip.y - 70;
-  m.head.x = m.neck.x;
+  m.head.x = m.neck.x + m.headRot;
   m.head.y = m.neck.y - 40;
 }
 
@@ -186,7 +183,7 @@ function idle(m){
 function wave(m){
   idle(m);
   m.handR.y = m.neck.y - 50 - Math.sin(time*0.25)*25;
-  m.handR.x = m.neck.x + 50;
+  m.handR.x = m.neck.x + 55;
 }
 
 // ===== SOLVE =====
@@ -270,6 +267,5 @@ function loop(){
 }
 loop();
 </script>
-
 </body>
 </html>
