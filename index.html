@@ -4,62 +4,49 @@
 <meta charset="UTF-8">
 <title>Stickman AI</title>
 <style>
-  body {
-    margin: 0;
-    background: radial-gradient(#0f2b33, #07161b);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    font-family: Arial, sans-serif;
-    color: white;
-  }
-
-  .box {
-    width: 320px;
-    padding: 20px;
-    border-radius: 20px;
-    background: #0b1f26;
-    box-shadow: 0 0 30px #00ffff55;
-    text-align: center;
-  }
-
-  input {
-    width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    border: none;
-    margin-bottom: 10px;
-    font-size: 16px;
-  }
-
-  button {
-    width: 100%;
-    padding: 10px;
-    background: cyan;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-
-  canvas {
-    background: #000;
-    margin-top: 15px;
-    border-radius: 10px;
-  }
+body {
+  margin: 0;
+  background: radial-gradient(#0f2b33, #07161b);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-family: Arial, sans-serif;
+  color: white;
+}
+.box {
+  width: 320px;
+  padding: 20px;
+  border-radius: 20px;
+  background: #0b1f26;
+  box-shadow: 0 0 30px #00ffff55;
+  text-align: center;
+}
+input, button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+button {
+  background: cyan;
+  cursor: pointer;
+}
+canvas {
+  background: #000;
+  margin-top: 15px;
+  border-radius: 10px;
+}
 </style>
 </head>
-<body>
 
+<body>
 <div class="box">
   <h2>🤖 Stickman AI</h2>
-  <p>Type text → animation plays</p>
-
   <input id="text" placeholder="run jump">
   <button onclick="run()">Generate</button>
   <p id="status"></p>
-
   <canvas id="c" width="280" height="400"></canvas>
 </div>
 
@@ -69,10 +56,10 @@ const ctx = c.getContext('2d');
 
 let x = c.width / 2;
 let y = c.height - 80;
-let ground = c.height - 80;
+const ground = c.height - 80;
 
 let velocityY = 0;
-let gravity = 0.6;
+const gravity = 0.6;
 
 let action = 'stand';
 let actions = [];
@@ -84,131 +71,101 @@ function draw() {
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 3;
 
+  // ===== BODY LEAN =====
+  let lean = 0;
+  if (action === 'run') {
+    lean = Math.sin(frame * 0.15) * 6;
+  }
 
-let swing;
-
-if (action === 'run') {
-  swing = Math.sin(frame * 0.15) * 12;
-} else if (action === 'jump') {
-  swing = 6; // ❗ statik, lekin ko‘rinadi
-} else {
-  swing = 4;
-}
-
-
-
-  // head
+  // ===== HEAD =====
   ctx.beginPath();
-  ctx.arc(x, y - 35, 10, 0, Math.PI * 2);
+  ctx.arc(x + lean * 0.5, y - 35, 10, 0, Math.PI * 2);
   ctx.stroke();
 
-// ===== BODY LEAN =====
-let lean = 0;
+  // ===== BODY =====
+  ctx.beginPath();
+  ctx.moveTo(x, y - 25);
+  ctx.lineTo(x + lean, y);
+  ctx.stroke();
 
-if (action === 'run') {
-  lean = Math.sin(frame * 0.15) * 6;
+  // ===== SHOULDER =====
+  let shoulderX = x + lean;
+  let shoulderY = y - 22 + Math.sin(frame * 0.15) * 2;
+
+  // ===== ARMS =====
+  const phase = frame * 0.15;
+
+  if (action === 'jump') {
+    drawArm(shoulderX, shoulderY, -1.5);
+    drawArm(shoulderX, shoulderY,  1.5);
+  }
+  else if (action === 'run') {
+    drawArm(shoulderX, shoulderY, phase + Math.PI);
+    drawArm(shoulderX, shoulderY, phase);
+  }
+  else {
+    drawArm(shoulderX, shoulderY, 0.3);
+    drawArm(shoulderX, shoulderY, -0.3);
+  }
+
+  // ===== LEGS =====
+  if (action === 'jump') {
+    drawLeg(x - 6, y, 0);
+    drawLeg(x + 6, y, 0);
+  } else {
+    drawLeg(x - 6, y, 0);
+    drawLeg(x + 6, y, Math.PI);
+  }
 }
 
-ctx.beginPath();
-ctx.moveTo(x, y - 25);
-ctx.lineTo(x + lean, y);
-ctx.stroke();
-
-
-// ===== ARMS =====
-const phase = frame * 0.15;
-
-drawArm(shoulderX, shoulderY, phase + Math.PI);
-drawArm(shoulderX, shoulderY, phase);
-
-if (action === 'run') {
-  armSwing = Math.sin(frame * 0.15) * 0.8;
-}
-
-ctx.beginPath();
-
-// LEFT ARM (oyoqlarga qarama-qarshi)
-ctx.moveTo(x, y - 22);
-ctx.lineTo(
-  x + Math.sin(-armSwing) * armLen,
-  y - 22 + Math.cos(-armSwing) * armLen
-);
-
-// RIGHT ARM
-ctx.moveTo(x, y - 22);
-ctx.lineTo(
-  x + Math.sin(armSwing) * armLen,
-  y - 22 + Math.cos(armSwing) * armLen
-);
-
-ctx.stroke();
-
-  
-// NEW LEGS
-if (action === 'jump') {
-  drawLeg(x - 6, y, 0);
-  drawLeg(x + 6, y, 0);
-} else {
-  drawLeg(x - 6, y, 0);
-  drawLeg(x + 6, y, Math.PI);
-}
-
-}
-function drawArm(shoulderX, shoulderY, phase) {
+function drawArm(sx, sy, phase) {
   const upper = 14;
   const lower = 14;
 
-  const a1 = Math.sin(phase) * 0.8;
-  const a2 = Math.sin(phase + 0.6) * 0.6;
+  const a1 = Math.sin(phase) * 0.9;
+  const a2 = Math.sin(phase + 0.6) * 0.7;
 
-  const elbowX = shoulderX + Math.sin(a1) * upper;
-  const elbowY = shoulderY + Math.cos(a1) * upper;
+  const ex = sx + Math.sin(a1) * upper;
+  const ey = sy + Math.cos(a1) * upper;
 
-  const handX = elbowX + Math.sin(a2) * lower;
-  const handY = elbowY + Math.cos(a2) * lower;
+  const hx = ex + Math.sin(a2) * lower;
+  const hy = ey + Math.cos(a2) * lower;
 
   ctx.beginPath();
-  ctx.moveTo(shoulderX, shoulderY);
-  ctx.lineTo(elbowX, elbowY);
-  ctx.lineTo(handX, handY);
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(ex, ey);
+  ctx.lineTo(hx, hy);
   ctx.stroke();
 }
 
-
-function drawLeg(hipX, hipY, dir) {
+// ===== NEXT STEP INCLUDED: FOOT IMPACT / WEIGHT =====
+function drawLeg(hx, hy, dir) {
   const thigh = 18;
   const calf = 18;
 
-  let a1, a2;
+  let phase = frame * 0.15 + dir;
 
-  if (action === 'run') {
-    a1 = Math.sin(frame * 0.15 + dir) * 0.6;
-    a2 = Math.sin(frame * 0.15 + dir + 0.8) * 0.6;
-  } else {
-    // stand va jump — oyoqlar qotib turadi
-    a1 = 0.4 * dir;
-    a2 = 0;
-  }
+  let lift = Math.max(0, Math.sin(phase)) * 4;
 
-  const kneeX = hipX + Math.sin(a1) * thigh;
-  const kneeY = hipY + Math.cos(a1) * thigh;
+  const a1 = Math.sin(phase) * 0.6;
+  const a2 = Math.sin(phase + 0.8) * 0.6;
 
-  const footX = kneeX + Math.sin(a2) * calf;
-  const footY = kneeY + Math.cos(a2) * calf;
+  const kx = hx + Math.sin(a1) * thigh;
+  const ky = hy + Math.cos(a1) * thigh - lift;
+
+  const fx = kx + Math.sin(a2) * calf;
+  const fy = ky + Math.cos(a2) * calf;
 
   ctx.beginPath();
-  ctx.moveTo(hipX, hipY);
-  ctx.lineTo(kneeX, kneeY);
-  ctx.lineTo(footX, footY);
+  ctx.moveTo(hx, hy);
+  ctx.lineTo(kx, ky);
+  ctx.lineTo(fx, fy);
   ctx.stroke();
 }
-
-
 
 function animate() {
   frame++;
 
-  // action switch (har 2 sekund)
   if (actions.length > 1 && frame % 120 === 0) {
     actionIndex++;
     if (actionIndex < actions.length) {
@@ -216,9 +173,7 @@ function animate() {
     }
   }
 
-  if (action === 'run') {
-    x += 1.5;
-  }
+  if (action === 'run') x += 1.5;
 
   if (action === 'jump' && y === ground) {
     velocityY = -11;
@@ -248,8 +203,8 @@ function run() {
 
   if (t.includes('run')) actions.push('run');
   if (t.includes('jump')) actions.push('jump');
-
   if (actions.length === 0) actions.push('stand');
+
   action = actions[0];
 
   setTimeout(() => {
@@ -259,6 +214,5 @@ function run() {
 
 animate();
 </script>
-
 </body>
 </html>
