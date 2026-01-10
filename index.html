@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v7.6.3</title>
+<title>Stickman AI v7.6.4</title>
 <style>
   body {
     margin: 0;
@@ -30,14 +30,14 @@ const ctx = canvas.getContext("2d");
 ======================= */
 const stickman = {
   x: 300,
-  y: 350,
+  y: 320,
   scale: 1,
   pose: {
     head: 0,
-    leftArm: 0,
-    rightArm: 0,
-    leftLeg: 0,
-    rightLeg: 0
+    leftArm: -15,
+    rightArm: 15,
+    leftLeg: 15,
+    rightLeg: -15
   }
 };
 
@@ -45,9 +45,8 @@ const stickman = {
    TIMELINE (SAFE)
 ======================= */
 const timeline = [
-  { time: 0,   pose: { leftArm: 0,   rightArm: 0   } },
-  { time: 500, pose: { leftArm: -40, rightArm: 40  } },
-  { time: 1000,pose: { leftArm: 0,   rightArm: 0   } }
+  { time: 400, pose: { leftArm: -45, rightArm: 45 } },
+  { time: 800, pose: { leftArm: -15, rightArm: 15 } }
 ];
 
 /* =======================
@@ -75,22 +74,22 @@ function drawStickman(s) {
 
   // BODY
   ctx.beginPath();
-  ctx.moveTo(0, -50);
-  ctx.lineTo(0, 50);
+  ctx.moveTo(0, -40);
+  ctx.lineTo(0, 60);
   ctx.stroke();
 
   // HEAD
   ctx.beginPath();
-  ctx.arc(0, -75, 25, 0, Math.PI * 2);
+  ctx.arc(0, -70, 22, 0, Math.PI * 2);
   ctx.stroke();
 
   // ARMS
-  drawLimb(0, -30, -50, s.pose.leftArm);
-  drawLimb(0, -30,  50, s.pose.rightArm);
+  drawLimb(0, -20, 55, s.pose.leftArm);
+  drawLimb(0, -20, 55, s.pose.rightArm);
 
   // LEGS
-  drawLimb(0, 50, -35, s.pose.leftLeg);
-  drawLimb(0, 50,  35, s.pose.rightLeg);
+  drawLimb(0, 60, 65, s.pose.leftLeg);
+  drawLimb(0, 60, 65, s.pose.rightLeg);
 
   ctx.restore();
 }
@@ -124,7 +123,6 @@ let startTime = performance.now();
 
 function playTimeline() {
   const t = performance.now() - startTime;
-
   timeline.forEach(f => {
     if (!f.done && t >= f.time) {
       applyKeyframe(f);
