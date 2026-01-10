@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Studio v37.5.2 — FINAL FIX</title>
+<title>Stickman RESET — Base Render</title>
 <style>
 body{
  margin:0;
@@ -11,166 +11,53 @@ body{
  display:flex;
  justify-content:center;
  align-items:center;
- font-family:Arial;
- color:white;
-}
-#studio{
- display:flex;
- flex-direction:column;
- gap:6px;
- align-items:center;
 }
 canvas{
  background:#fff;
  border-radius:16px;
 }
-.panel{
- display:flex;
- gap:6px;
- align-items:center;
- flex-wrap:wrap;
- justify-content:center;
-}
-button{
- padding:5px 10px;
- border:none;
- border-radius:6px;
- cursor:pointer;
-}
-input[type=range]{ width:260px; }
-.small{font-size:12px;opacity:.7}
-#dots{
- position:relative;
- width:260px;
- height:14px;
-}
-.dot{
- position:absolute;
- top:4px;
- width:8px;
- height:8px;
- border-radius:50%;
- background:#ffcc00;
- cursor:pointer;
-}
-.dot.active{ background:#ff4444; }
 </style>
 </head>
 <body>
 
-<div id="studio">
- <div class="panel">
-  <button onclick="togglePlay()">Play / Pause</button>
-  <button onclick="addKey()">Add Key</button>
-  <button onclick="delKey()">Delete Key</button>
-  <span class="small">Frame: <span id="f">0</span></span>
- </div>
-
- <input id="timeline" type="range" min="0" max="119" value="0">
- <div id="dots"></div>
-
- <div class="small">v37.5.2 — stable timeline engine</div>
- <canvas id="c" width="420" height="640"></canvas>
-</div>
+<canvas id="c" width="420" height="640"></canvas>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
-ctx.lineCap="round";
-ctx.lineWidth=4;
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
 
-const W=420,H=640,ground=520;
+ctx.lineWidth = 4;
+ctx.lineCap = "round";
+ctx.strokeStyle = "#000";
+
+const ground = 520;
 
 // ===== JOINT =====
 class Joint{
- constructor(x,y){this.x=x;this.y=y;}
- clone(){return new Joint(this.x,this.y);}
-}
-
-// ===== IK =====
-function stick(a,b,l){
- const dx=b.x-a.x,dy=b.y-a.y;
- const d=Math.hypot(dx,dy)||1;
- const diff=(d-l)/d*0.5;
- a.x+=dx*diff; a.y+=dy*diff;
- b.x-=dx*diff; b.y-=dy*diff;
-}
-
-// ===== MAN =====
-function createMan(x){
- return{
-  hip:new Joint(x,ground-85),
-  neck:new Joint(x,ground-155),
-  head:new Joint(x,ground-195),
-  kneeL:new Joint(x-18,ground-45),
-  kneeR:new Joint(x+18,ground-45),
-  footL:new Joint(x-18,ground),
-  footR:new Joint(x+18,ground),
-  elbowL:new Joint(x-40,ground-135),
-  elbowR:new Joint(x+40,ground-135),
-  handL:new Joint(x-60,ground-115),
-  handR:new Joint(x+60,ground-115),
- };
-}
-
-// ===== POSE =====
-function clonePose(m){
- const p={};
- for(let k in m) p[k]=m[k].clone();
- return p;
-}
-function lerp(a,b,t){ return a+(b-a)*t; }
-function blendPose(a,b,t){
- const p={};
- for(let k in a){
-  p[k]=new Joint(
-   lerp(a[k].x,b[k].x,t),
-   lerp(a[k].y,b[k].y,t)
-  );
- }
- return p;
-}
-function applyPose(m,p){
- for(let k in p){
-  m[k].x=p[k].x;
-  m[k].y=p[k].y;
+ constructor(x,y){
+  this.x=x;
+  this.y=y;
  }
 }
 
-// ===== SETUP =====
-const man=createMan(210);
-const basePose=clonePose(man);
+// ===== SIMPLE MAN =====
+const man = {
+ head: new Joint(210, 300),
+ neck: new Joint(210, 340),
+ hip:  new Joint(210, 400),
 
-// ===== TIMELINE =====
-const timeline={ duration:120, keys:[] };
-addKeyframe(0, clonePose(man));
+ kneeL: new Joint(190, 460),
+ footL: new Joint(190, ground),
 
-function addKeyframe(frame,pose){
- timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
- timeline.keys.push({frame,pose});
- timeline.keys.sort((a,b)=>a.frame-b.frame);
- renderDots();
-}
-function deleteKeyframe(frame){
- timeline.keys=timeline.keys.filter(k=>k.frame!==frame);
- renderDots();
-}
+ kneeR: new Joint(230, 460),
+ footR: new Joint(230, ground),
 
-// ===== SOLVE =====
-function solve(m){
- for(let i=0;i<6;i++){
-  stick(m.neck,m.hip,70);
-  stick(m.head,m.neck,40);
-  stick(m.hip,m.kneeL,40);
-  stick(m.kneeL,m.footL,40);
-  stick(m.hip,m.kneeR,40);
-  stick(m.kneeR,m.footR,40);
-  stick(m.neck,m.elbowL,35);
-  stick(m.elbowL,m.handL,35);
-  stick(m.neck,m.elbowR,35);
-  stick(m.elbowR,m.handR,35);
- }
-}
+ elbowL: new Joint(180, 360),
+ handL:  new Joint(160, 380),
+
+ elbowR: new Joint(240, 360),
+ handR:  new Joint(260, 380),
+};
 
 // ===== DRAW =====
 function line(a,b){
@@ -179,97 +66,43 @@ function line(a,b){
  ctx.lineTo(b.x,b.y);
  ctx.stroke();
 }
-function drawMan(m){
- ctx.beginPath();
- ctx.arc(m.head.x,m.head.y,14,0,Math.PI*2);
- ctx.stroke();
- line(m.head,m.neck);
- line(m.neck,m.hip);
- line(m.hip,m.kneeL);
- line(m.kneeL,m.footL);
- line(m.hip,m.kneeR);
- line(m.kneeR,m.footR);
- line(m.neck,m.elbowL);
- line(m.elbowL,m.handL);
- line(m.neck,m.elbowR);
- line(m.elbowR,m.handR);
-}
 
-// ===== PLAYBACK =====
-let frame=0;
-let playing=true;
-const slider=document.getElementById("timeline");
+function draw(){
+ ctx.clearRect(0,0,c.width,c.height);
 
-function getPoseAtFrame(f){
- if(timeline.keys.length===0) return clonePose(basePose);
- let a=timeline.keys[0], b=timeline.keys[timeline.keys.length-1];
- for(let i=0;i<timeline.keys.length-1;i++){
-  if(f>=timeline.keys[i].frame && f<=timeline.keys[i+1].frame){
-   a=timeline.keys[i]; b=timeline.keys[i+1]; break;
-  }
- }
- if(a===b) return clonePose(a.pose);
- const t=(f-a.frame)/(b.frame-a.frame);
- return blendPose(a.pose,b.pose,t);
-}
-
-function togglePlay(){ playing=!playing; }
-
-slider.oninput=()=>{
- frame=+slider.value;
- playing=false;
-};
-
-function loop(){
- if(playing){
-  frame=(frame+1)%timeline.duration;
-  slider.value=frame;
- }
- document.getElementById("f").innerText=frame;
-
- applyPose(man,getPoseAtFrame(frame));
- solve(man);
-
- ctx.clearRect(0,0,W,H);
+ // ground
  ctx.strokeStyle="#ccc";
  ctx.beginPath();
  ctx.moveTo(0,ground);
- ctx.lineTo(W,ground);
+ ctx.lineTo(420,ground);
  ctx.stroke();
 
  ctx.strokeStyle="#000";
- drawMan(man);
- highlightDot();
 
- requestAnimationFrame(loop);
-}
-loop();
+ // head
+ ctx.beginPath();
+ ctx.arc(man.head.x, man.head.y, 14, 0, Math.PI*2);
+ ctx.stroke();
 
-// ===== DOTS =====
-const dots=document.getElementById("dots");
-function renderDots(){
- dots.innerHTML="";
- timeline.keys.forEach(k=>{
-  const d=document.createElement("div");
-  d.className="dot";
-  d.style.left=(k.frame/(timeline.duration-1)*252)+"px";
-  d.onclick=()=>{
-   frame=k.frame;
-   slider.value=frame;
-   playing=false;
-  };
-  dots.appendChild(d);
- });
-}
-function highlightDot(){
- [...dots.children].forEach((d,i)=>{
-  d.classList.toggle("active",timeline.keys[i].frame===frame);
- });
+ line(man.head, man.neck);
+ line(man.neck, man.hip);
+
+ line(man.hip, man.kneeL);
+ line(man.kneeL, man.footL);
+
+ line(man.hip, man.kneeR);
+ line(man.kneeR, man.footR);
+
+ line(man.neck, man.elbowL);
+ line(man.elbowL, man.handL);
+
+ line(man.neck, man.elbowR);
+ line(man.elbowR, man.handR);
+
+ requestAnimationFrame(draw);
 }
 
-// ===== UI =====
-function addKey(){ addKeyframe(frame,clonePose(man)); }
-function delKey(){ deleteKeyframe(frame); }
+draw();
 </script>
 
 </body>
