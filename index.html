@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Studio v36.1</title>
+<title>Stickman Studio v37.0 — Timeline Core</title>
 <style>
 body{
  margin:0;
@@ -17,18 +17,12 @@ body{
 #studio{
  display:flex;
  flex-direction:column;
+ gap:8px;
  align-items:center;
- gap:10px;
 }
 canvas{
  background:#fff;
  border-radius:16px;
-}
-button{
- padding:6px 12px;
- border:none;
- border-radius:6px;
- cursor:pointer;
 }
 .small{font-size:12px;opacity:.7}
 </style>
@@ -36,10 +30,7 @@ button{
 <body>
 
 <div id="studio">
- <div>
-  <button onclick="exportMP4()">Export MP4</button>
- </div>
- <div class="small">v36.1 — MP4 export (safe)</div>
+ <div class="small">v37.0 — Timeline core (no UI)</div>
  <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -51,11 +42,13 @@ ctx.lineWidth=4;
 
 const W=420,H=640,ground=520;
 
+// ===== JOINT =====
 class Joint{
  constructor(x,y){this.x=x;this.y=y;}
  clone(){return new Joint(this.x,this.y);}
 }
 
+// ===== ENGINE =====
 function stick(a,b,l){
  const dx=b.x-a.x,dy=b.y-a.y;
  const d=Math.hypot(dx,dy)||1;
@@ -79,14 +72,47 @@ function createMan(x){
   elbowR:new Joint(x+40,ground-135),
   handL:new Joint(x-60,ground-115),
   handR:new Joint(x+60,ground-115),
-
-  phase:Math.random()
  };
 }
 
-const men=[];
-for(let i=0;i<3;i++) men.push(createMan(140+i*70));
+// ===== POSE UTILS =====
+function clonePose(m){
+ const p={};
+ for(let k in m) p[k]=m[k].clone();
+ return p;
+}
 
+function applyPose(m,p){
+ for(let k in p){
+  m[k].x=p[k].x;
+  m[k].y=p[k].y;
+ }
+}
+
+// ===== TIMELINE =====
+const timeline={
+ duration:120,
+ tracks:{
+  man0:[]
+ }
+};
+
+function addKeyframe(frame,pose){
+ timeline.tracks.man0.push({frame,pose});
+ timeline.tracks.man0.sort((a,b)=>a.frame-b.frame);
+}
+
+// ===== INITIAL KEYFRAMES =====
+const man=createMan(210);
+
+addKeyframe(0,clonePose(man));
+
+// ikkinchi pose (qo‘llar ochiq)
+man.handL.x-=40;
+man.handR.x+=40;
+addKeyframe(60,clonePose(man));
+
+// ===== SOLVE =====
 function solve(m){
  for(let i=0;i<6;i++){
   stick(m.neck,m.hip,70);
@@ -102,6 +128,7 @@ function solve(m){
  }
 }
 
+// ===== DRAW =====
 function line(a,b){
  ctx.beginPath();
  ctx.moveTo(a.x,a.y);
@@ -126,28 +153,23 @@ function drawMan(m){
  line(m.elbowR,m.handR);
 }
 
-function step(){
- men.forEach(m=>{
-  m.phase+=0.08;
-  const s=Math.sin(m.phase);
+// ===== PLAYBACK =====
+let frame=0;
 
-  m.footL.y=ground-Math.max(0,s)*28;
-  m.footR.y=ground-Math.max(0,-s)*28;
+function loop(){
+ frame=(frame+1)%timeline.duration;
 
-  m.hip.y=ground-85-Math.abs(s)*8;
-  m.neck.y=m.hip.y-70;
-  m.head.y=m.neck.y-40;
+ // hozircha: eng yaqin keyframe
+ const keys=timeline.tracks.man0;
+ let current=keys[0];
+ for(let k of keys){
+  if(k.frame<=frame) current=k;
+ }
 
-  m.handL.x=m.neck.x-s*22;
-  m.handR.x=m.neck.x+s*22;
+ applyPose(man,current.pose);
+ solve(man);
 
-  solve(m);
- });
-}
-
-function draw(){
  ctx.clearRect(0,0,W,H);
-
  ctx.strokeStyle="#ccc";
  ctx.beginPath();
  ctx.moveTo(0,ground);
@@ -155,52 +177,11 @@ function draw(){
  ctx.stroke();
 
  ctx.strokeStyle="#000";
- men.forEach(drawMan);
-}
+ drawMan(man);
 
-function loop(){
- step();
- draw();
  requestAnimationFrame(loop);
 }
 loop();
-
-// ===== MP4 EXPORT =====
-async function exportMP4(){
- alert("MP4 tayyorlanmoqda, kuting...");
-
- const { createFFmpeg, fetchFile } =
-  await import("https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js");
-
- const ffmpeg=createFFmpeg({log:true});
- await ffmpeg.load();
-
- const frames=96, fps=24;
-
- for(let i=0;i<frames;i++){
-  step();
-  draw();
-  const png=c.toDataURL("image/png");
-  ffmpeg.FS("writeFile",`f${i}.png`,await fetchFile(png));
- }
-
- await ffmpeg.run(
-  "-framerate",String(fps),
-  "-i","f%d.png",
-  "-pix_fmt","yuv420p",
-  "out.mp4"
- );
-
- const video=ffmpeg.FS("readFile","out.mp4");
- const url=URL.createObjectURL(
-  new Blob([video.buffer],{type:"video/mp4"})
- );
-
- const a=document.createElement("a");
- a.href=url;
- a.download="stickman.mp4";
- a.click();
-}
 </script>
 
 </body>
