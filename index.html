@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman Studio v37.0 — Timeline Core</title>
+<title>Stickman Studio v37.1 — Interpolation</title>
 <style>
 body{
  margin:0;
@@ -30,7 +30,7 @@ canvas{
 <body>
 
 <div id="studio">
- <div class="small">v37.0 — Timeline core (no UI)</div>
+ <div class="small">v37.1 — Timeline interpolation</div>
  <canvas id="c" width="420" height="640"></canvas>
 </div>
 
@@ -57,6 +57,7 @@ function stick(a,b,l){
  b.x-=dx*diff; b.y-=dy*diff;
 }
 
+// ===== CREATE MAN =====
 function createMan(x){
  return{
   hip:new Joint(x,ground-85),
@@ -82,6 +83,19 @@ function clonePose(m){
  return p;
 }
 
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+function blendPose(a,b,t){
+ const p={};
+ for(let k in a){
+  p[k]=new Joint(
+   lerp(a[k].x,b[k].x,t),
+   lerp(a[k].y,b[k].y,t)
+  );
+ }
+ return p;
+}
+
 function applyPose(m,p){
  for(let k in p){
   m[k].x=p[k].x;
@@ -92,9 +106,7 @@ function applyPose(m,p){
 // ===== TIMELINE =====
 const timeline={
  duration:120,
- tracks:{
-  man0:[]
- }
+ tracks:{ man0:[] }
 };
 
 function addKeyframe(frame,pose){
@@ -102,17 +114,18 @@ function addKeyframe(frame,pose){
  timeline.tracks.man0.sort((a,b)=>a.frame-b.frame);
 }
 
-// ===== INITIAL KEYFRAMES =====
+// ===== SETUP =====
 const man=createMan(210);
 
+// keyframe 0
 addKeyframe(0,clonePose(man));
 
-// ikkinchi pose (qo‘llar ochiq)
+// keyframe 60 (qo‘llar ochiladi)
 man.handL.x-=40;
 man.handR.x+=40;
 addKeyframe(60,clonePose(man));
 
-// ===== SOLVE =====
+// ===== IK =====
 function solve(m){
  for(let i=0;i<6;i++){
   stick(m.neck,m.hip,70);
@@ -156,17 +169,30 @@ function drawMan(m){
 // ===== PLAYBACK =====
 let frame=0;
 
+function getPoseAtFrame(f){
+ const keys=timeline.tracks.man0;
+
+ let k0=keys[0], k1=keys[keys.length-1];
+
+ for(let i=0;i<keys.length-1;i++){
+  if(f>=keys[i].frame && f<=keys[i+1].frame){
+   k0=keys[i];
+   k1=keys[i+1];
+   break;
+  }
+ }
+
+ if(k0===k1) return clonePose(k0.pose);
+
+ const t=(f-k0.frame)/(k1.frame-k0.frame);
+ return blendPose(k0.pose,k1.pose,t);
+}
+
 function loop(){
  frame=(frame+1)%timeline.duration;
 
- // hozircha: eng yaqin keyframe
- const keys=timeline.tracks.man0;
- let current=keys[0];
- for(let k of keys){
-  if(k.frame<=frame) current=k;
- }
-
- applyPose(man,current.pose);
+ const pose=getPoseAtFrame(frame);
+ applyPose(man,pose);
  solve(man);
 
  ctx.clearRect(0,0,W,H);
