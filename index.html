@@ -122,21 +122,38 @@ if (action === 'jump') {
   // run / stand
   ctx.moveTo(x - swing, y - 15);
   ctx.lineTo(x + swing, y - 15);
+} 
+  
+// NEW LEGS
+if (action === 'jump') {
+  drawLeg(x - 6, y, 0);
+  drawLeg(x + 6, y, 0);
+} else {
+  drawLeg(x - 6, y, 0);
+  drawLeg(x + 6, y, Math.PI);
 }
 
 ctx.stroke();
 
 
-// legs
-let legY = action === 'jump' ? 4 : 20;
-let legSwing = action === 'jump' ? 3 : swing;
+function drawLeg(hipX, hipY, dir) {
+  const thigh = 18;
+  const calf = 18;
 
-ctx.beginPath();
-ctx.moveTo(x, y);
-ctx.lineTo(x - legSwing, y + legY);
-ctx.moveTo(x, y);
-ctx.lineTo(x + legSwing, y + legY);
-ctx.stroke();
+  let a1 = Math.sin(frame * 0.15 + dir) * 0.6;
+  let a2 = Math.sin(frame * 0.15 + dir + 0.8) * 0.6;
+
+  const kneeX = hipX + Math.sin(a1) * thigh;
+  const kneeY = hipY + Math.cos(a1) * thigh;
+
+  const footX = kneeX + Math.sin(a2) * calf;
+  const footY = kneeY + Math.cos(a2) * calf;
+
+  ctx.beginPath();
+  ctx.moveTo(hipX, hipY);
+  ctx.lineTo(kneeX, kneeY);
+  ctx.lineTo(footX, footY);
+  ctx.stroke();
 
 }
 
