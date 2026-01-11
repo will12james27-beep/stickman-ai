@@ -2,325 +2,174 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.22</title>
+<title>21 C.23 Facial Emotion Mapping</title>
 <style>
-html,body{
-  margin:0;padding:0;
-  width:100%;height:100%;
-  overflow:hidden;background:#000;
-}
-canvas{display:block;}
+  body {
+    margin: 0;
+    background: #111;
+  }
+  canvas {
+    display: block;
+    margin: auto;
+    background: #fff;
+  }
 </style>
 </head>
 <body>
 
-<canvas id="canvas"></canvas>
+<canvas id="c" width="480" height="640"></canvas>
 
 <script>
-// ================= CANVAS =================
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
-function resize(){
-  canvas.width=window.innerWidth;
-  canvas.height=window.innerHeight;
-}
-resize(); window.addEventListener("resize",resize);
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
 
-// ================= SCENE =================
-const scene={width:6000,groundY:900};
+/* =========================
+   EMOTION SYSTEM
+========================= */
 
-// ================= CHAR =================
-function createChar(x,color){
-  return{
-    x,
-    y:scene.groundY-120,
-    color,
-    head:18,body:50,arm:40,leg:45,
-
-    emoji:null,
-    talk:0,
-    priority:0,
-
-    text:null,
-    textLife:0,
-
-    // 21 C.22 NEW (micro motion)
-    idlePhase:Math.random()*Math.PI*2,
-    eyeDir:0,
-    eyeTarget:0,
-    blink:0
-  };
-}
-
-const chars=[
-  createChar(900,"#e91e63"),
-  createChar(1400,"#000"),
-  createChar(1900,"#2196f3"),
-  createChar(2400,"#4caf50")
-];
-
-// ================= CAMERA =================
-const camera={
-  x:0,y:0,zoom:1,targetZoom:1,
-  smooth:0.12,zoomSmooth:0.15
+const Emotion = {
+  NEUTRAL: "neutral",
+  ANGRY: "angry",
+  CONFUSED: "confused",
+  SHOCKED: "shocked"
 };
-let focusChar=chars[0];
 
-function camX(x){return(x-camera.x)*camera.zoom;}
+let currentEmotion = Emotion.NEUTRAL;
 
-function updateCamera(){
-  const tx=focusChar.x-canvas.width/(2*camera.zoom);
-  camera.x+=(tx-camera.x)*camera.smooth;
-  camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
-}
+/* =========================
+   FACE MAP
+========================= */
 
-// ================= WORLD TEXT =================
-function drawWorldText(text,x,y,opt={}){
-  const {size=22,color="#000",shake=0}=opt;
-  const ox=(Math.random()-0.5)*shake;
-  const oy=(Math.random()-0.5)*shake;
+const faceMap = {
+  neutral: { eye: 1, brow: 0, mouth: "line" },
+  angry: { eye: 0.7, brow: -18, mouth: "flat" },
+  confused: { eye: 0.85, brow: 12, mouth: "tilt" },
+  shocked: { eye: 1.3, brow: 0, mouth: "open" }
+};
 
-  ctx.font=`bold ${size*camera.zoom}px Arial`;
-  ctx.fillStyle=color;
-  ctx.textAlign="center";
-  ctx.fillText(text,camX(x)+ox,y*camera.zoom+oy);
-}
+/* =========================
+   DRAW FUNCTIONS
+========================= */
 
-function sayChar(c,text,life=50){
-  c.text=text;
-  c.textLife=life;
-}
-
-// ================= EMOJI =================
-function spawnEmoji(c,s){
-  c.emoji={s,life:40,scale:0.4,y:0};
-}
-function updateEmoji(c){
-  if(!c.emoji)return;
-  c.emoji.life--;
-  c.emoji.scale+=0.04;
-  c.emoji.y+=1.2;
-  if(c.emoji.life<=0)c.emoji=null;
-}
-
-// ================= SUBTITLE =================
-const subtitle={text:"",life:0,shake:0,color:"#ffeb3b"};
-function showSubtitle(text,shake=4,color="#ffeb3b"){
-  subtitle.text=text;
-  subtitle.life=80;
-  subtitle.shake=shake;
-  subtitle.color=color;
-}
-function clearSubtitle(){ subtitle.life=0; }
-
-function drawSubtitle(){
-  if(subtitle.life<=0)return;
-  subtitle.life--;
-  ctx.fillStyle="#000";
-  ctx.fillRect(0,canvas.height-150,canvas.width,150);
-
-  ctx.font="bold 36px Arial";
-  ctx.textAlign="center";
-  const ox=(Math.random()-0.5)*subtitle.shake;
-  const oy=(Math.random()-0.5)*subtitle.shake;
-  ctx.fillStyle=subtitle.color;
-  ctx.fillText(subtitle.text,canvas.width/2+ox,canvas.height-80+oy);
-}
-
-// ================= PRIORITY =================
-function setSpeaker(index){
-  chars.forEach((c,i)=>{
-    c.priority = i===index ? 1 : 0;
-    c.talk = i===index ? 1 : 0;
-  });
-  focusChar=chars[index];
-  camera.targetZoom=1.7;
-}
-
-// ================= SCENE BEAT =================
-let beatActive=false,beatTimer=0,beatDuration=0;
-function startBeat({duration=30,zoom=1.9,silence=true}={}){
-  beatActive=true;
-  beatTimer=0;
-  beatDuration=duration;
-  camera.targetZoom=zoom;
-  if(silence) clearSubtitle();
-}
-function updateBeat(){
-  if(!beatActive)return;
-  beatTimer++;
-  if(beatTimer>beatDuration){
-    beatActive=false;
-    camera.targetZoom=1.6;
-  }
-}
-
-// ================= MICRO MOTION (21 C.22) =================
-function updateMicro(c){
-  // idle breathing
-  c.idlePhase+=0.03;
-  const idleBob=Math.sin(c.idlePhase)*2;
-
-  // eye random target
-  if(Math.random()<0.01){
-    c.eyeTarget=(Math.random()*2-1)*4;
-  }
-  c.eyeDir+=(c.eyeTarget-c.eyeDir)*0.1;
-
-  // blink
-  if(c.blink>0) c.blink--;
-  else if(Math.random()<0.005) c.blink=4;
-
-  return idleBob;
-}
-
-// ================= CHAIN =================
-const chain=[
-  {
-    speaker:0,
-    text:"THIS MAKES NO SENSE",
-    color:"#ff5252",
-    interrupts:[
-      {t:30,beat:{duration:35,zoom:2,silence:true}},
-      {t:70,c:1,text:"WAIT…",e:"😐"}
-    ]
-  },
-  {
-    speaker:1,
-    text:"…",
-    color:"#999",
-    interrupts:[
-      {t:40,beat:{duration:45,zoom:2.1,silence:true}},
-      {t:90,c:2,text:"BRO?",e:"😑"}
-    ]
-  }
-];
-
-let chainIndex=0,timer=0,activeInterrupts=[];
-
-function startChain(){
-  const s=chain[chainIndex];
-  setSpeaker(s.speaker);
-  showSubtitle(s.text,2,s.color);
-  sayChar(chars[s.speaker],s.text,50);
-  spawnEmoji(chars[s.speaker],"💬");
-  activeInterrupts=s.interrupts.map(i=>({...i,done:false}));
-  timer=0;
-}
-startChain();
-
-function updateChain(){
-  timer++;
-  activeInterrupts.forEach(i=>{
-    if(i.done||timer<i.t)return;
-    i.done=true;
-    if(i.beat){ startBeat(i.beat); return; }
-    setSpeaker(i.c);
-    spawnEmoji(chars[i.c],i.e);
-    sayChar(chars[i.c],i.text,40);
-    showSubtitle(i.text,4,"#ffeb3b");
-  });
-  if(timer>160){
-    chainIndex=(chainIndex+1)%chain.length;
-    startChain();
-  }
-}
-
-// ================= DRAW =================
-function drawBG(){
-  ctx.fillStyle="#fff";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-}
-function drawGround(){
-  ctx.strokeStyle="#aaa";
+function drawEye(x, y, open) {
   ctx.beginPath();
-  ctx.moveTo(camX(0),scene.groundY);
-  ctx.lineTo(camX(scene.width),scene.groundY);
+  ctx.ellipse(x, y, 3, 5 * open, 0, 0, Math.PI * 2);
   ctx.stroke();
 }
 
-function drawChar(c){
-  const scale=1+0.15*c.priority;
-  const alpha=0.5+0.5*c.priority;
-  const idle=updateMicro(c);
-
+function drawBrow(x, y, tilt) {
   ctx.save();
-  ctx.globalAlpha=alpha;
-  ctx.strokeStyle=c.color;
-  ctx.lineWidth=4*scale;
+  ctx.translate(x, y);
+  ctx.rotate(tilt * Math.PI / 180);
+  ctx.beginPath();
+  ctx.moveTo(-6, 0);
+  ctx.lineTo(6, 0);
+  ctx.stroke();
+  ctx.restore();
+}
 
-  const hx=c.x;
-  const hy=c.y - c.talk*12 + idle;
+function drawMouth(x, y, type) {
+  ctx.beginPath();
+
+  if (type === "line") {
+    ctx.moveTo(x - 6, y);
+    ctx.lineTo(x + 6, y);
+  }
+
+  if (type === "flat") {
+    ctx.moveTo(x - 6, y + 2);
+    ctx.lineTo(x + 6, y + 2);
+  }
+
+  if (type === "tilt") {
+    ctx.moveTo(x - 6, y);
+    ctx.lineTo(x + 4, y - 3);
+  }
+
+  if (type === "open") {
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+  }
+
+  ctx.stroke();
+}
+
+function drawFace(x, y, emotion) {
+  const f = faceMap[emotion];
+
+  drawEye(x - 10, y, f.eye);
+  drawEye(x + 10, y, f.eye);
+
+  drawBrow(x - 10, y - 10, f.brow);
+  drawBrow(x + 10, y - 10, f.brow);
+
+  drawMouth(x, y + 12, f.mouth);
+}
+
+/* =========================
+   CHARACTER
+========================= */
+
+function drawCharacter() {
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#000";
 
   // head
   ctx.beginPath();
-  ctx.arc(camX(hx),hy,c.head*scale*camera.zoom,0,Math.PI*2);
+  ctx.arc(240, 200, 40, 0, Math.PI * 2);
   ctx.stroke();
-
-  // eyes
-  if(c.blink===0){
-    ctx.fillStyle=c.color;
-    ctx.beginPath();
-    ctx.arc(camX(hx-4+c.eyeDir),hy-2,2,0,Math.PI*2);
-    ctx.arc(camX(hx+4+c.eyeDir),hy-2,2,0,Math.PI*2);
-    ctx.fill();
-  }
 
   // body
   ctx.beginPath();
-  ctx.moveTo(camX(hx),hy+c.head*scale);
-  ctx.lineTo(camX(hx),hy+(c.head+c.body)*scale);
-  ctx.stroke();
-
-  const by=hy+(c.head+c.body)*scale;
-
-  // legs
-  ctx.beginPath();
-  ctx.moveTo(camX(hx),by);
-  ctx.lineTo(camX(hx-c.leg*scale),by+c.leg*scale);
-  ctx.moveTo(camX(hx),by);
-  ctx.lineTo(camX(hx+c.leg*scale),by+c.leg*scale);
+  ctx.moveTo(240, 240);
+  ctx.lineTo(240, 360);
   ctx.stroke();
 
   // arms
   ctx.beginPath();
-  ctx.moveTo(camX(hx),hy+25*scale);
-  ctx.lineTo(camX(hx-c.arm*scale),hy+40*scale);
-  ctx.moveTo(camX(hx),hy+25*scale);
-  ctx.lineTo(camX(hx+c.arm*scale),hy+40*scale);
+  ctx.moveTo(240, 280);
+  ctx.lineTo(190, 320);
+  ctx.moveTo(240, 280);
+  ctx.lineTo(290, 320);
   ctx.stroke();
 
-  // emoji
-  if(c.emoji){
-    ctx.font=`${44*c.emoji.scale}px serif`;
-    ctx.textAlign="center";
-    ctx.fillText(c.emoji.s,camX(hx),hy-45-c.emoji.y);
-    updateEmoji(c);
-  }
+  // legs
+  ctx.beginPath();
+  ctx.moveTo(240, 360);
+  ctx.lineTo(210, 440);
+  ctx.moveTo(240, 360);
+  ctx.lineTo(270, 440);
+  ctx.stroke();
 
-  // world text
-  if(c.text && c.textLife>0){
-    c.textLife--;
-    drawWorldText(c.text,hx,hy-90,{size:24,color:"#111",shake:2});
-    if(c.textLife<=0)c.text=null;
-  }
-
-  ctx.restore();
+  drawFace(240, 200, currentEmotion);
 }
 
-// ================= LOOP =================
-function loop(){
-  updateCamera();
-  updateBeat();
-  updateChain();
+/* =========================
+   BEAT SYSTEM
+========================= */
 
-  drawBG();
-  drawGround();
-  chars.forEach(drawChar);
-  drawSubtitle();
+function beat(delay, fn) {
+  setTimeout(fn, delay);
+}
 
+/* =========================
+   EMOTION SEQUENCE
+========================= */
+
+beat(1000, () => currentEmotion = Emotion.CONFUSED);
+beat(2500, () => currentEmotion = Emotion.SHOCKED);
+beat(4000, () => currentEmotion = Emotion.ANGRY);
+beat(6000, () => currentEmotion = Emotion.NEUTRAL);
+
+/* =========================
+   LOOP
+========================= */
+
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawCharacter();
   requestAnimationFrame(loop);
 }
+
 loop();
 </script>
 
