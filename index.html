@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.5.0 – Pose Editor</title>
+<title>Stickman AI v8.6.0 – Keyframe Pose</title>
 <style>
   body{
     margin:0;
@@ -16,17 +16,20 @@
     height:100vh;
   }
   canvas{background:#fff;cursor:crosshair;}
-  .hint{margin-top:8px;font-size:13px;opacity:.8}
+  .ui{margin-top:8px;font-size:13px;opacity:.85}
+  input{width:600px;margin-top:6px;}
 </style>
 </head>
 <body>
 
 <canvas id="c" width="600" height="600"></canvas>
-<div class="hint">Qo‘l yoki oyoqqa bos → aylantir (pose editor)</div>
+<input id="time" type="range" min="0" max="2000" value="0">
+<div class="ui">Qo‘l-oyoqni burab <b>K</b> ni bos — keyframe saqlanadi</div>
 
 <script>
 const canvas=document.getElementById("c");
 const ctx=canvas.getContext("2d");
+const slider=document.getElementById("time");
 
 /* =====================
    STATE
@@ -44,13 +47,55 @@ const stickman={
 let active=null;
 
 /* =====================
+   KEYFRAMES
+===================== */
+const keyframes=[]; 
+// {t: number, pose:{la,ra,ll,rl}}
+
+/* =====================
    HELPERS
 ===================== */
-function dist(x1,y1,x2,y2){
-  return Math.hypot(x1-x2,y1-y2);
+const lerp=(a,b,t)=>a+(b-a)*t;
+function copyPose(){
+  return {
+    la:stickman.joints.la.ang,
+    ra:stickman.joints.ra.ang,
+    ll:stickman.joints.ll.ang,
+    rl:stickman.joints.rl.ang
+  };
 }
-function angle(cx,cy,px,py){
-  return Math.atan2(py-cy,px-cx)*180/Math.PI+90;
+function applyPose(p){
+  if(!p)return;
+  stickman.joints.la.ang=p.la;
+  stickman.joints.ra.ang=p.ra;
+  stickman.joints.ll.ang=p.ll;
+  stickman.joints.rl.ang=p.rl;
+}
+
+/* =====================
+   INTERPOLATION
+===================== */
+function applyTimeline(t){
+  if(keyframes.length===0) return;
+
+  keyframes.sort((a,b)=>a.t-b.t);
+
+  let a=keyframes[0], b=keyframes[keyframes.length-1];
+  for(let i=0;i<keyframes.length-1;i++){
+    if(t>=keyframes[i].t && t<=keyframes[i+1].t){
+      a=keyframes[i]; b=keyframes[i+1]; break;
+    }
+  }
+  if(t<=a.t) return applyPose(a.pose);
+  if(t>=b.t) return applyPose(b.pose);
+
+  const k=(t-a.t)/(b.t-a.t);
+  applyPose({
+    la:lerp(a.pose.la,b.pose.la,k),
+    ra:lerp(a.pose.ra,b.pose.ra,k),
+    ll:lerp(a.pose.ll,b.pose.ll,k),
+    rl:lerp(a.pose.rl,b.pose.rl,k)
+  });
 }
 
 /* =====================
@@ -75,54 +120,53 @@ function draw(){
   ctx.lineCap="round";
   ctx.strokeStyle="#000";
 
-  // body
   ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(0,60);ctx.stroke();
   ctx.beginPath();ctx.arc(0,-70,22,0,Math.PI*2);ctx.stroke();
 
-  for(let k in stickman.joints){
-    drawLimb(stickman.joints[k]);
-  }
-
+  for(let k in stickman.joints) drawLimb(stickman.joints[k]);
   ctx.restore();
 }
 
 /* =====================
-   HIT TEST
+   HIT / MOUSE
 ===================== */
-function hitTest(mx,my){
-  for(let k in stickman.joints){
-    const j=stickman.joints[k];
-    const bx=stickman.x+j.x;
-    const by=stickman.y+j.y;
-    if(dist(mx,my,bx,by)<15) return j;
-  }
-  return null;
+function dist(x1,y1,x2,y2){return Math.hypot(x1-x2,y1-y2);}
+function angle(cx,cy,px,py){
+  return Math.atan2(py-cy,px-cx)*180/Math.PI+90;
 }
-
-/* =====================
-   MOUSE
-===================== */
 canvas.onmousedown=e=>{
   const r=canvas.getBoundingClientRect();
-  const mx=e.clientX-r.left;
-  const my=e.clientY-r.top;
-  active=hitTest(mx,my);
+  const mx=e.clientX-r.left,my=e.clientY-r.top;
+  for(let k in stickman.joints){
+    const j=stickman.joints[k];
+    if(dist(mx,my,stickman.x+j.x,stickman.y+j.y)<15){
+      active=j; break;
+    }
+  }
 };
 canvas.onmousemove=e=>{
   if(!active)return;
   const r=canvas.getBoundingClientRect();
-  const mx=e.clientX-r.left;
-  const my=e.clientY-r.top;
-  const cx=stickman.x+active.x;
-  const cy=stickman.y+active.y;
-  active.ang=angle(cx,cy,mx,my);
+  const mx=e.clientX-r.left,my=e.clientY-r.top;
+  active.ang=angle(stickman.x+active.x,stickman.y+active.y,mx,my);
 };
 window.onmouseup=()=>active=null;
+
+/* =====================
+   KEYFRAME INPUT
+===================== */
+window.onkeydown=e=>{
+  if(e.key.toLowerCase()==="k"){
+    keyframes.push({t:+slider.value,pose:copyPose()});
+    console.log("Keyframe added:",keyframes);
+  }
+};
 
 /* =====================
    LOOP
 ===================== */
 function loop(){
+  applyTimeline(+slider.value);
   draw();
   requestAnimationFrame(loop);
 }
