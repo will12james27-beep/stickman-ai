@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.20</title>
+<title>Stickman AI — Scene System 21 C.21</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -36,15 +36,13 @@ function createChar(x,color){
     y:scene.groundY-120,
     color,
     head:18,body:50,arm:40,leg:45,
+
     emoji:null,
     talk:0,
+    priority:0,
 
-    // Text
     text:null,
-    textLife:0,
-
-    // 21 C.20 NEW
-    priority:0
+    textLife:0
   };
 }
 
@@ -108,6 +106,9 @@ function showSubtitle(text,shake=4,color="#ffeb3b"){
   subtitle.shake=shake;
   subtitle.color=color;
 }
+function clearSubtitle(){
+  subtitle.life=0;
+}
 
 function drawSubtitle(){
   if(subtitle.life<=0)return;
@@ -126,18 +127,48 @@ function drawSubtitle(){
   ctx.fillText(subtitle.text,canvas.width/2+ox,canvas.height-80+oy);
 }
 
-// ================= PRIORITY SYSTEM (21 C.20) =================
+// ================= PRIORITY =================
 function setSpeaker(index){
   chars.forEach((c,i)=>{
     c.priority = i===index ? 1 : 0;
     c.talk = i===index ? 1 : 0;
   });
-
   focusChar=chars[index];
   camera.targetZoom=1.7;
 }
 
-// ================= INTERRUPT CHAIN =================
+// ================= SCENE BEAT SYSTEM (21 C.21) =================
+let beatTimer=0;
+let beatActive=false;
+let beatDuration=0;
+let beatZoom=1;
+let beatSilence=false;
+
+function startBeat({
+  duration=30,
+  zoom=1.9,
+  silence=true
+}={}){
+  beatActive=true;
+  beatTimer=0;
+  beatDuration=duration;
+  beatZoom=zoom;
+  beatSilence=silence;
+
+  camera.targetZoom=zoom;
+  if(silence) clearSubtitle();
+}
+
+function updateBeat(){
+  if(!beatActive)return;
+  beatTimer++;
+  if(beatTimer>beatDuration){
+    beatActive=false;
+    camera.targetZoom=1.6;
+  }
+}
+
+// ================= CHAIN =================
 const chain=[
   {
     speaker:0,
@@ -145,7 +176,8 @@ const chain=[
     color:"#ff5252",
     interrupts:[
       {t:25,c:1,text:"WAIT WAIT",e:"✋"},
-      {t:40,c:2,text:"BRO LISTEN",e:"😤"}
+      {t:50,beat:{duration:35,zoom:2,silence:true}},
+      {t:80,c:2,text:"BRO LISTEN",e:"😤"}
     ]
   },
   {
@@ -153,8 +185,8 @@ const chain=[
     text:"I ALREADY EXPLAINED IT",
     color:"#03a9f4",
     interrupts:[
-      {t:30,c:3,text:"NO YOU DID NOT",e:"🤬"},
-      {t:55,c:0,text:"STOP LYING",e:"🔥"}
+      {t:30,beat:{duration:40,zoom:2.1,silence:true}},
+      {t:60,c:3,text:"NO YOU DID NOT",e:"🤬"}
     ]
   },
   {
@@ -162,7 +194,8 @@ const chain=[
     text:"EVERYONE CALM DOWN",
     color:"#4caf50",
     interrupts:[
-      {t:20,c:2,text:"NO",e:"💥"}
+      {t:25,beat:{duration:30,zoom:2,silence:true}},
+      {t:55,c:2,text:"NO",e:"💥"}
     ]
   }
 ];
@@ -182,25 +215,28 @@ function startChain(){
   activeInterrupts=s.interrupts.map(i=>({...i,done:false}));
   timer=0;
 }
+
 startChain();
 
 function updateChain(){
   timer++;
 
-  const s=chain[chainIndex];
-
   activeInterrupts.forEach(i=>{
-    if(!i.done && timer>i.t){
-      i.done=true;
+    if(i.done || timer<i.t)return;
+    i.done=true;
 
-      setSpeaker(i.c);
-      spawnEmoji(chars[i.c],i.e);
-      sayChar(chars[i.c],i.text,40);
-      showSubtitle(i.text,6,"#ffeb3b");
+    if(i.beat){
+      startBeat(i.beat);
+      return;
     }
+
+    setSpeaker(i.c);
+    spawnEmoji(chars[i.c],i.e);
+    sayChar(chars[i.c],i.text,40);
+    showSubtitle(i.text,6,"#ffeb3b");
   });
 
-  if(timer>120){
+  if(timer>140){
     chainIndex=(chainIndex+1)%chain.length;
     startChain();
   }
@@ -221,7 +257,6 @@ function drawGround(){
 }
 
 function drawChar(c){
-  // Priority visual
   const scale=1+0.15*c.priority;
   const alpha=0.5+0.5*c.priority;
 
@@ -257,7 +292,6 @@ function drawChar(c){
   ctx.lineTo(camX(hx+c.arm*scale),hy+40*scale);
   ctx.stroke();
 
-  // Emoji
   if(c.emoji){
     ctx.font=`${44*c.emoji.scale}px serif`;
     ctx.textAlign="center";
@@ -265,7 +299,6 @@ function drawChar(c){
     updateEmoji(c);
   }
 
-  // World text
   if(c.text && c.textLife>0){
     c.textLife--;
     drawWorldText(c.text,hx,hy-90,{
@@ -282,6 +315,7 @@ function drawChar(c){
 // ================= LOOP =================
 function loop(){
   updateCamera();
+  updateBeat();
   updateChain();
 
   drawBG();
