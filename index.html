@@ -719,6 +719,84 @@ draw = function(){
 
 console.log("⏱️ 21 B.9 Text Timing & Decay loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.10 — EMOTION → CAMERA MICRO-SYNC =================
+// SAFE MODE: append-only
+
+// Camera mavjud bo‘lmasa — minimal init (safe)
+if(typeof camera === "undefined"){
+  window.camera = {
+    x: 0,
+    y: 0,
+    zoom: 1,
+    shake: 0,
+    targetZoom: 1
+  };
+}
+
+// Emotion → camera impulse mapping
+function getCameraImpulse(c){
+  if(!c.mood) return null;
+
+  switch(c.mood){
+    case "angry":
+      return { shake: 2.5, zoom: 0.03 };
+    case "shocked":
+      return { shake: 3.5, zoom: 0.05 };
+    case "confused":
+      return { shake: 1.5, zoom: 0.02 };
+    case "neutral":
+    default:
+      return null;
+  }
+}
+
+// Impulse qo‘llash (bir martalik)
+function applyCameraImpulse(imp){
+  if(!imp) return;
+
+  camera.shake = Math.max(camera.shake, imp.shake);
+  camera.targetZoom = Math.max(camera.targetZoom, 1 + imp.zoom);
+}
+
+// Emotion o‘zgarishini kuzatish
+function detectEmotionChange(c){
+  if(c._lastMood === undefined){
+    c._lastMood = c.mood;
+    return;
+  }
+
+  if(c.mood !== c._lastMood){
+    const imp = getCameraImpulse(c);
+    applyCameraImpulse(imp);
+    c._lastMood = c.mood;
+  }
+}
+
+// Camera easing (har frame)
+function updateCameraMicro(){
+  // shake decay
+  camera.shake *= 0.85;
+
+  // zoom easing
+  camera.zoom += (camera.targetZoom - camera.zoom) * 0.1;
+  camera.targetZoom += (1 - camera.targetZoom) * 0.05;
+}
+
+// LOOP ga SAFE ulanish
+const _loop21B10 = loop;
+loop = function(){
+  characters.forEach(c=>{
+    detectEmotionChange(c);
+  });
+
+  updateCameraMicro();
+
+  _loop21B10();
+};
+
+console.log("🎥 21 B.10 Emotion → Camera Micro-sync loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
