@@ -2,63 +2,83 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.2.0 – Timeline Combo</title>
+<title>Stickman AI v8.3.0 – Timeline Editor</title>
 <style>
   body{
     margin:0;
     background:#111;
+    color:#fff;
+    font-family:sans-serif;
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
     height:100vh;
-    color:#fff;
-    font-family:sans-serif;
   }
-  canvas{background:#fff;}
-  input{width:600px;margin-top:10px;}
+  canvas{
+    background:#fff;
+    margin-bottom:10px;
+  }
+  #timeline{
+    width:600px;
+    height:60px;
+    background:#222;
+    position:relative;
+    border-radius:6px;
+    overflow:hidden;
+    margin-bottom:8px;
+  }
+  .block{
+    position:absolute;
+    top:10px;
+    height:40px;
+    border-radius:4px;
+    text-align:center;
+    line-height:40px;
+    font-size:12px;
+    color:#000;
+    font-weight:bold;
+  }
+  .walk{ background:#4caf50; }
+  .jump{ background:#ff9800; }
+  .run { background:#03a9f4; }
+
+  input{ width:600px; }
 </style>
 </head>
 <body>
 
 <canvas id="c" width="600" height="600"></canvas>
+
+<div id="timeline">
+  <div class="block walk" style="left:0;width:160px;">WALK</div>
+  <div class="block jump" style="left:160px;width:200px;">JUMP</div>
+  <div class="block run"  style="left:360px;width:240px;">RUN</div>
+</div>
+
 <input id="slider" type="range" min="0" max="3000" value="0">
 
 <script>
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
-const slider = document.getElementById("slider");
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+const slider=document.getElementById("slider");
 
 /* =====================
    STATE
 ===================== */
-const stickman = {
-  x: 300,
-  groundY: 340,
-  y: 340,
-  basePose: {
-    leftArm: -15,
-    rightArm: 15,
-    leftLeg: 10,
-    rightLeg: -10
-  },
-  pose: {
-    leftArm: 0,
-    rightArm: 0,
-    leftLeg: 0,
-    rightLeg: 0
-  }
+const stickman={
+  x:300,
+  groundY:340,
+  y:340,
+  basePose:{leftArm:-15,rightArm:15,leftLeg:10,rightLeg:-10},
+  pose:{leftArm:0,rightArm:0,leftLeg:0,rightLeg:0}
 };
 
 /* =====================
-   EASING
+   HELPERS
 ===================== */
-function easeInOut(t){
-  return t < 0.5
-    ? 2*t*t
-    : 1 - Math.pow(-2*t + 2, 2) / 2;
-}
-function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function ease(t){return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 
 /* =====================
    DRAW
@@ -70,115 +90,77 @@ function drawStickman(s){
   ctx.lineCap="round";
   ctx.strokeStyle="#000";
 
-  // body
-  ctx.beginPath();
-  ctx.moveTo(0,-40);
-  ctx.lineTo(0,60);
-  ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(0,60);ctx.stroke();
+  ctx.beginPath();ctx.arc(0,-70,22,0,Math.PI*2);ctx.stroke();
 
-  // head
-  ctx.beginPath();
-  ctx.arc(0,-70,22,0,Math.PI*2);
-  ctx.stroke();
-
-  // arms
   drawLimb(0,-20,55,s.pose.leftArm);
   drawLimb(0,-20,55,s.pose.rightArm);
-
-  // legs
   drawLimb(0,60,65,s.pose.leftLeg);
   drawLimb(0,60,65,s.pose.rightLeg);
 
   ctx.restore();
 }
-
-function drawLimb(x,y,len,ang){
+function drawLimb(x,y,l,a){
   ctx.save();
   ctx.translate(x,y);
-  ctx.rotate(ang*Math.PI/180);
+  ctx.rotate(a*Math.PI/180);
   ctx.beginPath();
   ctx.moveTo(0,0);
-  ctx.lineTo(0,len);
+  ctx.lineTo(0,l);
   ctx.stroke();
   ctx.restore();
 }
 
 /* =====================
-   WALK
+   ACTIONS
 ===================== */
-function walk(localTime){
-  let t = (localTime/800)*Math.PI*2;
-  let s = Math.sin(t);
-
-  stickman.y = stickman.groundY - Math.abs(s)*6;
-  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + s*25;
-  stickman.pose.rightLeg = stickman.basePose.rightLeg - s*25;
-  stickman.pose.leftArm  = stickman.basePose.leftArm  - s*20;
-  stickman.pose.rightArm = stickman.basePose.rightArm + s*20;
+function walk(t){
+  let s=Math.sin((t/800)*Math.PI*2);
+  stickman.y=stickman.groundY-Math.abs(s)*6;
+  stickman.pose.leftLeg=stickman.basePose.leftLeg+s*25;
+  stickman.pose.rightLeg=stickman.basePose.rightLeg-s*25;
+  stickman.pose.leftArm=stickman.basePose.leftArm-s*20;
+  stickman.pose.rightArm=stickman.basePose.rightArm+s*20;
 }
 
-/* =====================
-   JUMP
-===================== */
-function jump(localTime){
-  let t = clamp(localTime/1000,0,1);
+function jump(t){
+  let p=clamp(t/1000,0,1);
+  let y=stickman.groundY,arm=0,leg=0;
 
-  let y = stickman.groundY;
-  let arm=0, leg=0;
-
-  if(t<0.3){
-    let k=easeInOut(t/0.3);
-    y+=k*12; arm=-20*k; leg=20*k;
-  }else if(t<0.5){
-    let k=easeInOut((t-0.3)/0.2);
-    y-=k*40; arm=30*k; leg=-25*k;
-  }else if(t<0.7){
-    let k=easeInOut((t-0.5)/0.2);
-    y=stickman.groundY-40-k*60;
-    arm=30; leg=-25;
-  }else{
-    let k=easeInOut((t-0.7)/0.3);
-    y=stickman.groundY-(1-k)*60;
-    arm=30*(1-k); leg=-25*(1-k);
-  }
+  if(p<0.3){let k=ease(p/0.3);y+=k*12;arm=-20*k;leg=20*k;}
+  else if(p<0.5){let k=ease((p-0.3)/0.2);y-=k*40;arm=30*k;leg=-25*k;}
+  else if(p<0.7){let k=ease((p-0.5)/0.2);y=stickman.groundY-40-k*60;arm=30;leg=-25;}
+  else{let k=ease((p-0.7)/0.3);y=stickman.groundY-(1-k)*60;arm=30*(1-k);leg=-25*(1-k);}
 
   stickman.y=y;
-  stickman.pose.leftArm  = stickman.basePose.leftArm  + arm;
-  stickman.pose.rightArm = stickman.basePose.rightArm - arm;
-  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + leg;
-  stickman.pose.rightLeg = stickman.basePose.rightLeg - leg;
+  stickman.pose.leftArm=stickman.basePose.leftArm+arm;
+  stickman.pose.rightArm=stickman.basePose.rightArm-arm;
+  stickman.pose.leftLeg=stickman.basePose.leftLeg+leg;
+  stickman.pose.rightLeg=stickman.basePose.rightLeg-leg;
 }
 
-/* =====================
-   RUN
-===================== */
-function run(localTime){
-  let t=(localTime/600)*Math.PI*2;
-  let s=Math.sin(t);
-
-  stickman.y = stickman.groundY - Math.abs(s)*14;
-  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + s*45;
-  stickman.pose.rightLeg = stickman.basePose.rightLeg - s*45;
-  stickman.pose.leftArm  = stickman.basePose.leftArm  - s*35;
-  stickman.pose.rightArm = stickman.basePose.rightArm + s*35;
+function run(t){
+  let s=Math.sin((t/600)*Math.PI*2);
+  stickman.y=stickman.groundY-Math.abs(s)*14;
+  stickman.pose.leftLeg=stickman.basePose.leftLeg+s*45;
+  stickman.pose.rightLeg=stickman.basePose.rightLeg-s*45;
+  stickman.pose.leftArm=stickman.basePose.leftArm-s*35;
+  stickman.pose.rightArm=stickman.basePose.rightArm+s*35;
 }
 
 /* =====================
    TIMELINE
 ===================== */
-const timeline = [
-  { start: 0,    end: 800,  action: walk },
-  { start: 800,  end: 1800, action: jump },
-  { start: 1800, end: 3000, action: run  }
+const timeline=[
+  {start:0,end:800,action:walk},
+  {start:800,end:1800,action:jump},
+  {start:1800,end:3000,action:run}
 ];
 
-/* =====================
-   CONTROLLER
-===================== */
 function updateTimeline(time){
-  for(let seg of timeline){
-    if(time>=seg.start && time<seg.end){
-      seg.action(time-seg.start);
+  for(let s of timeline){
+    if(time>=s.start && time<s.end){
+      s.action(time-s.start);
       break;
     }
   }
