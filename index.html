@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.11</title>
+<title>Stickman AI — Scene System 21 C.12</title>
 <style>
-html, body{
+html,body{
   margin:0;
   padding:0;
   width:100%;
@@ -23,37 +23,37 @@ canvas{display:block;}
 // =========================
 // CANVAS
 // =========================
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
 
 function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
 }
 resize();
-window.addEventListener("resize", resize);
+window.addEventListener("resize",resize);
 
 // =========================
 // SCENE
 // =========================
-const scene = {
-  width: 6000,
-  height: 2000,
-  groundY: 900
+const scene={
+  width:6000,
+  height:2000,
+  groundY:900
 };
 
 // =========================
 // CHARACTERS
 // =========================
-function createStickman(x, name){
-  return {
+function createStickman(x,name){
+  return{
     name,
     x,
-    y: scene.groundY - 120,
-    head: 18,
-    body: 50,
-    arm: 40,
-    leg: 45,
+    y:scene.groundY-120,
+    head:18,
+    body:50,
+    arm:40,
+    leg:45,
     speaking:false,
     reacting:false,
     speakTimer:0,
@@ -62,39 +62,34 @@ function createStickman(x, name){
   };
 }
 
-const characters = [
-  createStickman(800, "A"),
-  createStickman(1200, "B"),
-  createStickman(1600, "C")
+const characters=[
+  createStickman(800,"A"),
+  createStickman(1200,"B"),
+  createStickman(1600,"C")
 ];
 
-let activeFocus = characters[0];
+let activeFocus=characters[0];
 
 // =========================
 // CAMERA
 // =========================
-const camera = {
-  x:0, y:0,
-  zoom:1, targetZoom:1,
+const camera={
+  x:0,y:0,
+  zoom:1,targetZoom:1,
   followSmooth:0.12,
   zoomSmooth:0.18,
-  shakeX:0, shakeY:0, shakePower:0
+  shakeX:0,shakeY:0,shakePower:0
 };
 
-function camX(x){ return (x-camera.x)*camera.zoom + camera.shakeX; }
-function camY(y){ return (y-camera.y)*camera.zoom + camera.shakeY; }
+function camX(x){return(x-camera.x)*camera.zoom+camera.shakeX;}
+function camY(y){return(y-camera.y)*camera.zoom+camera.shakeY;}
 
-// =========================
-// CAMERA UPDATE
-// =========================
 function updateCamera(){
-  const tx = activeFocus.x - canvas.width/(2*camera.zoom);
-  const ty = activeFocus.y - canvas.height/(2*camera.zoom);
-
-  camera.x += (tx-camera.x)*camera.followSmooth;
-  camera.y += (ty-camera.y)*camera.followSmooth;
-  camera.zoom += (camera.targetZoom-camera.zoom)*camera.zoomSmooth;
-
+  const tx=activeFocus.x-canvas.width/(2*camera.zoom);
+  const ty=activeFocus.y-canvas.height/(2*camera.zoom);
+  camera.x+=(tx-camera.x)*camera.followSmooth;
+  camera.y+=(ty-camera.y)*camera.followSmooth;
+  camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
   updateShake();
 }
 
@@ -103,52 +98,68 @@ function updateShake(){
     camera.shakeX=(Math.random()-0.5)*camera.shakePower;
     camera.shakeY=(Math.random()-0.5)*camera.shakePower;
     camera.shakePower*=0.85;
-  } else {
-    camera.shakeX=0; camera.shakeY=0;
+  }else{
+    camera.shakeX=0;camera.shakeY=0;
   }
 }
 
 // =========================
 // EMOJI SYSTEM
 // =========================
-function spawnEmoji(character, symbol){
-  character.emoji = {
-    symbol,
-    life:30,
-    scale:0.2,
-    yOffset:0
-  };
+function spawnEmoji(c,symbol){
+  c.emoji={symbol,life:30,scale:0.2,yOffset:0};
 }
 
 function updateEmoji(c){
-  if(!c.emoji) return;
+  if(!c.emoji)return;
   c.emoji.life--;
-  c.emoji.scale += 0.08;
-  c.emoji.yOffset += 1.5;
+  c.emoji.scale+=0.08;
+  c.emoji.yOffset+=1.5;
+  if(c.emoji.life<=0)c.emoji=null;
+}
 
-  if(c.emoji.life<=0) c.emoji=null;
+// =========================
+// SUBTITLE SYSTEM
+// =========================
+const subtitle={
+  text:"",
+  alpha:0,
+  targetAlpha:0
+};
+
+function showSubtitle(text){
+  subtitle.text=text;
+  subtitle.targetAlpha=1;
+}
+
+function hideSubtitle(){
+  subtitle.targetAlpha=0;
+}
+
+function updateSubtitle(){
+  subtitle.alpha+=(subtitle.targetAlpha-subtitle.alpha)*0.15;
 }
 
 // =========================
 // CAMERA FOCUS
 // =========================
-function focus(character, zoom=1.8){
-  activeFocus = character;
-  camera.targetZoom = zoom;
-  camera.shakePower = 6;
-  setTimeout(()=>camera.targetZoom=1, 300);
+function focus(c,zoom=1.8){
+  activeFocus=c;
+  camera.targetZoom=zoom;
+  camera.shakePower=6;
+  setTimeout(()=>camera.targetZoom=1,300);
 }
 
 // =========================
 // DIALOG TIMELINE
 // =========================
-const dialog = [
-  { speaker:0, emoji:"😡", duration:50 },
-  { reaction:1, emoji:"😱", duration:25 },
-  { speaker:1, emoji:"😂", duration:50 },
-  { reaction:2, emoji:"😲", duration:25 },
-  { speaker:2, emoji:"😎", duration:50 },
-  { reaction:0, emoji:"🤯", duration:25 }
+const dialog=[
+  {speaker:0,text:"WHY DID YOU DO THAT?!",emoji:"😡",duration:60},
+  {reaction:1,text:"WAIT— WHAT?!",emoji:"😱",duration:30},
+  {speaker:1,text:"HAHA THIS IS CRAZY!",emoji:"😂",duration:60},
+  {reaction:2,text:"BRO…",emoji:"😲",duration:30},
+  {speaker:2,text:"RELAX, I GOT A PLAN.",emoji:"😎",duration:60},
+  {reaction:0,text:"MY BRAIN IS MELTING",emoji:"🤯",duration:30}
 ];
 
 let dialogIndex=0;
@@ -166,16 +177,18 @@ function startStep(){
     const c=characters[step.speaker];
     c.speaking=true;
     c.speakTimer=step.duration;
-    spawnEmoji(c, step.emoji);
+    spawnEmoji(c,step.emoji);
     focus(c);
+    showSubtitle(step.text);
   }
 
   if(step.reaction!==undefined){
     const c=characters[step.reaction];
     c.reacting=true;
     c.reactTimer=step.duration;
-    spawnEmoji(c, step.emoji);
+    spawnEmoji(c,step.emoji);
     focus(c,2.1);
+    showSubtitle(step.text);
   }
 
   dialogTimer=step.duration;
@@ -183,8 +196,9 @@ function startStep(){
 startStep();
 
 function updateDialog(){
-  if(dialogTimer>0) dialogTimer--;
+  if(dialogTimer>0)dialogTimer--;
   else{
+    hideSubtitle();
     dialogIndex=(dialogIndex+1)%dialog.length;
     startStep();
   }
@@ -195,10 +209,10 @@ function updateDialog(){
 // =========================
 function updateCharacters(){
   characters.forEach(c=>{
-    if(c.speakTimer>0) c.speakTimer--;
-    if(c.reactTimer>0) c.reactTimer--;
-    if(c.speakTimer===0) c.speaking=false;
-    if(c.reactTimer===0) c.reacting=false;
+    if(c.speakTimer>0)c.speakTimer--;
+    if(c.reactTimer>0)c.reactTimer--;
+    if(c.speakTimer===0)c.speaking=false;
+    if(c.reactTimer===0)c.reacting=false;
     updateEmoji(c);
   });
 }
@@ -222,14 +236,14 @@ function drawGround(){
 
 function drawStickman(p){
   let color="#000";
-  if(p.speaking) color="#e91e63";
-  if(p.reacting) color="#2196f3";
+  if(p.speaking)color="#e91e63";
+  if(p.reacting)color="#2196f3";
 
   ctx.strokeStyle=color;
   ctx.lineWidth=4;
   ctx.lineCap="round";
 
-  const hx=p.x, hy=p.y;
+  const hx=p.x,hy=p.y;
 
   ctx.beginPath();
   ctx.arc(camX(hx),camY(hy),p.head*camera.zoom,0,Math.PI*2);
@@ -241,7 +255,6 @@ function drawStickman(p){
   ctx.stroke();
 
   const by=hy+p.head+p.body;
-
   ctx.beginPath();
   ctx.moveTo(camX(hx),camY(by));
   ctx.lineTo(camX(hx-p.leg),camY(by+p.leg));
@@ -256,16 +269,24 @@ function drawStickman(p){
   ctx.lineTo(camX(hx+p.arm),camY(hy+40));
   ctx.stroke();
 
-  // emoji
   if(p.emoji){
-    ctx.font = `${40*p.emoji.scale}px serif`;
+    ctx.font=`${40*p.emoji.scale}px serif`;
     ctx.textAlign="center";
-    ctx.fillText(
-      p.emoji.symbol,
-      camX(hx),
-      camY(hy-40-p.emoji.yOffset)
-    );
+    ctx.fillText(p.emoji.symbol,camX(hx),camY(hy-40-p.emoji.yOffset));
   }
+}
+
+function drawSubtitle(){
+  if(subtitle.alpha<0.01)return;
+  ctx.globalAlpha=subtitle.alpha;
+  ctx.fillStyle="#000";
+  ctx.fillRect(0,canvas.height-120,canvas.width,120);
+
+  ctx.fillStyle="#fff";
+  ctx.font="bold 36px Arial";
+  ctx.textAlign="center";
+  ctx.fillText(subtitle.text,canvas.width/2,canvas.height-50);
+  ctx.globalAlpha=1;
 }
 
 // =========================
@@ -275,10 +296,12 @@ function loop(){
   updateDialog();
   updateCharacters();
   updateCamera();
+  updateSubtitle();
 
   drawBackground();
   drawGround();
   characters.forEach(drawStickman);
+  drawSubtitle();
 
   requestAnimationFrame(loop);
 }
