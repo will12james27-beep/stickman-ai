@@ -233,6 +233,70 @@ showSubtitle = function(text,shake,color){
 
 console.log("✅ 21 B.2 Character Interaction Rules loaded");
 </script>
+<script>
+// ================= 21 B.3 — DOMINANCE & HIERARCHY =================
+
+// Dominance hisoblash:
+// anger + tension = kuch
+function calcDominance(c){
+  let base = c.psych?.tension || 0;
+
+  if(c.psych?.mood==="angry")   base += 0.4;
+  if(c.psych?.mood==="shocked") base += 0.2;
+  if(c.psych?.mood==="confused")base += 0.1;
+
+  return Math.min(1,base);
+}
+
+// Hamma personajlar uchun dominance yangilash
+function updateDominance(){
+  chars.forEach(c=>{
+    if(!c.psych) return;
+    c.psych.dominance = calcDominance(c);
+  });
+}
+
+// Kim gapni oladi?
+function chooseDominantSpeaker(){
+  let best=null;
+  let max=0;
+
+  chars.forEach(c=>{
+    if(!c.psych) return;
+    if(c.psych.dominance>max){
+      max=c.psych.dominance;
+      best=c;
+    }
+  });
+
+  return best;
+}
+
+// Gapirganda ierarxiya ishlaydi
+const _oldShowSubtitle2 = showSubtitle;
+showSubtitle = function(text,shake,color){
+  updateDominance();
+
+  const dominant = chooseDominantSpeaker();
+
+  if(dominant){
+    focusChar = dominant;
+    dominant.talk = 1;
+
+    // boshqalar pasayadi
+    chars.forEach(c=>{
+      if(c!==dominant){
+        c.talk *= 0.3;
+        if(c.psych) c.psych.tension *= 0.95;
+      }
+    });
+  }
+
+  _oldShowSubtitle2(text,shake,color);
+};
+
+console.log("✅ 21 B.3 Dominance & Hierarchy loaded");
+</script>
 
 </body>
 </html>
