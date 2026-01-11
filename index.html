@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v9.2.0 – Auto Walk Demo</title>
+<title>Stickman AI v9.3.0 – Foot Lock</title>
 <style>
 body{
   margin:0;
@@ -16,144 +16,81 @@ body{
   height:100vh;
 }
 canvas{background:#fff;}
-#timeline{
-  width:600px;height:50px;
-  background:#222;border-radius:6px;
-  margin-top:8px;position:relative;
-}
-.dot{
-  position:absolute;top:18px;
-  width:10px;height:10px;
-  background:#ff5252;border-radius:50%;
-  transform:translateX(-50%);
-}
 .controls{
   margin-top:6px;
-  display:flex;
-  gap:8px;
-  align-items:center;
   font-size:13px;
 }
-button{
-  padding:4px 10px;
-  border:none;
-  border-radius:4px;
-  cursor:pointer;
-}
+button{padding:4px 10px;}
 </style>
 </head>
 <body>
 
 <canvas id="c" width="600" height="600"></canvas>
 
-<div id="timeline"></div>
-
 <div class="controls">
-  <input id="time" type="range" min="0" max="2000" value="0">
   <button id="play">▶ Play</button>
   <button id="pause">⏸ Pause</button>
-  <label><input type="checkbox" id="loop" checked> Loop</label>
 </div>
 
 <script>
-const canvas=document.getElementById("c");
-const ctx=canvas.getContext("2d");
-const slider=document.getElementById("time");
-const timelineEl=document.getElementById("timeline");
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
 const playBtn=document.getElementById("play");
 const pauseBtn=document.getElementById("pause");
-const loopChk=document.getElementById("loop");
 
 /* =====================
-   STATE
+   STICKMAN
 ===================== */
 const stickman={
-  x:300,y:340,
+  x:300,y:330,
+  hipY:330,
   joints:{
-    la:{x:0,y:-20,ang:-20,len:55},
-    ra:{x:0,y:-20,ang:20,len:55},
-    ll:{x:0,y:60,ang:10,len:65},
-    rl:{x:0,y:60,ang:-10,len:65}
+    la:{x:0,y:-20,ang:0,len:55},
+    ra:{x:0,y:-20,ang:0,len:55},
+    ll:{x:0,y:60,ang:0,len:65},
+    rl:{x:0,y:60,ang:0,len:65}
   }
 };
 
-const Easings={
-  linear:t=>t,
-  ease:t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2
-};
-
-const keyframes=[];
 let playing=false;
-let lastTime=0;
-let demoTime=0;
+let t=0;
 
 /* =====================
-   HELPERS
+   FOOT LOCK STATE
 ===================== */
-const lerp=(a,b,t)=>a+(b-a)*t;
-
-function copyPose(){
-  return {
-    la:stickman.joints.la.ang,
-    ra:stickman.joints.ra.ang,
-    ll:stickman.joints.ll.ang,
-    rl:stickman.joints.rl.ang
-  };
-}
-function applyPose(p){
-  stickman.joints.la.ang=p.la;
-  stickman.joints.ra.ang=p.ra;
-  stickman.joints.ll.ang=p.ll;
-  stickman.joints.rl.ang=p.rl;
-}
+let leftFootY=null;
+let rightFootY=null;
 
 /* =====================
-   DEMO WALK (NO KEYFRAMES)
+   DEMO WALK + FOOT LOCK
 ===================== */
-function demoWalk(t){
-  const s=Math.sin(t*0.005);
-  stickman.joints.ll.ang= 25*s;
+function walk(dt){
+  t+=dt*0.005;
+  const s=Math.sin(t);
+  const c=Math.cos(t);
+
+  // swing angles
+  stickman.joints.ll.ang=25*s;
   stickman.joints.rl.ang=-25*s;
   stickman.joints.la.ang=-20*s;
-  stickman.joints.ra.ang= 20*s;
-}
+  stickman.joints.ra.ang=20*s;
 
-/* =====================
-   TIMELINE
-===================== */
-function rebuildDots(){
-  timelineEl.innerHTML="";
-  keyframes.forEach(k=>{
-    const d=document.createElement("div");
-    d.className="dot";
-    d.style.left=(k.t/2000)*600+"px";
-    timelineEl.appendChild(d);
-  });
-}
-
-function applyTimeline(t){
-  if(keyframes.length<2) return false;
-
-  keyframes.sort((a,b)=>a.t-b.t);
-  let a=keyframes[0], b=keyframes[keyframes.length-1];
-  for(let i=0;i<keyframes.length-1;i++){
-    if(t>=keyframes[i].t && t<=keyframes[i+1].t){
-      a=keyframes[i]; b=keyframes[i+1]; break;
-    }
+  // FOOT LOCK LOGIC
+  // left foot planted when sin < 0
+  if(s<0){
+    if(leftFootY===null) leftFootY=stickman.hipY+stickman.joints.ll.len;
+    stickman.y=leftFootY-stickman.joints.ll.len;
+  }else{
+    leftFootY=null;
   }
-  if(t<=a.t) return applyPose(a.pose),true;
-  if(t>=b.t) return applyPose(b.pose),true;
 
-  let k=(t-a.t)/(b.t-a.t);
-  k=a.easing(k);
-
-  applyPose({
-    la:lerp(a.pose.la,b.pose.la,k),
-    ra:lerp(a.pose.ra,b.pose.ra,k),
-    ll:lerp(a.pose.ll,b.pose.ll,k),
-    rl:lerp(a.pose.rl,b.pose.rl,k)
-  });
-  return true;
+  // right foot planted when sin > 0
+  if(s>0){
+    if(rightFootY===null) rightFootY=stickman.hipY+stickman.joints.rl.len;
+    stickman.y=rightFootY-stickman.joints.rl.len;
+  }else{
+    rightFootY=null;
+  }
 }
 
 /* =====================
@@ -176,58 +113,39 @@ function draw(){
   ctx.lineWidth=6;
   ctx.lineCap="round";
   ctx.strokeStyle="#000";
-  ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(0,60);ctx.stroke();
-  ctx.beginPath();ctx.arc(0,-70,22,0,Math.PI*2);ctx.stroke();
+
+  // body
+  ctx.beginPath();
+  ctx.moveTo(0,-40);
+  ctx.lineTo(0,60);
+  ctx.stroke();
+
+  // head
+  ctx.beginPath();
+  ctx.arc(0,-70,22,0,Math.PI*2);
+  ctx.stroke();
+
   for(let k in stickman.joints) limb(stickman.joints[k]);
   ctx.restore();
 }
 
 /* =====================
-   CONTROLS
-===================== */
-playBtn.onclick=()=>{ playing=true; };
-pauseBtn.onclick=()=>{ playing=false; };
-
-window.onkeydown=e=>{
-  if(e.key.toLowerCase()==="k"){
-    keyframes.push({
-      t:+slider.value,
-      pose:copyPose(),
-      easing:Easings.ease
-    });
-    rebuildDots();
-  }
-};
-
-/* =====================
    LOOP
 ===================== */
+let last=0;
 function loop(ts){
-  if(!lastTime) lastTime=ts;
-  const dt=ts-lastTime;
-  lastTime=ts;
-
-  if(playing){
-    if(keyframes.length>=2){
-      slider.value=+slider.value+dt;
-      if(slider.value>=2000){
-        if(loopChk.checked) slider.value=0;
-        else { slider.value=2000; playing=false; }
-      }
-    }else{
-      demoTime+=dt;
-      demoWalk(demoTime);
-    }
-  }
-
-  if(!applyTimeline(+slider.value) && keyframes.length<2 && !playing){
-    demoWalk(demoTime);
-  }
-
+  const dt=ts-last; last=ts;
+  if(playing) walk(dt);
   draw();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+/* =====================
+   CONTROLS
+===================== */
+playBtn.onclick=()=>playing=true;
+pauseBtn.onclick=()=>playing=false;
 </script>
 
 </body>
