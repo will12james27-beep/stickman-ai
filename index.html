@@ -415,6 +415,66 @@ loop = function(){
 
 console.log("🧊 21 B.5 De-escalation & Cooldown loaded");
 </script>
+<script>
+// ================= 21 B.6 — SCENE-RELATIVE PSYCHOLOGY TEXT =================
+
+// Virtual scene & camera (demo uchun minimal)
+const scene = {
+  x: 0,
+  y: 0
+};
+
+const camera = {
+  x: 0,
+  y: 0,
+  zoom: 1
+};
+
+// Character pozitsiyalari (demo)
+characters.forEach((c,i)=>{
+  c.pos = {
+    x: 150 + i*130,
+    y: 200
+  };
+});
+
+// Scene-relative text draw
+function drawPsychText(c){
+  const worldX = c.pos.x;
+  const worldY = c.pos.y - 40;
+
+  const screenX = (worldX - camera.x) * camera.zoom;
+  const screenY = (worldY - camera.y) * camera.zoom;
+
+  ctx.fillStyle = "#000";
+  ctx.fillText(
+    `Mood: ${c.mood}`,
+    screenX,
+    screenY
+  );
+
+  ctx.fillText(
+    `Tension: ${c.tension.toFixed(2)}`,
+    screenX,
+    screenY + 18
+  );
+}
+
+// draw() ni kengaytiramiz (safe override)
+const _oldDraw = draw;
+draw = function(){
+  _oldDraw();
+
+  ctx.font="14px Arial";
+  ctx.textAlign="center";
+
+  characters.forEach(c=>{
+    drawPsychText(c);
+  });
+};
+
+console.log("🧠 21 B.6 Scene-relative Psychology Text loaded");
+</script>
 
 </body>
 </html>
