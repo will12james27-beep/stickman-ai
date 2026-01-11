@@ -2,15 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.13 — Arms Fix + Shorts Captions</title>
+<title>Stickman v21-A.14 — Beat Sync</title>
 <style>
-body{
-  margin:0;
-  background:#111;
-  display:flex;
-  justify-content:center;
-}
-canvas{background:#e6f4ff;}
+body{margin:0;background:#111;display:flex;justify-content:center}
+canvas{background:#e6f4ff}
 </style>
 </head>
 <body>
@@ -23,97 +18,111 @@ const ctx=c.getContext("2d");
 
 /* ================= CAMERA ================= */
 const Camera={
-  x:0,y:0,zoom:1,cutscene:false,target:null,
+  x:0,y:0,zoom:1,shake:0,target:null,
   update(){
     if(this.target){
-      this.x+=((this.target.x-c.width/2)-this.x)*0.1;
-      this.y+=((this.target.y-c.height/2)-this.y)*0.1;
+      this.x+=((this.target.x-180)-this.x)*0.15;
+      this.y+=((this.target.y-320)-this.y)*0.15;
     }
-    this.zoom+=((this.cutscene?1.3:1)-this.zoom)*0.05;
+    this.shake*=0.85;
   },
   apply(){
-    ctx.setTransform(this.zoom,0,0,this.zoom,-this.x*this.zoom,-this.y*this.zoom);
+    const sx=(Math.random()-0.5)*this.shake;
+    const sy=(Math.random()-0.5)*this.shake;
+    ctx.setTransform(1,0,0,1,-this.x+sx,-this.y+sy);
+  },
+  hit(intensity){
+    this.shake=intensity;
   }
 };
 
-/* ================= MODEL ================= */
-const model={head:14,body:36,leg:30,armU:18,armL:16};
-
-/* ================= EMOTIONS ================= */
-const emotions={
-  neutral:{arm:0},
-  happy:{arm:10},
-  shock:{arm:-14}
+/* ================= BEAT ================= */
+const Beat={
+  frames:[60,120,180], // viral timing
+  i:0,
+  update(frame){
+    if(frame===this.frames[this.i]){
+      this.i++;
+      return true;
+    }
+    return false;
+  }
 };
 
 /* ================= SUBTITLES ================= */
-const Subtitles={
-  lines:[],
-  i:0,t:0,active:false,
-  start(lines){
-    this.lines=lines;this.i=0;this.t=0;this.active=true;
+const Subs={
+  lines:[
+    "That was CRAZY 😱",
+    "Bu juda TELBA edi 😂"
+  ],
+  i:0,active:false,t:0,
+  hit(){
+    this.active=true;
+    this.t=0;
   },
   update(){
     if(!this.active) return;
     this.t++;
-    if(this.t>90){this.t=0;this.i++;if(this.i>=this.lines.length)this.active=false;}
+    if(this.t>60){this.active=false;this.i=(this.i+1)%this.lines.length;}
   },
   draw(){
     if(!this.active) return;
-    const txt=this.lines[this.i];
     ctx.setTransform(1,0,0,1,0,0);
-    ctx.font="bold 22px sans-serif";
+    ctx.font="bold 24px sans-serif";
     ctx.textAlign="center";
     ctx.fillStyle="#000";
-    ctx.fillText(txt,180,600);
+    ctx.fillText(this.lines[this.i],180,600);
     ctx.fillStyle="#fff";
-    ctx.fillText(txt,180,598);
+    ctx.fillText(this.lines[this.i],180,596);
   }
 };
 
 /* ================= CHARACTER ================= */
 class Character{
   constructor(x,color){
-    this.x=x;
-    this.y=440;
+    this.x=x;this.y=440;
     this.color=color;
     this.walk=0;
-    this.emotion="neutral";
+    this.jump=0;
   }
   update(){
-    if(!Camera.cutscene) this.walk+=0.12;
+    this.walk+=0.1;
+    this.jump*=0.8;
+  }
+  beatHit(){
+    this.jump=12;
   }
   draw(){
     ctx.strokeStyle=this.color;
     ctx.lineWidth=3;
     const step=Math.sin(this.walk)*6;
+    const j=this.jump;
 
     // body
     ctx.beginPath();
-    ctx.moveTo(this.x,this.y);
-    ctx.lineTo(this.x,this.y+model.body);
+    ctx.moveTo(this.x,this.y-j);
+    ctx.lineTo(this.x,this.y+36-j);
     ctx.stroke();
 
     // legs
     ctx.beginPath();
-    ctx.moveTo(this.x,this.y+model.body);
-    ctx.lineTo(this.x-8,this.y+model.body+model.leg-step);
-    ctx.moveTo(this.x,this.y+model.body);
-    ctx.lineTo(this.x+8,this.y+model.body+model.leg+step);
+    ctx.moveTo(this.x,this.y+36-j);
+    ctx.lineTo(this.x-8,this.y+70-step-j);
+    ctx.moveTo(this.x,this.y+36-j);
+    ctx.lineTo(this.x+8,this.y+70+step-j);
     ctx.stroke();
 
-    // arms (FIXED)
-    const a=emotions[this.emotion].arm;
+    // arms
     ctx.beginPath();
-    ctx.moveTo(this.x,this.y+10);
-    ctx.lineTo(this.x-12,this.y+22+a);
-    ctx.moveTo(this.x,this.y+10);
-    ctx.lineTo(this.x+12,this.y+22-a);
+    ctx.moveTo(this.x,this.y+10-j);
+    ctx.lineTo(this.x-14,this.y+26+j);
+    ctx.moveTo(this.x,this.y+10-j);
+    ctx.lineTo(this.x+14,this.y+26-j);
     ctx.stroke();
 
     // head
     ctx.beginPath();
-    ctx.arc(this.x,this.y-14,14,0,Math.PI*2);
+    ctx.arc(this.x,this.y-14-j,14,0,Math.PI*2);
     ctx.stroke();
   }
 }
@@ -123,20 +132,20 @@ const hero=new Character(160,"#ff4444");
 const npc=new Character(200,"#44ff88");
 Camera.target=hero;
 
-/* ================= CUTSCENE ================= */
-setTimeout(()=>{
-  Camera.cutscene=true;
-  hero.emotion="shock";
-  Subtitles.start([
-    "That was crazy 😱",
-    "Bu juda telba edi 😂"
-  ]);
-},1000);
+let frame=0;
 
 /* ================= LOOP ================= */
 function loop(){
+  frame++;
   ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,c.width,c.height);
+  ctx.clearRect(0,0,360,640);
+
+  if(Beat.update(frame)){
+    Camera.hit(10);
+    hero.beatHit();
+    npc.beatHit();
+    Subs.hit();
+  }
 
   Camera.update();
   ctx.save();
@@ -152,8 +161,8 @@ function loop(){
   hero.draw();npc.draw();
 
   ctx.restore();
-  Subtitles.update();
-  Subtitles.draw();
+  Subs.update();
+  Subs.draw();
 
   requestAnimationFrame(loop);
 }
