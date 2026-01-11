@@ -1,215 +1,183 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v11.1.0 — Export + Demo</title>
+<title>Stickman v11 – Timeline Import</title>
 <style>
-body{margin:0;background:#0e0e0e;color:#ddd;font-family:monospace}
-#ui{
- position:fixed;bottom:0;left:0;right:0;
- background:#111;padding:8px;
- display:flex;gap:8px;align-items:center;flex-wrap:wrap
-}
-button{
- background:#222;color:#fff;border:1px solid #444;
- padding:6px 10px;cursor:pointer
-}
-button:hover{background:#333}
-canvas{display:block;margin:auto;background:#1a1a1a}
-input[type=range]{flex:1}
+ html,body{margin:0;background:#111;color:#fff;font-family:sans-serif}
+ canvas{display:block;margin:auto;background:#1a1a1a}
+ #ui{
+  position:fixed;bottom:10px;left:50%;
+  transform:translateX(-50%);
+  display:flex;gap:6px;align-items:center
+ }
+ button,label{
+  background:#222;color:#fff;
+  border:1px solid #444;
+  padding:6px 10px;cursor:pointer
+ }
+ input[type=range]{width:200px}
 </style>
 </head>
 <body>
 
-<canvas id="c"></canvas>
+<canvas id="c" width="800" height="400"></canvas>
 
 <div id="ui">
- <button onclick="startDemo()">▶ DEMO</button>
- <button onclick="toggleRecord()">⏺ RECORD</button>
+ <button onclick="startRecord()">⏺ REC</button>
+ <button onclick="stopRecord()">■ STOP</button>
  <button onclick="startPlay()">▶ PLAY</button>
- <button onclick="stopAll()">⏹ LIVE</button>
  <button onclick="exportJSON()">⬇ EXPORT</button>
- <span id="mode">MODE: LIVE</span>
- <input id="timeline" type="range" min="0" max="0" value="0">
+
+ <label>
+  ⬆ IMPORT
+  <input type="file" accept=".json" hidden onchange="importJSON(this)">
+ </label>
+
+ <input id="slider" type="range" min="0" max="0" value="0">
 </div>
 
 <script>
-// ============ SETUP ============
-const c=document.getElementById("c"),ctx=c.getContext("2d");
-c.width=700;c.height=450;
-const GROUND_Y=330;
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const slider = document.getElementById("slider");
 
-const MODE={LIVE:"LIVE",RECORD:"RECORD",PLAY:"PLAY"};
-const STATE={IDLE:"IDLE",WALK:"WALK",RUN:"RUN"};
-let mode=MODE.LIVE,currentState=STATE.IDLE;
+const MODE = { LIVE:0, RECORD:1, PLAY:2 };
+let mode = MODE.LIVE;
 
-let timeline=[],playI=0,playT=0;
-const slider=document.getElementById("timeline");
+let timeline = [];
+let playI = 0;
 
-// ============ SKELETON ============
-const sk={
- hip:{x:350,y:240},
- spine:{x:350,y:190},
- head:{x:350,y:155,scaleY:1},
- arms:{L:{a:0},R:{a:0}},
- legs:{
-  L:{foot:{x:330,y:GROUND_Y,lock:true}},
-  R:{foot:{x:370,y:GROUND_Y,lock:true}}
- }
+const groundY = 300;
+
+let stick = {
+ x:400,
+ y:groundY-80,
+ leg:0,
+ arm:0
 };
 
-let time=0,direction=1,targetDir=1;
+function draw(){
+ ctx.clearRect(0,0,c.width,c.height);
 
-// ============ UTILS ============
-const lerp=(a,b,t)=>a+(b-a)*t;
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+ // ground
+ ctx.strokeStyle="#444";
+ ctx.beginPath();
+ ctx.moveTo(0,groundY);
+ ctx.lineTo(c.width,groundY);
+ ctx.stroke();
 
-// ============ IK ============
-const LEG_A=45,LEG_B=45,ARM=40;
-function solveIK(hx,hy,fx,fy){
- let dx=fx-hx,dy=fy-hy;
- let d=Math.hypot(dx,dy);
- d=clamp(d,1,LEG_A+LEG_B-0.001);
- let a=Math.acos((LEG_A**2+d**2-LEG_B**2)/(2*LEG_A*d));
- let b=Math.atan2(dy,dx);
- return{x:hx+Math.cos(b+a)*LEG_A,y:hy+Math.sin(b+a)*LEG_A};
+ ctx.strokeStyle="#fff";
+ ctx.lineWidth=3;
+
+ // head
+ ctx.beginPath();
+ ctx.arc(stick.x,stick.y-30,12,0,Math.PI*2);
+ ctx.stroke();
+
+ // body
+ line(stick.x,stick.y-18, stick.x,stick.y+25);
+
+ // legs
+ line(stick.x,stick.y+25,
+      stick.x+Math.sin(stick.leg)*20,
+      stick.y+70);
+
+ line(stick.x,stick.y+25,
+      stick.x-Math.sin(stick.leg)*20,
+      stick.y+70);
+
+ // arms
+ line(stick.x,stick.y,
+      stick.x+Math.sin(stick.arm)*18,
+      stick.y+25);
+
+ line(stick.x,stick.y,
+      stick.x-Math.sin(stick.arm)*18,
+      stick.y+25);
 }
 
-// ============ UI ============
-function updateUI(){
- document.getElementById("mode").textContent="MODE: "+mode;
- slider.max=Math.max(0,timeline.length-1);
- slider.disabled=(mode===MODE.PLAY);
+function line(x1,y1,x2,y2){
+ ctx.beginPath();
+ ctx.moveTo(x1,y1);
+ ctx.lineTo(x2,y2);
+ ctx.stroke();
 }
-function toggleRecord(){
- timeline=[];playI=0;playT=0;
- mode=(mode===MODE.RECORD)?MODE.LIVE:MODE.RECORD;
- updateUI();
+
+let t = 0;
+function update(){
+ if(mode===MODE.LIVE || mode===MODE.RECORD){
+  t += 0.05;
+  stick.leg = Math.sin(t);
+  stick.arm = -Math.sin(t);
+
+  if(mode===MODE.RECORD){
+   timeline.push(JSON.parse(JSON.stringify(stick)));
+   slider.max = timeline.length-1;
+   slider.value = slider.max;
+  }
+ }
+
+ if(mode===MODE.PLAY){
+  if(timeline.length){
+   stick = JSON.parse(JSON.stringify(timeline[playI]));
+   slider.value = playI;
+   playI++;
+   if(playI>=timeline.length) mode=MODE.LIVE;
+  }
+ }
+
+ draw();
+ requestAnimationFrame(update);
 }
+
+function startRecord(){
+ timeline=[];
+ mode=MODE.RECORD;
+}
+
+function stopRecord(){
+ mode=MODE.LIVE;
+}
+
 function startPlay(){
- if(timeline.length<2)return;
- playI=0;playT=0;
- mode=MODE.PLAY;updateUI();
-}
-function stopAll(){
- mode=MODE.LIVE;updateUI();
+ playI=0;
+ mode=MODE.PLAY;
 }
 
-// ============ DEMO ============
-function startDemo(){
- stopAll();
- currentState=STATE.WALK;
- targetDir=1;
- toggleRecord();
-}
-
-// ============ MOTION ============
-function liveMotion(){
- direction=lerp(direction,targetDir,0.08);
- time+=0.05;
- const phase=Math.sin(time);
- const stride=30,lift=20;
- const up=Math.max(0,Math.sin(time+Math.PI/2))*lift;
-
- const L=sk.legs.L,R=sk.legs.R;
- if(phase>0){L.foot.lock=true;R.foot.lock=false;}
- else{L.foot.lock=false;R.foot.lock=true;}
-
- if(!L.foot.lock){
-  L.foot.x=sk.hip.x-22*direction+phase*stride*direction;
-  L.foot.y=GROUND_Y-up;
- }
- if(!R.foot.lock){
-  R.foot.x=sk.hip.x+22*direction-phase*stride*direction;
-  R.foot.y=GROUND_Y-up;
- }
-
- sk.hip.x+=0.45*direction;
- sk.hip.y=lerp(sk.hip.y,(L.foot.y+R.foot.y)/2-65,0.15);
- sk.spine.x=lerp(sk.spine.x,sk.hip.x,0.3);
- sk.spine.y=lerp(sk.spine.y,sk.hip.y-50,0.3);
-
- sk.head.x=sk.spine.x;
- sk.head.y=lerp(sk.head.y,sk.spine.y-35+phase*4,0.25);
- sk.head.scaleY=lerp(sk.head.scaleY,1-Math.abs(phase)*0.15,0.2);
-
- sk.arms.L.a=-phase*0.9*direction;
- sk.arms.R.a= phase*0.9*direction;
-}
-
-// ============ RECORD / PLAY ============
-function recordFrame(){
- timeline.push(JSON.parse(JSON.stringify({
-  hip:sk.hip,spine:sk.spine,head:sk.head,
-  legs:sk.legs,arms:sk.arms,
-  direction,state:currentState
- })));
- slider.value=timeline.length-1;
-}
-function playMotion(){
- if(playI>=timeline.length-1){stopAll();return;}
- const a=timeline[playI],b=timeline[playI+1];
- playT+=0.2;
- if(playT>=1){playT=0;playI++;}
- sk.hip.x=lerp(a.hip.x,b.hip.x,playT);
- sk.hip.y=lerp(a.hip.y,b.hip.y,playT);
- sk.spine.x=lerp(a.spine.x,b.spine.x,playT);
- sk.spine.y=lerp(a.spine.y,b.spine.y,playT);
- sk.head.x=lerp(a.head.x,b.head.x,playT);
- sk.head.y=lerp(a.head.y,b.head.y,playT);
- sk.head.scaleY=lerp(a.head.scaleY,b.head.scaleY,playT);
- direction=lerp(a.direction,b.direction,playT);
-}
-
-// ============ EXPORT ============
 function exportJSON(){
- const blob=new Blob([JSON.stringify(timeline,null,2)],{type:"application/json"});
+ const blob=new Blob(
+  [JSON.stringify(timeline)],
+  {type:"application/json"}
+ );
  const a=document.createElement("a");
  a.href=URL.createObjectURL(blob);
  a.download="stickman_timeline.json";
  a.click();
 }
 
-// ============ DRAW ============
-function drawLeg(side,dir){
- const hx=sk.hip.x+dir*10*direction,hy=sk.hip.y;
- const f=sk.legs[side].foot;
- const k=solveIK(hx,hy,f.x,f.y);
- ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(k.x,k.y);ctx.lineTo(f.x,f.y);ctx.stroke();
-}
-function drawArm(side,dir){
- const sx=sk.spine.x+dir*15*direction,sy=sk.spine.y+10;
- const a=sk.arms[side].a;
- ctx.beginPath();ctx.moveTo(sx,sy);
- ctx.lineTo(sx+Math.cos(a+Math.PI/2)*ARM,sy+Math.sin(a+Math.PI/2)*ARM);
- ctx.stroke();
-}
-function draw(){
- ctx.clearRect(0,0,c.width,c.height);
- ctx.strokeStyle="#444";
- ctx.beginPath();ctx.moveTo(0,GROUND_Y);ctx.lineTo(c.width,GROUND_Y);ctx.stroke();
- ctx.strokeStyle="#fff";ctx.lineWidth=3;
- ctx.beginPath();ctx.moveTo(sk.hip.x,sk.hip.y);ctx.lineTo(sk.spine.x,sk.spine.y);ctx.stroke();
- ctx.save();
- ctx.translate(sk.head.x,sk.head.y);
- ctx.scale(1,sk.head.scaleY);
- ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.stroke();
- ctx.restore();
- drawArm("L",-1);drawArm("R",1);
- drawLeg("L",-1);drawLeg("R",1);
+function importJSON(input){
+ const file=input.files[0];
+ if(!file)return;
+ const r=new FileReader();
+ r.onload=e=>{
+  try{
+   const data=JSON.parse(e.target.result);
+   if(!Array.isArray(data)) throw 0;
+   timeline=data;
+   slider.max=timeline.length-1;
+   slider.value=0;
+   playI=0;
+   alert("IMPORT OK ✔");
+  }catch{
+   alert("XATO JSON ❌");
+  }
+ };
+ r.readAsText(file);
 }
 
-// ============ LOOP ============
-function loop(){
- if(mode===MODE.PLAY) playMotion();
- else{
-  liveMotion();
-  if(mode===MODE.RECORD) recordFrame();
- }
- draw();updateUI();
- requestAnimationFrame(loop);
-}
-loop();
+update();
 </script>
+
 </body>
 </html>
