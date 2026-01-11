@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.19</title>
+<title>Stickman AI — Scene System 21 C.20</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -36,13 +36,15 @@ function createChar(x,color){
     y:scene.groundY-120,
     color,
     head:18,body:50,arm:40,leg:45,
-    bob:0,react:0,
     emoji:null,
     talk:0,
 
-    // 21 C.19 NEW
+    // Text
     text:null,
-    textLife:0
+    textLife:0,
+
+    // 21 C.20 NEW
+    priority:0
   };
 }
 
@@ -56,8 +58,7 @@ const chars=[
 // ================= CAMERA =================
 const camera={
   x:0,y:0,zoom:1,targetZoom:1,
-  smooth:0.12,zoomSmooth:0.15,
-  shake:0
+  smooth:0.12,zoomSmooth:0.15
 };
 let focusChar=chars[0];
 
@@ -69,22 +70,16 @@ function updateCamera(){
   camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
 }
 
-// ================= WORLD TEXT (21 C.19) =================
+// ================= WORLD TEXT =================
 function drawWorldText(text,x,y,opt={}){
   const {size=22,color="#000",shake=0}=opt;
-
   const ox=(Math.random()-0.5)*shake;
   const oy=(Math.random()-0.5)*shake;
 
   ctx.font=`bold ${size*camera.zoom}px Arial`;
   ctx.fillStyle=color;
   ctx.textAlign="center";
-
-  ctx.fillText(
-    text,
-    camX(x)+ox,
-    y*camera.zoom+oy
-  );
+  ctx.fillText(text,camX(x)+ox,y*camera.zoom+oy);
 }
 
 function sayChar(c,text,life=50){
@@ -105,12 +100,7 @@ function updateEmoji(c){
 }
 
 // ================= SUBTITLE =================
-const subtitle={
-  text:"",
-  life:0,
-  shake:0,
-  color:"#ffeb3b"
-};
+const subtitle={text:"",life:0,shake:0,color:"#ffeb3b"};
 
 function showSubtitle(text,shake=4,color="#ffeb3b"){
   subtitle.text=text;
@@ -133,11 +123,18 @@ function drawSubtitle(){
   const oy=(Math.random()-0.5)*subtitle.shake;
 
   ctx.fillStyle=subtitle.color;
-  ctx.fillText(
-    subtitle.text,
-    canvas.width/2+ox,
-    canvas.height-80+oy
-  );
+  ctx.fillText(subtitle.text,canvas.width/2+ox,canvas.height-80+oy);
+}
+
+// ================= PRIORITY SYSTEM (21 C.20) =================
+function setSpeaker(index){
+  chars.forEach((c,i)=>{
+    c.priority = i===index ? 1 : 0;
+    c.talk = i===index ? 1 : 0;
+  });
+
+  focusChar=chars[index];
+  camera.targetZoom=1.7;
 }
 
 // ================= INTERRUPT CHAIN =================
@@ -176,39 +173,27 @@ let activeInterrupts=[];
 
 function startChain(){
   const s=chain[chainIndex];
-  focusChar=chars[s.speaker];
-  camera.targetZoom=1.6;
-  camera.shake=6;
-
-  chars.forEach(c=>c.talk=0);
-  focusChar.talk=1;
+  setSpeaker(s.speaker);
 
   showSubtitle(s.text,3,s.color);
-  sayChar(focusChar,s.text,50);
-  spawnEmoji(focusChar,"💬");
+  sayChar(chars[s.speaker],s.text,50);
+  spawnEmoji(chars[s.speaker],"💬");
 
   activeInterrupts=s.interrupts.map(i=>({...i,done:false}));
   timer=0;
 }
-
 startChain();
 
 function updateChain(){
   timer++;
-
-  chars.forEach(c=>{
-    c.talk+=(0-c.talk)*0.2;
-  });
 
   const s=chain[chainIndex];
 
   activeInterrupts.forEach(i=>{
     if(!i.done && timer>i.t){
       i.done=true;
-      focusChar=chars[i.c];
-      camera.targetZoom=1.8;
 
-      chars[i.c].talk=1;
+      setSpeaker(i.c);
       spawnEmoji(chars[i.c],i.e);
       sayChar(chars[i.c],i.text,40);
       showSubtitle(i.text,6,"#ffeb3b");
@@ -236,34 +221,40 @@ function drawGround(){
 }
 
 function drawChar(c){
+  // Priority visual
+  const scale=1+0.15*c.priority;
+  const alpha=0.5+0.5*c.priority;
+
+  ctx.save();
+  ctx.globalAlpha=alpha;
   ctx.strokeStyle=c.color;
-  ctx.lineWidth=4;
+  ctx.lineWidth=4*scale;
 
   const hx=c.x;
-  const hy=c.y - c.talk*10;
+  const hy=c.y - c.talk*12;
 
   ctx.beginPath();
-  ctx.arc(camX(hx),hy,c.head*camera.zoom,0,Math.PI*2);
+  ctx.arc(camX(hx),hy,c.head*scale*camera.zoom,0,Math.PI*2);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(camX(hx),hy+c.head);
-  ctx.lineTo(camX(hx),hy+c.head+c.body);
+  ctx.moveTo(camX(hx),hy+c.head*scale);
+  ctx.lineTo(camX(hx),hy+(c.head+c.body)*scale);
   ctx.stroke();
 
-  const by=hy+c.head+c.body;
+  const by=hy+(c.head+c.body)*scale;
   ctx.beginPath();
   ctx.moveTo(camX(hx),by);
-  ctx.lineTo(camX(hx-c.leg),by+c.leg);
+  ctx.lineTo(camX(hx-c.leg*scale),by+c.leg*scale);
   ctx.moveTo(camX(hx),by);
-  ctx.lineTo(camX(hx+c.leg),by+c.leg);
+  ctx.lineTo(camX(hx+c.leg*scale),by+c.leg*scale);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(camX(hx),hy+25);
-  ctx.lineTo(camX(hx-c.arm),hy+40);
-  ctx.moveTo(camX(hx),hy+25);
-  ctx.lineTo(camX(hx+c.arm),hy+40);
+  ctx.moveTo(camX(hx),hy+25*scale);
+  ctx.lineTo(camX(hx-c.arm*scale),hy+40*scale);
+  ctx.moveTo(camX(hx),hy+25*scale);
+  ctx.lineTo(camX(hx+c.arm*scale),hy+40*scale);
   ctx.stroke();
 
   // Emoji
@@ -274,7 +265,7 @@ function drawChar(c){
     updateEmoji(c);
   }
 
-  // World Text (21 C.19)
+  // World text
   if(c.text && c.textLife>0){
     c.textLife--;
     drawWorldText(c.text,hx,hy-90,{
@@ -284,6 +275,8 @@ function drawChar(c){
     });
     if(c.textLife<=0)c.text=null;
   }
+
+  ctx.restore();
 }
 
 // ================= LOOP =================
