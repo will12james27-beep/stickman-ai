@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.15</title>
+<title>Stickman AI — Scene System 21 C.16</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -26,6 +26,22 @@ function resize(){
 }
 resize(); window.addEventListener("resize",resize);
 
+// ================= BPM CLOCK =================
+const BPM = 120;
+const beatInterval = 60 / BPM;
+let lastBeat = performance.now();
+let beatPulse = 0;
+
+function updateBeat(){
+  const now = performance.now();
+  if((now - lastBeat)/1000 >= beatInterval){
+    lastBeat = now;
+    beatPulse = 1;
+    onBeat();
+  }
+  beatPulse *= 0.85;
+}
+
 // ================= SCENE =================
 const scene={width:5000,groundY:900};
 
@@ -36,6 +52,7 @@ function createChar(x,color){
     y:scene.groundY-120,
     color,
     head:18,body:50,arm:40,leg:45,
+    bob:0,
     emoji:null
   };
 }
@@ -53,7 +70,7 @@ const camera={
   x:0,y:0,
   zoom:1,targetZoom:1,
   smooth:0.15,zoomSmooth:0.2,
-  freeze:0,flash:0
+  shake:0,freeze:0,flash:0
 };
 
 function camX(x){return(x-camera.x)*camera.zoom;}
@@ -66,15 +83,24 @@ function updateCamera(){
   camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
 }
 
+// ================= BEAT REACTION =================
+function onBeat(){
+  camera.shake=8;
+  focusChar.bob=-8;
+  if(subtitle.punch){
+    camera.flash=4;
+  }
+}
+
 // ================= EMOJI =================
 function spawnEmoji(c,s){
-  c.emoji={s,life:35,scale:0.3,y:0};
+  c.emoji={s,life:40,scale:0.3,y:0};
 }
 function updateEmoji(c){
   if(!c.emoji)return;
   c.emoji.life--;
-  c.emoji.scale+=0.05;
-  c.emoji.y+=1.2;
+  c.emoji.scale+=0.04;
+  c.emoji.y+=1.1;
   if(c.emoji.life<=0)c.emoji=null;
 }
 
@@ -98,16 +124,15 @@ function updateSubtitle(){
     subtitle.index++;
     subtitle.timer=10;
 
-    // punchline moment
     if(subtitle.index===subtitle.words.length-1){
       subtitle.punch=true;
       camera.targetZoom=2.2;
-      camera.freeze=15;
-      camera.flash=6;
+      camera.freeze=12;
     }
 
     if(subtitle.index>=subtitle.words.length){
       subtitle.active=false;
+      subtitle.punch=false;
       camera.targetZoom=1;
     }
   }
@@ -115,50 +140,41 @@ function updateSubtitle(){
 
 function drawSubtitle(){
   if(!subtitle.active)return;
-
   ctx.fillStyle="#000";
   ctx.fillRect(0,canvas.height-150,canvas.width,150);
 
-  let x=canvas.width/2;
-  let y=canvas.height-70;
   ctx.textAlign="center";
   ctx.font="bold 36px Arial";
+  let x=canvas.width/2,y=canvas.height-70,off=-140;
 
-  let offset=-150;
   subtitle.words.forEach((w,i)=>{
-    let scale=1,color="#aaa";
+    let s=1,c="#aaa";
     if(i===subtitle.index){
-      scale=subtitle.punch?1.8:1.4;
-      color=subtitle.punch?"#ff1744":"#ffeb3b";
+      s=subtitle.punch?1.9:1.4;
+      c=subtitle.punch?"#ff1744":"#ffeb3b";
     }
     ctx.save();
-    ctx.translate(x+offset,y);
-    ctx.scale(scale,scale);
-    ctx.fillStyle=color;
+    ctx.translate(x+off,y);
+    ctx.scale(s,s);
+    ctx.fillStyle=c;
     ctx.fillText(w,0,0);
     ctx.restore();
-    offset+=ctx.measureText(w+" ").width;
+    off+=ctx.measureText(w+" ").width;
   });
 }
 
-// ================= SCENE CUT SYSTEM =================
-let cutAlpha=0;
-let cutting=false;
-
+// ================= SCENE CUT =================
+let cutAlpha=0,cutting=false;
 function startSceneCut(){
-  cutting=true;
-  cutAlpha=0;
+  cutting=true;cutAlpha=0;
 }
-
 function updateSceneCut(){
   if(!cutting)return;
-  cutAlpha+=0.12;
+  cutAlpha+=0.15;
   if(cutAlpha>=1){
-    cutAlpha=1;
-    cutting=false;
+    cutAlpha=1;cutting=false;
   }
 }
-
 function drawSceneCut(){
   if(cutAlpha<=0)return;
   ctx.globalAlpha=cutAlpha;
@@ -167,33 +183,33 @@ function drawSceneCut(){
   ctx.globalAlpha=1;
 }
 
-// ================= DIALOG / BEAT =================
+// ================= DIALOG / BEATS =================
 const beats=[
   {c:0,t:"MY BRAIN IS MELTING",e:"🤯"},
   {c:1,t:"THIS MAKES NO SENSE",e:"😱"},
-  {c:2,t:"WAIT I UNDERSTAND NOW",e:"😎"}
+  {c:2,t:"WAIT I GET IT NOW",e:"😎"}
 ];
 
 let beatIndex=0;
 let beatTimer=0;
 
-function startBeat(){
+function startBeatScene(){
   const b=beats[beatIndex];
   focusChar=chars[b.c];
   spawnEmoji(focusChar,b.e);
   startSubtitle(b.t);
-  camera.targetZoom=1.6;
-  beatTimer=b.t.split(" ").length*12+30;
+  camera.targetZoom=1.5;
+  beatTimer=b.t.split(" ").length*12+40;
 }
 
-startBeat();
+startBeatScene();
 
-function updateBeats(){
+function updateBeatScenes(){
   if(beatTimer>0)beatTimer--;
   else{
-    startSceneCut(); // AUTO CUT
+    startSceneCut();
     beatIndex=(beatIndex+1)%beats.length;
-    setTimeout(startBeat,150);
+    setTimeout(startBeatScene,160);
   }
 }
 
@@ -212,9 +228,12 @@ function drawGround(){
 }
 
 function drawChar(c){
+  c.bob+=(0-c.bob)*0.2;
   ctx.strokeStyle=c.color;
   ctx.lineWidth=4;
-  const hx=c.x,hy=c.y;
+
+  const hx=c.x;
+  const hy=c.y+c.bob;
 
   ctx.beginPath();
   ctx.arc(camX(hx),hy,c.head*camera.zoom,0,Math.PI*2);
@@ -250,7 +269,8 @@ function drawChar(c){
 
 // ================= LOOP =================
 function loop(){
-  updateBeats();
+  updateBeat();
+  updateBeatScenes();
   updateSubtitle();
   updateCamera();
   updateSceneCut();
@@ -261,8 +281,16 @@ function loop(){
   drawSubtitle();
   drawSceneCut();
 
+  if(camera.shake>0){
+    ctx.translate(
+      (Math.random()-0.5)*camera.shake,
+      (Math.random()-0.5)*camera.shake
+    );
+    camera.shake*=0.7;
+  }
+
   if(camera.flash>0){
-    ctx.globalAlpha=camera.flash/6;
+    ctx.globalAlpha=camera.flash/5;
     ctx.fillStyle="#fff";
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.globalAlpha=1;
