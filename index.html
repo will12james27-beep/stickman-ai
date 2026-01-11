@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v19-A — Hand Drawn Style</title>
+<title>Stickman v19-B — Overreact Emotions</title>
 <style>
 body{
   margin:0;
@@ -14,13 +14,19 @@ body{
   align-items:center;
 }
 canvas{background:#181818;margin-top:10px;}
-.ui{margin:10px;display:flex;gap:6px;flex-wrap:wrap}
+.ui{
+  margin:10px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+}
 button{
-  padding:6px 10px;
+  padding:8px;
   background:#222;
   color:#fff;
   border:1px solid #444;
   cursor:pointer;
+  font-size:14px;
 }
 button:hover{background:#333}
 </style>
@@ -30,10 +36,11 @@ button:hover{background:#333}
 <canvas id="c" width="360" height="540"></canvas>
 
 <div class="ui">
-  <button onclick="setPreset('neutral')">😐</button>
-  <button onclick="setPreset('happy')">🙂</button>
-  <button onclick="setPreset('surprised')">😮</button>
-  <button onclick="setPreset('angry')">😠</button>
+  <button onclick="setPreset('dead')">😐 DEAD</button>
+  <button onclick="setPreset('softHappy')">🙂 soft</button>
+  <button onclick="setPreset('ultraHappy')">😆 ULTRA</button>
+  <button onclick="setPreset('shock')">😱 SHOCK</button>
+  <button onclick="setPreset('rage')">🤬 RAGE</button>
 </div>
 
 <script>
@@ -52,29 +59,60 @@ const stick={
   armL:20
 };
 
-// ===== TARGET / STATE =====
-let target={eyeOpen:1,eyeScale:1,mouthOpen:0,brow:0,armLift:0};
+// ===== STATE =====
+let target={eyeOpen:1,eyeScale:1,mouthOpen:0,brow:0,armLift:0,headSquash:0};
 let state={...target};
 
-// ===== PRESETS =====
+// ===== OVERREACT PRESETS =====
 const presets={
-  neutral:{eyeOpen:1,eyeScale:1,mouthOpen:0,brow:0,armLift:0},
-  happy:{eyeOpen:0.7,eyeScale:0.9,mouthOpen:0.4,brow:0.2,armLift:0.3},
-  surprised:{eyeOpen:1.4,eyeScale:1.3,mouthOpen:1,brow:1,armLift:1},
-  angry:{eyeOpen:0.5,eyeScale:0.8,mouthOpen:0.25,brow:-1,armLift:-0.5}
+  dead:{
+    eyeOpen:0.25,eyeScale:1.1,
+    mouthOpen:0,
+    brow:-0.1,
+    armLift:-0.2,
+    headSquash:-0.1
+  },
+  softHappy:{
+    eyeOpen:0.7,eyeScale:0.9,
+    mouthOpen:0.4,
+    brow:0.2,
+    armLift:0.3,
+    headSquash:0.1
+  },
+  ultraHappy:{
+    eyeOpen:0.4,eyeScale:0.7,
+    mouthOpen:1.4,
+    brow:0.8,
+    armLift:1.2,
+    headSquash:0.35
+  },
+  shock:{
+    eyeOpen:1.8,eyeScale:1.5,
+    mouthOpen:1.8,
+    brow:1.2,
+    armLift:1.6,
+    headSquash:-0.3
+  },
+  rage:{
+    eyeOpen:0.35,eyeScale:0.8,
+    mouthOpen:0.5,
+    brow:-1.6,
+    armLift:-1,
+    headSquash:0.25
+  }
 };
 
 function setPreset(name){
   Object.assign(target,presets[name]);
 }
 
-// ===== JITTER =====
-function jitter(v,amt){ return v+(Math.random()-0.5)*amt; }
+// ===== UTILS =====
+function jitter(v,a){return v+(Math.random()-0.5)*a}
 
-// ===== SECONDARY =====
+// ===== FOLLOW (secondary motion) =====
 function follow(){
   for(let k in state){
-    state[k]+= (target[k]-state[k])*0.2;
+    state[k]+= (target[k]-state[k])*0.18;
   }
 }
 
@@ -83,41 +121,42 @@ function draw(){
   ctx.clearRect(0,0,c.width,c.height);
   ctx.strokeStyle="#fff";
   ctx.lineCap="round";
+  ctx.lineWidth=2+jitter(0.6,0.6);
 
-  const wob=Math.sin(t*0.1)*0.5;
-
-  // dynamic line width
-  ctx.lineWidth=2+jitter(0.5,0.6);
+  const wob=Math.sin(t*0.12)*1.2;
 
   // body
-  line(stick.x,stick.y, stick.x+jitter(0,0.4), stick.y+stick.body);
+  line(stick.x,stick.y,
+       stick.x+jitter(0,0.5),
+       stick.y+stick.body);
 
   // legs
   line(stick.x,stick.y+stick.body,
-       stick.x-15+jitter(0,0.6),
-       stick.y+stick.body+stick.leg);
+       stick.x-15,stick.y+stick.body+stick.leg);
   line(stick.x,stick.y+stick.body,
-       stick.x+15+jitter(0,0.6),
-       stick.y+stick.body+stick.leg);
+       stick.x+15,stick.y+stick.body+stick.leg);
 
   // arms
-  const shoulderY=stick.y+5;
-  const lift=-state.armLift*25+wob;
-  arm(stick.x-2,shoulderY,-1,lift);
-  arm(stick.x+2,shoulderY,1,lift);
+  const lift=-state.armLift*28+wob;
+  arm(stick.x-2,stick.y+5,-1,lift);
+  arm(stick.x+2,stick.y+5, 1,lift);
 
-  // head
-  circle(stick.x,stick.y-stick.headR,stick.headR+jitter(0,0.4));
+  // head (squash & stretch)
+  const hs=1+state.headSquash;
+  ctx.save();
+  ctx.translate(stick.x,stick.y-stick.headR);
+  ctx.scale(1,hs);
+  circle(0,0,stick.headR);
+  ctx.restore();
 
   face();
-
   t++;
 }
 
 function line(x1,y1,x2,y2){
   ctx.beginPath();
-  ctx.moveTo(jitter(x1,0.5),jitter(y1,0.5));
-  ctx.lineTo(jitter(x2,0.5),jitter(y2,0.5));
+  ctx.moveTo(jitter(x1,0.6),jitter(y1,0.6));
+  ctx.lineTo(jitter(x2,0.6),jitter(y2,0.6));
   ctx.stroke();
 }
 
@@ -131,7 +170,7 @@ function arm(x,y,dir,lift){
   const ex=x+dir*stick.armU;
   const ey=y+lift;
   const hx=ex+dir*stick.armL;
-  const hy=ey+lift*0.6;
+  const hy=ey+lift*0.7;
   line(x,y,ex,ey);
   line(ex,ey,hx,hy);
 }
@@ -142,19 +181,21 @@ function face(){
 
   // eyes
   ctx.beginPath();
-  ctx.ellipse(jitter(hx-6,0.3),jitter(hy-3,0.3),
-    3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
-  ctx.ellipse(jitter(hx+6,0.3),jitter(hy-3,0.3),
-    3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(hx-6,hy-3,
+    3*state.eyeScale,
+    3*state.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(hx+6,hy-3,
+    3*state.eyeScale,
+    3*state.eyeOpen,0,0,Math.PI*2);
   ctx.stroke();
 
   // brows
-  line(hx-10,hy-8-state.brow*4, hx-2,hy-6-state.brow*4);
-  line(hx+2,hy-6-state.brow*4, hx+10,hy-8-state.brow*4);
+  line(hx-12,hy-8-state.brow*5, hx-2,hy-6-state.brow*5);
+  line(hx+2,hy-6-state.brow*5, hx+12,hy-8-state.brow*5);
 
-  // mouth
+  // mouth (big for viral)
   ctx.beginPath();
-  ctx.arc(hx,hy+7,5,0,Math.PI*state.mouthOpen);
+  ctx.arc(hx,hy+7,6,0,Math.PI*Math.min(state.mouthOpen,1.9));
   ctx.stroke();
 }
 
