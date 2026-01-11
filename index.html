@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.8.0 – Keyframe Easing</title>
+<title>Stickman AI v8.9.0 – Easing Selector</title>
 <style>
   body{
     margin:0;
@@ -27,8 +27,13 @@
     background:#ff5252;border-radius:50%;
     transform:translateX(-50%);
   }
-  input{width:600px;margin-top:6px;}
-  .ui{margin-top:6px;font-size:13px;opacity:.85}
+  .controls{
+    margin-top:6px;
+    display:flex;
+    gap:10px;
+    font-size:13px;
+  }
+  input,select{width:180px;}
 </style>
 </head>
 <body>
@@ -36,16 +41,25 @@
 <canvas id="c" width="600" height="600"></canvas>
 
 <div id="timeline"></div>
-<input id="time" type="range" min="0" max="2000" value="0">
-<div class="ui">
-  Qo‘l-oyoqni bur → <b>K</b> bos = keyframe  
-  <br>Har keyframe: <b>easeInOut</b>
+
+<div class="controls">
+  <input id="time" type="range" min="0" max="2000" value="0">
+  <select id="easing">
+    <option value="linear">Linear</option>
+    <option value="ease">Ease In Out</option>
+    <option value="bounce">Bounce</option>
+  </select>
+</div>
+
+<div class="controls">
+  Pozani sozla → easing tanla → <b>K</b> bos
 </div>
 
 <script>
 const canvas=document.getElementById("c");
 const ctx=canvas.getContext("2d");
 const slider=document.getElementById("time");
+const easingSelect=document.getElementById("easing");
 const timelineEl=document.getElementById("timeline");
 
 /* =====================
@@ -63,17 +77,21 @@ const stickman={
 let active=null;
 
 /* =====================
-   KEYFRAMES
+   EASING FUNCTIONS
 ===================== */
-// t, pose, easing
-const keyframes=[];
+const Easings={
+  linear:t=>t,
+  ease:t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2,
+  bounce:t=>{
+    if(t<0.5) return (1-Math.cos(t*Math.PI))/2;
+    return 1;
+  }
+};
 
 /* =====================
-   EASING
+   KEYFRAMES
 ===================== */
-function easeInOut(t){
-  return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
-}
+const keyframes=[];
 
 /* =====================
    HELPERS
@@ -91,7 +109,6 @@ function copyPose(){
   };
 }
 function applyPose(p){
-  if(!p)return;
   stickman.joints.la.ang=p.la;
   stickman.joints.ra.ang=p.ra;
   stickman.joints.ll.ang=p.ll;
@@ -112,7 +129,7 @@ function rebuildDots(){
 }
 
 /* =====================
-   INTERPOLATION (WITH EASING)
+   INTERPOLATION
 ===================== */
 function applyTimeline(t){
   if(keyframes.length===0) return;
@@ -131,7 +148,7 @@ function applyTimeline(t){
   if(t>=b.t) return applyPose(b.pose);
 
   let k=(t-a.t)/(b.t-a.t);
-  k=a.easing(k); // 🔥 easing applied
+  k=a.easing(k);
 
   applyPose({
     la:lerp(a.pose.la,b.pose.la,k),
@@ -159,7 +176,9 @@ function draw(){
   ctx.clearRect(0,0,600,600);
   ctx.save();
   ctx.translate(stickman.x,stickman.y);
-  ctx.lineWidth=6;ctx.lineCap="round";ctx.strokeStyle="#000";
+  ctx.lineWidth=6;
+  ctx.lineCap="round";
+  ctx.strokeStyle="#000";
   ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(0,60);ctx.stroke();
   ctx.beginPath();ctx.arc(0,-70,22,0,Math.PI*2);ctx.stroke();
   for(let k in stickman.joints) limb(stickman.joints[k]);
@@ -195,7 +214,7 @@ window.onkeydown=e=>{
     keyframes.push({
       t:+slider.value,
       pose:copyPose(),
-      easing:easeInOut
+      easing:Easings[easingSelect.value]
     });
     rebuildDots();
   }
