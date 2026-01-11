@@ -365,6 +365,56 @@ loop = function(){
 
 console.log("🔥 21 B.4 Conflict Escalation Rules loaded");
 </script>
+<script>
+// ================= 21 B.5 — DE-ESCALATION & COOLDOWN =================
+
+// Sovish tezliklari
+const cooldownConfig = {
+  tensionDrop: 0.01,   // har frame
+  dominanceDrop: 0.01,
+  calmThreshold: 0.2
+};
+
+function applyCooldown(){
+  if(conflictState.active) return;
+
+  chars.forEach(c=>{
+    if(!c.psych) return;
+
+    // Tension sekin tushadi
+    c.psych.tension = Math.max(
+      0,
+      c.psych.tension - cooldownConfig.tensionDrop
+    );
+
+    // Dominance pasayadi
+    if(c.psych.dominance){
+      c.psych.dominance = Math.max(
+        0,
+        c.psych.dominance - cooldownConfig.dominanceDrop
+      );
+    }
+
+    // Mood tiklanishi
+    if(c.psych.tension < cooldownConfig.calmThreshold){
+      c.psych.mood = "neutral";
+    }
+  });
+
+  // Kamera tinchlanadi
+  camera.shake *= 0.9;
+  camera.targetZoom += (1 - camera.targetZoom) * 0.05;
+}
+
+// LOOP ga xavfsiz ulanish
+const _loopAfterConflict = loop;
+loop = function(){
+  applyCooldown();
+  _loopAfterConflict();
+};
+
+console.log("🧊 21 B.5 De-escalation & Cooldown loaded");
+</script>
 
 </body>
 </html>
