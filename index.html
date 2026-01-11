@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v10.7.0 — State Machine</title>
+<title>Stickman AI v10.8.0 — Timeline Core</title>
 <style>
   body { margin:0; background:#0e0e0e; color:#aaa; font-family:monospace; }
   #ui {
     position:fixed; bottom:0; left:0; right:0;
     background:#111; padding:6px;
-    display:flex; gap:14px;
+    display:flex; gap:12px; flex-wrap:wrap;
   }
   canvas { display:block; margin:auto; background:#1a1a1a; }
 </style>
@@ -17,32 +17,39 @@
 
 <canvas id="c"></canvas>
 <div id="ui">
+  <span id="mode">MODE: LIVE</span>
   <span id="state">STATE: IDLE</span>
-  <span id="dir">DIR: 1</span>
+  <span id="info">Frames: 0</span>
 </div>
 
 <script>
 // ================= SETUP =================
-const canvas=c=document.getElementById("c");
+const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 c.width=700; c.height=450;
 const GROUND_Y=330;
 
-let time=0;
-let direction=1, targetDir=1;
-
 // ================= INPUT =================
 const keys={};
-window.addEventListener("keydown",e=>keys[e.key]=true);
+window.addEventListener("keydown",e=>{
+  keys[e.key]=true;
+  if(e.key==="r"||e.key==="R") toggleRecord();
+  if(e.key==="p"||e.key==="P") startPlay();
+  if(e.key==="o"||e.key==="O") stopAll();
+});
 window.addEventListener("keyup",e=>keys[e.key]=false);
 
-// ================= STATE MACHINE =================
-const STATE={
-  IDLE:"IDLE",
-  WALK:"WALK",
-  RUN :"RUN"
-};
+// ================= MODES =================
+const MODE={LIVE:"LIVE",RECORD:"RECORD",PLAY:"PLAY"};
+let mode=MODE.LIVE;
+
+// ================= STATE =================
+const STATE={IDLE:"IDLE",WALK:"WALK",RUN:"RUN"};
 let currentState=STATE.IDLE;
+
+// ================= TIMELINE =================
+let timeline=[];
+let frame=0;
 
 // ================= SKELETON =================
 const sk={
@@ -56,24 +63,42 @@ const sk={
   }
 };
 
-const LEG_A=45, LEG_B=45, ARM=40;
+let time=0;
+let direction=1, targetDir=1;
 
 // ================= UTILS =================
 const lerp=(a,b,t)=>a+(b-a)*t;
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
-// ================= IK =================
-function solveIK(hx,hy,fx,fy){
-  let dx=fx-hx, dy=fy-hy;
-  let d=Math.hypot(dx,dy);
-  d=clamp(d,1,LEG_A+LEG_B-0.001);
-  let a=Math.acos((LEG_A**2+d**2-LEG_B**2)/(2*LEG_A*d));
-  let b=Math.atan2(dy,dx);
-  return {x:hx+Math.cos(b+a)*LEG_A,y:hy+Math.sin(b+a)*LEG_A};
+// ================= MODE CONTROL =================
+function toggleRecord(){
+  if(mode===MODE.RECORD){
+    mode=MODE.LIVE;
+  }else{
+    timeline=[];
+    frame=0;
+    mode=MODE.RECORD;
+  }
+  updateUI();
+}
+function startPlay(){
+  if(timeline.length===0) return;
+  frame=0;
+  mode=MODE.PLAY;
+  updateUI();
+}
+function stopAll(){
+  mode=MODE.LIVE;
+  updateUI();
+}
+function updateUI(){
+  document.getElementById("mode").textContent="MODE: "+mode;
+  document.getElementById("info").textContent="Frames: "+timeline.length;
 }
 
-// ================= STATE UPDATE =================
+// ================= STATE =================
 function updateState(){
+  if(mode!==MODE.LIVE && mode!==MODE.RECORD) return;
+
   if(keys["a"]||keys["A"]){
     currentState = keys["Shift"] ? STATE.RUN : STATE.WALK;
   }else{
@@ -82,33 +107,28 @@ function updateState(){
   document.getElementById("state").textContent="STATE: "+currentState;
 }
 
-// ================= MOVEMENT =================
-function updateMotion(){
-  // turning
+// ================= WALK LOGIC =================
+function liveMotion(){
   if(keys["ArrowLeft"])  targetDir=-1;
   if(keys["ArrowRight"]) targetDir= 1;
   direction=lerp(direction,targetDir,0.08);
-  document.getElementById("dir").textContent="DIR: "+direction.toFixed(2);
 
   if(currentState===STATE.IDLE){
     time*=0.9;
-    sk.arms.L.a=0;
-    sk.arms.R.a=0;
     return;
   }
 
-  const speed = currentState===STATE.RUN ? 0.09 : 0.05;
-  const stride= currentState===STATE.RUN ? 42 : 30;
-  const lift  = currentState===STATE.RUN ? 28 : 20;
-
+  const speed=currentState===STATE.RUN?0.09:0.05;
   time+=speed;
   const phase=Math.sin(time);
+
+  const stride=currentState===STATE.RUN?42:30;
+  const lift=currentState===STATE.RUN?28:20;
+  const up=Math.max(0,Math.sin(time+Math.PI/2))*lift;
 
   const L=sk.legs.L, R=sk.legs.R;
   if(phase>0){L.foot.lock=true;R.foot.lock=false;}
   else{L.foot.lock=false;R.foot.lock=true;}
-
-  const up=Math.max(0,Math.sin(time+Math.PI/2))*lift;
 
   if(!L.foot.lock){
     L.foot.x=sk.hip.x-22*direction+phase*stride*direction;
@@ -121,66 +141,66 @@ function updateMotion(){
 
   sk.hip.x+= (currentState===STATE.RUN?0.9:0.45)*direction;
   sk.hip.y=lerp(sk.hip.y,(L.foot.y+R.foot.y)/2-65,0.15);
+}
 
-  sk.spine.x=lerp(sk.spine.x,sk.hip.x,0.3);
-  sk.spine.y=lerp(sk.spine.y,sk.hip.y-50,0.3);
+// ================= RECORD =================
+function recordFrame(){
+  timeline.push({
+    hip:{x:sk.hip.x,y:sk.hip.y},
+    direction,
+    state:currentState
+  });
+}
 
-  sk.head.x=sk.spine.x;
-  sk.head.y=lerp(sk.head.y,sk.spine.y-35+phase*4,0.25);
-  sk.head.scaleY=lerp(sk.head.scaleY,1-Math.abs(phase)*0.15,0.2);
-
-  sk.arms.L.a=-phase*0.9*direction;
-  sk.arms.R.a= phase*0.9*direction;
+// ================= PLAY =================
+function playFrame(){
+  if(frame>=timeline.length){
+    mode=MODE.LIVE;
+    return;
+  }
+  const f=timeline[frame];
+  sk.hip.x=f.hip.x;
+  sk.hip.y=f.hip.y;
+  direction=f.direction;
+  currentState=f.state;
+  frame++;
 }
 
 // ================= DRAW =================
-function drawLeg(side,dir){
-  const hx=sk.hip.x+dir*10*direction;
-  const hy=sk.hip.y;
-  const f=sk.legs[side].foot;
-  const k=solveIK(hx,hy,f.x,f.y);
-  ctx.beginPath();
-  ctx.moveTo(hx,hy);
-  ctx.lineTo(k.x,k.y);
-  ctx.lineTo(f.x,f.y);
-  ctx.stroke();
-}
-function drawArm(side,dir){
-  const sx=sk.spine.x+dir*15*direction;
-  const sy=sk.spine.y+10;
-  const a=sk.arms[side].a;
-  ctx.beginPath();
-  ctx.moveTo(sx,sy);
-  ctx.lineTo(sx+Math.cos(a+Math.PI/2)*ARM,sy+Math.sin(a+Math.PI/2)*ARM);
-  ctx.stroke();
-}
-
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
+
   ctx.strokeStyle="#444";
-  ctx.beginPath(); ctx.moveTo(0,GROUND_Y); ctx.lineTo(c.width,GROUND_Y); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0,GROUND_Y); ctx.lineTo(c.width,GROUND_Y);
+  ctx.stroke();
 
   ctx.strokeStyle="#fff"; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.moveTo(sk.hip.x,sk.hip.y); ctx.lineTo(sk.spine.x,sk.spine.y); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sk.hip.x,sk.hip.y);
+  ctx.lineTo(sk.hip.x,sk.hip.y-50);
+  ctx.stroke();
 
-  ctx.save();
-  ctx.translate(sk.head.x,sk.head.y);
-  ctx.scale(1,sk.head.scaleY);
-  ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.stroke();
-  ctx.restore();
-
-  drawArm("L",-1); drawArm("R",1);
-  drawLeg("L",-1); drawLeg("R",1);
+  ctx.beginPath();
+  ctx.arc(sk.hip.x,sk.hip.y-80,12,0,Math.PI*2);
+  ctx.stroke();
 }
 
 // ================= LOOP =================
 function loop(){
-  updateState();
-  updateMotion();
+  if(mode===MODE.PLAY){
+    playFrame();
+  }else{
+    updateState();
+    liveMotion();
+    if(mode===MODE.RECORD) recordFrame();
+  }
   draw();
   requestAnimationFrame(loop);
 }
+updateUI();
 loop();
 </script>
+
 </body>
 </html>
