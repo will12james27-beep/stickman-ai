@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.6.0 – Keyframe Pose</title>
+<title>Stickman AI v8.7.0 – Keyframe Dots</title>
 <style>
   body{
     margin:0;
@@ -16,20 +16,34 @@
     height:100vh;
   }
   canvas{background:#fff;cursor:crosshair;}
-  .ui{margin-top:8px;font-size:13px;opacity:.85}
+  #timeline{
+    width:600px;height:50px;
+    background:#222;border-radius:6px;
+    margin-top:8px;position:relative;
+  }
+  .dot{
+    position:absolute;top:18px;
+    width:8px;height:8px;
+    background:#ff5252;border-radius:50%;
+    transform:translateX(-50%);
+  }
   input{width:600px;margin-top:6px;}
+  .ui{margin-top:6px;font-size:13px;opacity:.85}
 </style>
 </head>
 <body>
 
 <canvas id="c" width="600" height="600"></canvas>
+
+<div id="timeline"></div>
 <input id="time" type="range" min="0" max="2000" value="0">
-<div class="ui">Qo‘l-oyoqni burab <b>K</b> ni bos — keyframe saqlanadi</div>
+<div class="ui">Qo‘l-oyoqni bur → <b>K</b> bos → keyframe (timeline’da nuqta chiqadi)</div>
 
 <script>
 const canvas=document.getElementById("c");
 const ctx=canvas.getContext("2d");
 const slider=document.getElementById("time");
+const timelineEl=document.getElementById("timeline");
 
 /* =====================
    STATE
@@ -43,19 +57,20 @@ const stickman={
     rl:{x:0,y:60, ang:-10,len:65}
   }
 };
-
 let active=null;
 
 /* =====================
    KEYFRAMES
 ===================== */
-const keyframes=[]; 
-// {t: number, pose:{la,ra,ll,rl}}
+const keyframes=[]; // {t, pose}
 
 /* =====================
    HELPERS
 ===================== */
 const lerp=(a,b,t)=>a+(b-a)*t;
+const dist=(x1,y1,x2,y2)=>Math.hypot(x1-x2,y1-y2);
+const angle=(cx,cy,px,py)=>Math.atan2(py-cy,px-cx)*180/Math.PI+90;
+
 function copyPose(){
   return {
     la:stickman.joints.la.ang,
@@ -70,6 +85,19 @@ function applyPose(p){
   stickman.joints.ra.ang=p.ra;
   stickman.joints.ll.ang=p.ll;
   stickman.joints.rl.ang=p.rl;
+}
+
+/* =====================
+   TIMELINE / DOTS
+===================== */
+function rebuildDots(){
+  timelineEl.innerHTML="";
+  keyframes.forEach(k=>{
+    const d=document.createElement("div");
+    d.className="dot";
+    d.style.left=(k.t/2000)*600+"px";
+    timelineEl.appendChild(d);
+  });
 }
 
 /* =====================
@@ -101,7 +129,7 @@ function applyTimeline(t){
 /* =====================
    DRAW
 ===================== */
-function drawLimb(j){
+function limb(j){
   ctx.save();
   ctx.translate(j.x,j.y);
   ctx.rotate(j.ang*Math.PI/180);
@@ -116,32 +144,22 @@ function draw(){
   ctx.clearRect(0,0,600,600);
   ctx.save();
   ctx.translate(stickman.x,stickman.y);
-  ctx.lineWidth=6;
-  ctx.lineCap="round";
-  ctx.strokeStyle="#000";
-
+  ctx.lineWidth=6;ctx.lineCap="round";ctx.strokeStyle="#000";
   ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(0,60);ctx.stroke();
   ctx.beginPath();ctx.arc(0,-70,22,0,Math.PI*2);ctx.stroke();
-
-  for(let k in stickman.joints) drawLimb(stickman.joints[k]);
+  for(let k in stickman.joints) limb(stickman.joints[k]);
   ctx.restore();
 }
 
 /* =====================
-   HIT / MOUSE
+   MOUSE
 ===================== */
-function dist(x1,y1,x2,y2){return Math.hypot(x1-x2,y1-y2);}
-function angle(cx,cy,px,py){
-  return Math.atan2(py-cy,px-cx)*180/Math.PI+90;
-}
 canvas.onmousedown=e=>{
   const r=canvas.getBoundingClientRect();
   const mx=e.clientX-r.left,my=e.clientY-r.top;
   for(let k in stickman.joints){
     const j=stickman.joints[k];
-    if(dist(mx,my,stickman.x+j.x,stickman.y+j.y)<15){
-      active=j; break;
-    }
+    if(dist(mx,my,stickman.x+j.x,stickman.y+j.y)<15){ active=j; break; }
   }
 };
 canvas.onmousemove=e=>{
@@ -158,7 +176,7 @@ window.onmouseup=()=>active=null;
 window.onkeydown=e=>{
   if(e.key.toLowerCase()==="k"){
     keyframes.push({t:+slider.value,pose:copyPose()});
-    console.log("Keyframe added:",keyframes);
+    rebuildDots();
   }
 };
 
