@@ -2,44 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v9.0.0 – Keyframe Select & Delete</title>
+<title>Stickman AI v9.1.0 – Timeline Playback</title>
 <style>
-  body{
-    margin:0;
-    background:#111;
-    color:#fff;
-    font-family:sans-serif;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    height:100vh;
-  }
-  canvas{background:#fff;cursor:crosshair;}
-  #timeline{
-    width:600px;height:50px;
-    background:#222;border-radius:6px;
-    margin-top:8px;position:relative;
-  }
-  .dot{
-    position:absolute;
-    top:18px;
-    width:10px;height:10px;
-    background:#ff5252;
-    border-radius:50%;
-    transform:translateX(-50%);
-    cursor:pointer;
-  }
-  .dot.selected{
-    background:#00e5ff;
-    box-shadow:0 0 6px #00e5ff;
-  }
-  .controls{
-    margin-top:6px;
-    font-size:13px;
-    opacity:.9;
-  }
-  input,select{width:180px;}
+body{
+  margin:0;
+  background:#111;
+  color:#fff;
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+}
+canvas{background:#fff;}
+#timeline{
+  width:600px;height:50px;
+  background:#222;border-radius:6px;
+  margin-top:8px;position:relative;
+}
+.dot{
+  position:absolute;top:18px;
+  width:10px;height:10px;
+  background:#ff5252;border-radius:50%;
+  transform:translateX(-50%);
+}
+.controls{
+  margin-top:6px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  font-size:13px;
+}
+button{
+  padding:4px 10px;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -50,24 +50,22 @@
 
 <div class="controls">
   <input id="time" type="range" min="0" max="2000" value="0">
-  <select id="easing">
-    <option value="linear">Linear</option>
-    <option value="ease">Ease In Out</option>
-    <option value="bounce">Bounce</option>
-  </select>
-</div>
-
-<div class="controls">
-  Pozani sozla → easing tanla → <b>K</b> bos  
-  <br>Timeline’da nuqtani bos → <b>DEL</b> = o‘chirish
+  <button id="play">▶ Play</button>
+  <button id="pause">⏸ Pause</button>
+  <label>
+    <input type="checkbox" id="loop" checked> Loop
+  </label>
 </div>
 
 <script>
 const canvas=document.getElementById("c");
 const ctx=canvas.getContext("2d");
 const slider=document.getElementById("time");
-const easingSelect=document.getElementById("easing");
 const timelineEl=document.getElementById("timeline");
+
+const playBtn=document.getElementById("play");
+const pauseBtn=document.getElementById("pause");
+const loopChk=document.getElementById("loop");
 
 /* =====================
    STATE
@@ -75,36 +73,26 @@ const timelineEl=document.getElementById("timeline");
 const stickman={
   x:300,y:340,
   joints:{
-    la:{x:0,y:-20,ang:-15,len:55},
-    ra:{x:0,y:-20,ang:15,len:55},
-    ll:{x:0,y:60, ang:10,len:65},
-    rl:{x:0,y:60, ang:-10,len:65}
+    la:{x:0,y:-20,ang:-20,len:55},
+    ra:{x:0,y:-20,ang:20,len:55},
+    ll:{x:0,y:60,ang:15,len:65},
+    rl:{x:0,y:60,ang:-15,len:65}
   }
 };
-let activeJoint=null;
-let selectedKeyframe=null;
 
-/* =====================
-   EASING
-===================== */
 const Easings={
   linear:t=>t,
-  ease:t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2,
-  bounce:t=>t<0.5?(1-Math.cos(t*Math.PI))/2:1
+  ease:t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2
 };
 
-/* =====================
-   KEYFRAMES
-===================== */
 const keyframes=[];
+let playing=false;
+let lastTime=0;
 
 /* =====================
    HELPERS
 ===================== */
 const lerp=(a,b,t)=>a+(b-a)*t;
-const dist=(x1,y1,x2,y2)=>Math.hypot(x1-x2,y1-y2);
-const angle=(cx,cy,px,py)=>Math.atan2(py-cy,px-cx)*180/Math.PI+90;
-
 function copyPose(){
   return {
     la:stickman.joints.la.ang,
@@ -121,37 +109,26 @@ function applyPose(p){
 }
 
 /* =====================
-   TIMELINE DOTS
+   TIMELINE
 ===================== */
 function rebuildDots(){
   timelineEl.innerHTML="";
-  keyframes.forEach((k,i)=>{
+  keyframes.forEach(k=>{
     const d=document.createElement("div");
-    d.className="dot"+(k===selectedKeyframe?" selected":"");
+    d.className="dot";
     d.style.left=(k.t/2000)*600+"px";
-    d.onclick=()=>{
-      selectedKeyframe=k;
-      slider.value=k.t;
-      rebuildDots();
-    };
     timelineEl.appendChild(d);
   });
 }
 
-/* =====================
-   INTERPOLATION
-===================== */
 function applyTimeline(t){
   if(keyframes.length===0) return;
-
   keyframes.sort((a,b)=>a.t-b.t);
 
   let a=keyframes[0], b=keyframes[keyframes.length-1];
   for(let i=0;i<keyframes.length-1;i++){
     if(t>=keyframes[i].t && t<=keyframes[i+1].t){
-      a=keyframes[i];
-      b=keyframes[i+1];
-      break;
+      a=keyframes[i]; b=keyframes[i+1]; break;
     }
   }
   if(t<=a.t) return applyPose(a.pose);
@@ -182,7 +159,6 @@ function limb(j){
   ctx.restore();
 }
 function draw(){
-  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,600,600);
   ctx.save();
   ctx.translate(stickman.x,stickman.y);
@@ -196,43 +172,18 @@ function draw(){
 }
 
 /* =====================
-   MOUSE (POSE)
+   PLAYBACK
 ===================== */
-canvas.onmousedown=e=>{
-  const r=canvas.getBoundingClientRect();
-  const mx=e.clientX-r.left,my=e.clientY-r.top;
-  for(let k in stickman.joints){
-    const j=stickman.joints[k];
-    if(dist(mx,my,stickman.x+j.x,stickman.y+j.y)<15){
-      activeJoint=j; break;
-    }
-  }
-};
-canvas.onmousemove=e=>{
-  if(!activeJoint)return;
-  const r=canvas.getBoundingClientRect();
-  const mx=e.clientX-r.left,my=e.clientY-r.top;
-  activeJoint.ang=angle(stickman.x+activeJoint.x,stickman.y+activeJoint.y,mx,my);
-};
-window.onmouseup=()=>activeJoint=null;
+playBtn.onclick=()=>{ playing=true; };
+pauseBtn.onclick=()=>{ playing=false; };
 
-/* =====================
-   KEYBOARD
-===================== */
 window.onkeydown=e=>{
   if(e.key.toLowerCase()==="k"){
     keyframes.push({
       t:+slider.value,
       pose:copyPose(),
-      easing:Easings[easingSelect.value]
+      easing:Easings.ease
     });
-    selectedKeyframe=null;
-    rebuildDots();
-  }
-  if((e.key==="Delete"||e.key==="Backspace") && selectedKeyframe){
-    const i=keyframes.indexOf(selectedKeyframe);
-    if(i>-1) keyframes.splice(i,1);
-    selectedKeyframe=null;
     rebuildDots();
   }
 };
@@ -240,12 +191,24 @@ window.onkeydown=e=>{
 /* =====================
    LOOP
 ===================== */
-function loop(){
+function loop(ts){
+  if(!lastTime) lastTime=ts;
+  const dt=ts-lastTime;
+  lastTime=ts;
+
+  if(playing){
+    slider.value=+slider.value+dt;
+    if(slider.value>=2000){
+      if(loopChk.checked) slider.value=0;
+      else { slider.value=2000; playing=false; }
+    }
+  }
+
   applyTimeline(+slider.value);
   draw();
   requestAnimationFrame(loop);
 }
-loop();
+requestAnimationFrame(loop);
 </script>
 
 </body>
