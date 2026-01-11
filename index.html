@@ -2,19 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.16 — Dialog System</title>
+<title>Stickman v21-A.17 — Beat Dialog Sync</title>
 <style>
 body{
   margin:0;
   background:#111;
   display:flex;
-  justify-content:center;
+  flex-direction:column;
+  align-items:center;
 }
 canvas{background:#e6f4ff}
+button{margin:6px;padding:8px 14px}
 </style>
 </head>
 <body>
 
+<button id="play">▶ PLAY AUDIO</button>
 <canvas id="c" width="360" height="640"></canvas>
 
 <script>
@@ -23,20 +26,24 @@ const ctx=c.getContext("2d");
 
 /* ================= CAMERA ================= */
 const Camera={
-  x:0,y:0,target:null,
+  x:0,y:0,shake:0,target:null,
   update(){
     if(this.target){
-      this.x+=((this.target.x-180)-this.x)*0.1;
-      this.y+=((this.target.y-320)-this.y)*0.1;
+      this.x+=((this.target.x-180)-this.x)*0.12;
+      this.y+=((this.target.y-320)-this.y)*0.12;
     }
+    this.shake*=0.85;
   },
   apply(){
-    ctx.setTransform(1,0,0,1,-this.x,-this.y);
-  }
+    const sx=(Math.random()-0.5)*this.shake;
+    const sy=(Math.random()-0.5)*this.shake;
+    ctx.setTransform(1,0,0,1,-this.x+sx,-this.y+sy);
+  },
+  hit(v){this.shake=v;}
 };
 
 /* ================= SPEECH BUBBLE ================= */
-function drawBubble(x,y,text){
+function bubble(x,y,text){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.font="bold 16px sans-serif";
   const pad=8;
@@ -48,19 +55,15 @@ function drawBubble(x,y,text){
   ctx.fillStyle="#fff";
   ctx.strokeStyle="#000";
   ctx.lineWidth=2;
-
   ctx.beginPath();
   ctx.roundRect(bx,by,w,h,10);
-  ctx.fill();
-  ctx.stroke();
+  ctx.fill();ctx.stroke();
 
-  // tail
   ctx.beginPath();
   ctx.moveTo(x-6,by+h);
   ctx.lineTo(x,by+h+8);
   ctx.lineTo(x+6,by+h);
-  ctx.fill();
-  ctx.stroke();
+  ctx.fill();ctx.stroke();
 
   ctx.fillStyle="#000";
   ctx.textAlign="center";
@@ -74,79 +77,95 @@ class Character{
     this.x=x;this.y=440;
     this.color=color;
     this.walk=0;
-    this.speak=null;
+    this.jump=0;
+    this.sayLine=null;
   }
   update(){
     this.walk+=0.1;
+    this.jump*=0.8;
   }
-  say(text,duration=90){
-    this.speak={text,duration};
+  speak(text){
+    this.sayLine={text,time:80};
+  }
+  beat(){
+    this.jump=12;
   }
   draw(){
-    const step=Math.sin(this.walk)*4;
+    const step=Math.sin(this.walk)*5;
+    const j=this.jump;
 
     ctx.strokeStyle=this.color;
     ctx.lineWidth=3;
 
     // body
     ctx.beginPath();
-    ctx.moveTo(this.x,this.y);
-    ctx.lineTo(this.x,this.y+36);
+    ctx.moveTo(this.x,this.y-j);
+    ctx.lineTo(this.x,this.y+36-j);
     ctx.stroke();
 
     // legs
     ctx.beginPath();
-    ctx.moveTo(this.x,this.y+36);
-    ctx.lineTo(this.x-8,this.y+70-step);
-    ctx.moveTo(this.x,this.y+36);
-    ctx.lineTo(this.x+8,this.y+70+step);
+    ctx.moveTo(this.x,this.y+36-j);
+    ctx.lineTo(this.x-8,this.y+70-step-j);
+    ctx.moveTo(this.x,this.y+36-j);
+    ctx.lineTo(this.x+8,this.y+70+step-j);
     ctx.stroke();
 
     // arms
     ctx.beginPath();
-    ctx.moveTo(this.x,this.y+10);
+    ctx.moveTo(this.x,this.y+10-j);
     ctx.lineTo(this.x-14,this.y+26);
-    ctx.moveTo(this.x,this.y+10);
+    ctx.moveTo(this.x,this.y+10-j);
     ctx.lineTo(this.x+14,this.y+26);
     ctx.stroke();
 
     // head
     ctx.beginPath();
-    ctx.arc(this.x,this.y-14,14,0,Math.PI*2);
+    ctx.arc(this.x,this.y-14-j,14,0,Math.PI*2);
     ctx.stroke();
 
-    // bubble
-    if(this.speak){
-      drawBubble(this.x,this.y-28,this.speak.text);
-      this.speak.duration--;
-      if(this.speak.duration<=0) this.speak=null;
+    if(this.sayLine){
+      bubble(this.x,this.y-30-j,this.sayLine.text);
+      this.sayLine.time--;
+      if(this.sayLine.time<=0) this.sayLine=null;
     }
   }
 }
 
-/* ================= DIALOG QUEUE ================= */
+/* ================= DIALOG (BEAT BASED) ================= */
 const Dialog={
   lines:[
-    {who:"A",text:"That was crazy 😳"},
+    {who:"A",text:"That was CRAZY 😱"},
     {who:"B",text:"Ha, juda telba edi 😂"},
-    {who:"A",text:"Did you see that?!"}
+    {who:"A",text:"I can't believe that!"}
   ],
   i:0,
-  timer:0,
   next(){
     if(this.i>=this.lines.length) return;
     const l=this.lines[this.i++];
     const ch=l.who==="A"?hero:npc;
-    ch.say(l.text,100);
+    ch.speak(l.text);
     Camera.target=ch;
-  },
-  update(){
-    this.timer++;
-    if(this.timer===30) this.next();
-    if(this.timer===150) this.next();
-    if(this.timer===270) this.next();
   }
 };
+
+/* ================= AUDIO / BEAT ================= */
+let audioCtx, analyser, data, lastEnergy=0, started=false;
+
+async function startAudio(){
+  audioCtx=new AudioContext();
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=256;
+  data=new Uint8Array(analyser.frequencyBinCount);
+
+  const audio=new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_87c7c6c77f.mp3");
+  audio.crossOrigin="anonymous";
+  const src=audioCtx.createMediaElementSource(audio);
+  src.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  audio.play();
+  started=true;
+}
 
 /* ================= SETUP ================= */
 const hero=new Character("A",160,"#ff4444");
@@ -158,9 +177,21 @@ function loop(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,360,640);
 
-  Dialog.update();
-  Camera.update();
+  if(started){
+    analyser.getByteFrequencyData(data);
+    let energy=0;
+    for(let i=0;i<data.length;i++) energy+=data[i];
+    energy/=data.length;
 
+    if(energy-lastEnergy>18){
+      Camera.hit(10);
+      hero.beat(); npc.beat();
+      Dialog.next(); // 👈 dialog BEATDA
+    }
+    lastEnergy=energy;
+  }
+
+  Camera.update();
   ctx.save();
   Camera.apply();
 
@@ -177,6 +208,10 @@ function loop(){
   requestAnimationFrame(loop);
 }
 loop();
+
+document.getElementById("play").onclick=()=>{
+  if(!started) startAudio();
+};
 </script>
 </body>
 </html>
