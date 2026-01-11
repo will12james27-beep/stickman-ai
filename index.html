@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman – Scene System 21 C.1</title>
+<title>Stickman AI – 21 C.1 FIX</title>
 <style>
-  body {
-    margin: 0;
-    background: #111;
-    overflow: hidden;
-  }
-  canvas {
-    display: block;
-    background: #fff;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #222;
+}
+canvas {
+  display: block;
+}
 </style>
 </head>
 <body>
@@ -21,20 +22,20 @@
 
 <script>
 // =========================
-// CANVAS SETUP
+// SAFE CANVAS INIT
 // =========================
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth || 800;
+  canvas.height = window.innerHeight || 600;
 }
-window.addEventListener("resize", resize);
 resize();
+window.addEventListener("resize", resize);
 
 // =========================
-// SCENE SYSTEM
+// SCENE
 // =========================
 const scene = {
   width: 3000,
@@ -43,7 +44,7 @@ const scene = {
 };
 
 // =========================
-// CAMERA (21 C.1)
+// CAMERA (SAFE)
 // =========================
 const camera = {
   x: 0,
@@ -59,86 +60,82 @@ function camY(y) {
 }
 
 // =========================
-// STICKMAN DATA
+// STICKMAN
 // =========================
 const stickman = {
   x: 400,
   y: scene.groundY - 120,
-  headR: 18,
+  head: 18,
   body: 50,
   arm: 40,
   leg: 45
 };
 
 // =========================
-// DRAW STICKMAN
+// DRAW FUNCTIONS
 // =========================
-function drawStickman(p) {
-  ctx.lineWidth = 4;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "#000";
-
-  const headX = p.x;
-  const headY = p.y;
-
-  // Head
-  ctx.beginPath();
-  ctx.arc(camX(headX), camY(headY), p.headR * camera.zoom, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Body
-  ctx.beginPath();
-  ctx.moveTo(camX(headX), camY(headY + p.headR));
-  ctx.lineTo(camX(headX), camY(headY + p.headR + p.body));
-  ctx.stroke();
-
-  const bodyEndY = headY + p.headR + p.body;
-
-  // Arms
-  ctx.beginPath();
-  ctx.moveTo(camX(headX), camY(headY + p.headR + 10));
-  ctx.lineTo(camX(headX - p.arm), camY(headY + p.headR + 25));
-  ctx.moveTo(camX(headX), camY(headY + p.headR + 10));
-  ctx.lineTo(camX(headX + p.arm), camY(headY + p.headR + 25));
-  ctx.stroke();
-
-  // Legs
-  ctx.beginPath();
-  ctx.moveTo(camX(headX), camY(bodyEndY));
-  ctx.lineTo(camX(headX - p.leg), camY(bodyEndY + p.leg));
-  ctx.moveTo(camX(headX), camY(bodyEndY));
-  ctx.lineTo(camX(headX + p.leg), camY(bodyEndY + p.leg));
-  ctx.stroke();
+function drawBackground() {
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-// =========================
-// DRAW GROUND
-// =========================
 function drawGround() {
+  ctx.strokeStyle = "#aaa";
   ctx.lineWidth = 2;
-  ctx.strokeStyle = "#777";
-
   ctx.beginPath();
   ctx.moveTo(camX(0), camY(scene.groundY));
   ctx.lineTo(camX(scene.width), camY(scene.groundY));
   ctx.stroke();
 }
 
-// =========================
-// UPDATE CAMERA (STATIC FOR 21 C.1)
-// =========================
-function updateCamera() {
-  // 21 C.1 da kamera faqat mavjud
-  // follow yo‘q (keyingi etapda)
+function drawStickman(p) {
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+
+  const hx = p.x;
+  const hy = p.y;
+
+  // head
+  ctx.beginPath();
+  ctx.arc(camX(hx), camY(hy), p.head, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // body
+  ctx.beginPath();
+  ctx.moveTo(camX(hx), camY(hy + p.head));
+  ctx.lineTo(camX(hx), camY(hy + p.head + p.body));
+  ctx.stroke();
+
+  const by = hy + p.head + p.body;
+
+  // arms
+  ctx.beginPath();
+  ctx.moveTo(camX(hx), camY(hy + 25));
+  ctx.lineTo(camX(hx - p.arm), camY(hy + 40));
+  ctx.moveTo(camX(hx), camY(hy + 25));
+  ctx.lineTo(camX(hx + p.arm), camY(hy + 40));
+  ctx.stroke();
+
+  // legs
+  ctx.beginPath();
+  ctx.moveTo(camX(hx), camY(by));
+  ctx.lineTo(camX(hx - p.leg), camY(by + p.leg));
+  ctx.moveTo(camX(hx), camY(by));
+  ctx.lineTo(camX(hx + p.leg), camY(by + p.leg));
+  ctx.stroke();
 }
 
 // =========================
 // MAIN LOOP
 // =========================
 function loop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackground();
 
-  updateCamera();
+  // DEBUG MARKER (agar buni ko‘rsang – canvas ishlayapti)
+  ctx.fillStyle = "red";
+  ctx.fillRect(10, 10, 10, 10);
+
   drawGround();
   drawStickman(stickman);
 
