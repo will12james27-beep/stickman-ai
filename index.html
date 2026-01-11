@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v9.5.0 – Full IK Body</title>
+<title>Stickman AI v10.0.0 – Walk + Foot Lock</title>
 <style>
 body{
   margin:0;
@@ -16,7 +16,7 @@ canvas{background:#fff;}
 button{
   position:fixed;
   bottom:20px;
-  padding:6px 14px;
+  padding:6px 16px;
 }
 </style>
 </head>
@@ -34,19 +34,21 @@ let playing=false;
 let t=0;
 
 /* =====================
-   STICKMAN DATA
+   STICKMAN
 ===================== */
-const stickman={
+const man={
   x:300,
   y:260,
-  leg:{ upper:45, lower:45 },
-  arm:{ upper:40, lower:35 }
+  leg:{u:50,l:50},
+  arm:{u:40,l:35},
+  footL:{x:280,y:400,lock:true},
+  footR:{x:320,y:400,lock:false}
 };
 
 /* =====================
-   GENERIC 2-BONE IK
+   IK SOLVER
 ===================== */
-function solveIK(base, target, l1, l2, flip){
+function solveIK(base,target,l1,l2,flip){
   const dx=target.x-base.x;
   const dy=target.y-base.y;
   let d=Math.hypot(dx,dy);
@@ -54,22 +56,34 @@ function solveIK(base, target, l1, l2, flip){
 
   const a=Math.acos((l1*l1+d*d-l2*l2)/(2*l1*d));
   const b=Math.atan2(dy,dx);
-  const angle1=b+(flip?-a:a);
+  const ang=b+(flip?-a:a);
 
   return {
-    joint:{
-      x:base.x+Math.cos(angle1)*l1,
-      y:base.y+Math.sin(angle1)*l1
-    },
-    end:target
+    j:{x:base.x+Math.cos(ang)*l1,y:base.y+Math.sin(ang)*l1},
+    e:target
   };
 }
 
 /* =====================
-   DEMO MOTION
+   UPDATE (WALK LOGIC)
 ===================== */
 function update(dt){
   t+=dt*0.005;
+  const s=Math.sin(t);
+
+  // switch foot lock
+  if(s>0.99){ man.footL.lock=true; man.footR.lock=false; }
+  if(s<-0.99){ man.footL.lock=false; man.footR.lock=true; }
+
+  // move free foot
+  if(!man.footL.lock){
+    man.footL.x=man.x-30+s*40;
+    man.footL.y=400-Math.max(0,s)*40;
+  }
+  if(!man.footR.lock){
+    man.footR.x=man.x+30-s*40;
+    man.footR.y=400-Math.max(0,-s)*40;
+  }
 }
 
 /* =====================
@@ -91,45 +105,37 @@ function draw(){
   ctx.lineCap="round";
   ctx.strokeStyle="#000";
 
-  const hip={x:stickman.x,y:stickman.y};
-  const shoulder={x:stickman.x,y:stickman.y-40};
+  const hip={x:man.x,y:man.y};
+  const sh={x:man.x,y:man.y-45};
 
+  // arms swing
   const s=Math.sin(t);
+  const Lh={x:sh.x-60-s*25,y:sh.y+20};
+  const Rh={x:sh.x+60+s*25,y:sh.y+20};
 
-  /* ===== FOOT TARGETS ===== */
-  const Lfoot={x:hip.x-20+s*20, y:hip.y+140+Math.max(0,s)*-30};
-  const Rfoot={x:hip.x+20-s*20, y:hip.y+140+Math.max(0,-s)*-30};
+  const Larm=solveIK(sh,Lh,man.arm.u,man.arm.l,false);
+  const Rarm=solveIK(sh,Rh,man.arm.u,man.arm.l,true);
 
-  /* ===== HAND TARGETS ===== */
-  const Lhand={x:shoulder.x-60-s*25, y:shoulder.y+20+Math.abs(s)*10};
-  const Rhand={x:shoulder.x+60+s*25, y:shoulder.y+20+Math.abs(s)*10};
+  const Lleg=solveIK(hip,man.footL,man.leg.u,man.leg.l,false);
+  const Rleg=solveIK(hip,man.footR,man.leg.u,man.leg.l,true);
 
-  /* ===== IK SOLVE ===== */
-  const Lleg=solveIK(hip,Lfoot,stickman.leg.upper,stickman.leg.lower,false);
-  const Rleg=solveIK(hip,Rfoot,stickman.leg.upper,stickman.leg.lower,true);
-
-  const Larm=solveIK(shoulder,Lhand,stickman.arm.upper,stickman.arm.lower,false);
-  const Rarm=solveIK(shoulder,Rhand,stickman.arm.upper,stickman.arm.lower,true);
-
-  /* ===== BODY ===== */
-  line(shoulder.x,shoulder.y-50,shoulder.x,hip.y);
+  /* BODY */
+  line(sh.x,sh.y-50,sh.x,hip.y);
   ctx.beginPath();
-  ctx.arc(shoulder.x,shoulder.y-80,22,0,Math.PI*2);
+  ctx.arc(sh.x,sh.y-80,22,0,Math.PI*2);
   ctx.stroke();
 
-  /* ===== ARMS ===== */
-  line(shoulder.x,shoulder.y,Larm.joint.x,Larm.joint.y);
-  line(Larm.joint.x,Larm.joint.y,Larm.end.x,Larm.end.y);
+  /* ARMS */
+  line(sh.x,sh.y,Larm.j.x,Larm.j.y);
+  line(Larm.j.x,Larm.j.y,Larm.e.x,Larm.e.y);
+  line(sh.x,sh.y,Rarm.j.x,Rarm.j.y);
+  line(Rarm.j.x,Rarm.j.y,Rarm.e.x,Rarm.e.y);
 
-  line(shoulder.x,shoulder.y,Rarm.joint.x,Rarm.joint.y);
-  line(Rarm.joint.x,Rarm.joint.y,Rarm.end.x,Rarm.end.y);
-
-  /* ===== LEGS ===== */
-  line(hip.x,hip.y,Lleg.joint.x,Lleg.joint.y);
-  line(Lleg.joint.x,Lleg.joint.y,Lleg.end.x,Lleg.end.y);
-
-  line(hip.x,hip.y,Rleg.joint.x,Rleg.joint.y);
-  line(Rleg.joint.x,Rleg.joint.y,Rleg.end.x,Rleg.end.y);
+  /* LEGS */
+  line(hip.x,hip.y,Lleg.j.x,Lleg.j.y);
+  line(Lleg.j.x,Lleg.j.y,Lleg.e.x,Lleg.e.y);
+  line(hip.x,hip.y,Rleg.j.x,Rleg.j.y);
+  line(Rleg.j.x,Rleg.j.y,Rleg.e.x,Rleg.e.y);
 }
 
 /* =====================
