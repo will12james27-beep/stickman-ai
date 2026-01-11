@@ -537,6 +537,116 @@ draw = function(){
 
 console.log("🧩 21 B.7 Text Layering & Priority loaded");
 </script>
+<script>
+// ================= 21 B.8 — TEXT FADE / POP / SHAKE =================
+// SAFE MODE: faqat oxiriga qo‘shiladi
+
+// Per-text visual state (lazy init)
+function ensureTextFX(c){
+  if(!c._textFX){
+    c._textFX = {
+      alpha: 1,
+      scale: 1,
+      shake: 0,
+      timer: 0
+    };
+  }
+  return c._textFX;
+}
+
+// Triggerlar: gapirganda / mood o‘zgarganda
+function triggerTextFX(c, type){
+  const fx = ensureTextFX(c);
+  fx.timer = 0;
+
+  if(type === "talk"){
+    fx.alpha = 1;
+    fx.scale = 1.15;
+    fx.shake = 6;
+  }else if(type === "react"){
+    fx.alpha = 1;
+    fx.scale = 1.08;
+    fx.shake = 3;
+  }
+}
+
+// Yumshoq easing (har frame)
+function updateTextFX(c){
+  const fx = ensureTextFX(c);
+  fx.timer++;
+
+  // decay
+  fx.scale += (1 - fx.scale) * 0.15;
+  fx.shake *= 0.75;
+  fx.alpha += (1 - fx.alpha) * 0.08;
+}
+
+// Layerga qarab avtomatik trigger
+function autoTriggerByLayer(c){
+  const layer = (typeof getTextLayer === "function") ? getTextLayer(c) : 1;
+  if(layer === 3) triggerTextFX(c, "talk");
+  else if(layer === 2) triggerTextFX(c, "react");
+}
+
+// Layered draw’ni FX bilan o‘rab olamiz (safe override)
+const _drawLayered21B8 = (typeof draw === "function") ? draw : null;
+draw = function(){
+  if(_drawLayered21B8) _drawLayered21B8();
+
+  ctx.save();
+  ctx.textAlign = "center";
+
+  characters
+    .slice()
+    .sort((a,b)=>{
+      if(typeof getTextLayer === "function"){
+        return getTextLayer(a) - getTextLayer(b);
+      }
+      return 0;
+    })
+    .forEach(c=>{
+      // FX update
+      autoTriggerByLayer(c);
+      updateTextFX(c);
+
+      const fx = ensureTextFX(c);
+
+      const worldX = c.pos.x;
+      const worldY = c.pos.y - 40;
+
+      const shakeX = (Math.random()-0.5) * fx.shake;
+      const shakeY = (Math.random()-0.5) * fx.shake;
+
+      const screenX = (worldX - camera.x) * camera.zoom + shakeX;
+      const screenY = (worldY - camera.y) * camera.zoom + shakeY;
+
+      ctx.globalAlpha = fx.alpha;
+      ctx.translate(screenX, screenY);
+      ctx.scale(fx.scale, fx.scale);
+
+      // font layer-aware
+      const layer = (typeof getTextLayer === "function") ? getTextLayer(c) : 1;
+      if(layer === 3){
+        ctx.font = "bold 15px Arial";
+      }else if(layer === 2){
+        ctx.font = "14px Arial";
+      }else{
+        ctx.font = "13px Arial";
+      }
+      ctx.fillStyle = "#000";
+
+      ctx.fillText(`Mood: ${c.mood}`, 0, 0);
+      ctx.fillText(`Tension: ${c.tension.toFixed(2)}`, 0, 16);
+
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.globalAlpha = 1;
+    });
+
+  ctx.restore();
+};
+
+console.log("✨ 21 B.8 Text Fade/Pop/Shake loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
