@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>21 C.27 Dialogue Bubble System</title>
+<title>21 C.28 Subtitle + Bubble Priority</title>
 <style>
   body{margin:0;background:#111;}
   canvas{display:block;margin:auto;background:#fff;}
@@ -20,61 +20,84 @@ const ctx = canvas.getContext("2d");
    EMOTIONS
 ========================= */
 
-const Emotion = {
+const Emotion={
   NEUTRAL:"neutral",
   CONFUSED:"confused",
   SHOCKED:"shocked",
   ANGRY:"angry"
 };
 
-const faceMap = {
-  neutral:  { eye:1,   brow:0,   mouth:0 },
-  confused: { eye:0.85,brow:14,  mouth:3 },
-  shocked:  { eye:1.4, brow:0,   mouth:10 },
-  angry:    { eye:0.6, brow:-20, mouth:-4 }
+const faceMap={
+  neutral:{eye:1,brow:0,mouth:0},
+  confused:{eye:0.85,brow:14,mouth:3},
+  shocked:{eye:1.4,brow:0,mouth:10},
+  angry:{eye:0.6,brow:-20,mouth:-4}
 };
 
-const bubbleStyle = {
-  neutral:  { bg:"#ffffff", border:"#000", shake:0 },
-  confused: { bg:"#e3f2fd", border:"#2196f3", shake:0.6 },
-  shocked:  { bg:"#fff9c4", border:"#fbc02d", shake:1.2 },
-  angry:    { bg:"#ffebee", border:"#e53935", shake:1.5 }
+const bubbleStyle={
+  neutral:{bg:"#fff",border:"#000",shake:0},
+  confused:{bg:"#e3f2fd",border:"#2196f3",shake:0.6},
+  shocked:{bg:"#fff9c4",border:"#fbc02d",shake:1.2},
+  angry:{bg:"#ffebee",border:"#e53935",shake:1.5}
 };
 
 /* =========================
-   CHARACTER FACTORY
+   CHARACTER
 ========================= */
 
 function createChar(x){
   return{
-    x,
-    y:260,
-    face:{ eye:1,brow:0,mouth:0 },
-    target:{ eye:1,brow:0,mouth:0 },
+    x,y:260,
+    face:{eye:1,brow:0,mouth:0},
+    target:{eye:1,brow:0,mouth:0},
     emotion:Emotion.NEUTRAL,
     bubble:null
   };
 }
 
-const chars = [
+const chars=[
   createChar(180),
   createChar(360),
   createChar(540)
 ];
 
-let focusChar = chars[1];
+let focusChar=chars[1];
 
 /* =========================
    CAMERA
 ========================= */
 
-const camera = {
-  x:0,
-  zoom:1,
-  targetZoom:1,
-  shake:0,
-  targetShake:0
+const camera={
+  x:0,zoom:1,targetZoom:1,
+  shake:0,targetShake:0
 };
+
+/* =========================
+   SUBTITLE SYSTEM (NEW)
+========================= */
+
+const subtitle={
+  text:"",
+  life:0
+};
+
+function showSubtitle(text,duration=120){
+  subtitle.text=text;
+  subtitle.life=duration;
+}
+
+function drawSubtitle(){
+  if(subtitle.life<=0) return;
+  subtitle.life--;
+
+  ctx.fillStyle="rgba(0,0,0,0.7)";
+  ctx.fillRect(0,canvas.height-90,canvas.width,90);
+
+  ctx.fillStyle="#fff";
+  ctx.font="bold 24px Arial";
+  ctx.textAlign="center";
+  ctx.fillText(subtitle.text,canvas.width/2,canvas.height-40);
+}
 
 /* =========================
    HELPERS
@@ -82,13 +105,13 @@ const camera = {
 
 function lerp(a,b,t){return a+(b-a)*t;}
 
-function setEmotion(char,emotion){
-  char.emotion = emotion;
-  char.target = { ...faceMap[emotion] };
+function setEmotion(c,e){
+  c.emotion=e;
+  c.target={...faceMap[e]};
 }
 
-function speak(char,text,duration=120){
-  char.bubble = { text, life:duration };
+function speak(c,text,duration=120){
+  c.bubble={text,life:duration};
 }
 
 /* =========================
@@ -100,7 +123,6 @@ function drawEye(x,y,o){
   ctx.ellipse(x,y,3,5*o,0,0,Math.PI*2);
   ctx.stroke();
 }
-
 function drawBrow(x,y,t){
   ctx.save();
   ctx.translate(x,y);
@@ -111,7 +133,6 @@ function drawBrow(x,y,t){
   ctx.stroke();
   ctx.restore();
 }
-
 function drawMouth(x,y,o){
   ctx.beginPath();
   if(o<2){
@@ -122,7 +143,6 @@ function drawMouth(x,y,o){
   }
   ctx.stroke();
 }
-
 function drawFace(x,y,f){
   drawEye(x-10,y,f.eye);
   drawEye(x+10,y,f.eye);
@@ -138,29 +158,26 @@ function drawFace(x,y,f){
 function drawBubble(c){
   if(!c.bubble) return;
 
-  const style = bubbleStyle[c.emotion];
-  const pad = 10;
+  const style=bubbleStyle[c.emotion];
+  const pad=10;
   ctx.font="16px Arial";
-  const w = ctx.measureText(c.bubble.text).width + pad*2;
-  const h = 32;
+  const w=ctx.measureText(c.bubble.text).width+pad*2;
+  const h=32;
 
-  const shake = style.shake;
-  const ox = (Math.random()-0.5)*shake;
-  const oy = (Math.random()-0.5)*shake;
+  const ox=(Math.random()-0.5)*style.shake;
+  const oy=(Math.random()-0.5)*style.shake;
 
-  const x = c.x - w/2 + ox;
-  const y = c.y - 110 + oy;
+  const x=c.x-w/2+ox;
+  const y=c.y-110+oy;
 
-  ctx.fillStyle = style.bg;
-  ctx.strokeStyle = style.border;
-  ctx.lineWidth = 2;
+  ctx.fillStyle=style.bg;
+  ctx.strokeStyle=style.border;
+  ctx.lineWidth=2;
 
   ctx.beginPath();
   ctx.roundRect(x,y,w,h,10);
-  ctx.fill();
-  ctx.stroke();
+  ctx.fill(); ctx.stroke();
 
-  // tail
   ctx.beginPath();
   ctx.moveTo(c.x-5,y+h);
   ctx.lineTo(c.x,y+h+8);
@@ -183,20 +200,17 @@ function drawChar(c){
   ctx.strokeStyle="#000";
   ctx.lineWidth=2;
 
-  // head
   ctx.beginPath();
   ctx.arc(c.x,c.y-40,30,0,Math.PI*2);
   ctx.stroke();
 
   drawFace(c.x,c.y-40,c.face);
 
-  // body
   ctx.beginPath();
   ctx.moveTo(c.x,c.y-10);
   ctx.lineTo(c.x,c.y+80);
   ctx.stroke();
 
-  // arms
   ctx.beginPath();
   ctx.moveTo(c.x,c.y+20);
   ctx.lineTo(c.x-40,c.y+50);
@@ -204,7 +218,6 @@ function drawChar(c){
   ctx.lineTo(c.x+40,c.y+50);
   ctx.stroke();
 
-  // legs
   ctx.beginPath();
   ctx.moveTo(c.x,c.y+80);
   ctx.lineTo(c.x-25,c.y+140);
@@ -216,31 +229,36 @@ function drawChar(c){
 }
 
 /* =========================
-   TIMELINE EVENTS
+   TIMELINE
 ========================= */
 
 setTimeout(()=>{
+  showSubtitle("Something feels wrong...");
+},500);
+
+setTimeout(()=>{
   setEmotion(chars[0],Emotion.CONFUSED);
-  speak(chars[0],"What?");
-},1000);
+  speak(chars[0],"Huh?");
+},1400);
 
 setTimeout(()=>{
   setEmotion(chars[1],Emotion.SHOCKED);
-  speak(chars[1],"ARE YOU SERIOUS?");
+  speak(chars[1],"WHAT IS THAT?!");
   camera.targetZoom=1.25;
   camera.targetShake=1.2;
-},2000);
+},2600);
 
 setTimeout(()=>{
   setEmotion(chars[2],Emotion.ANGRY);
-  speak(chars[2],"STOP IT!");
-},3000);
+  speak(chars[2],"STOP!!!");
+},3800);
 
 setTimeout(()=>{
   chars.forEach(c=>setEmotion(c,Emotion.NEUTRAL));
   camera.targetZoom=1;
   camera.targetShake=0;
-},5000);
+  showSubtitle("Everyone freezes...");
+},5200);
 
 /* =========================
    LOOP
@@ -249,31 +267,32 @@ setTimeout(()=>{
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // camera
-  camera.zoom = lerp(camera.zoom,camera.targetZoom,0.06);
-  camera.shake = lerp(camera.shake,camera.targetShake,0.1);
-  camera.x = lerp(camera.x,focusChar.x-canvas.width/2,0.08);
+  camera.zoom=lerp(camera.zoom,camera.targetZoom,0.06);
+  camera.shake=lerp(camera.shake,camera.targetShake,0.1);
+  camera.x=lerp(camera.x,focusChar.x-canvas.width/2,0.08);
 
-  // faces
   chars.forEach(c=>{
-    c.face.eye = lerp(c.face.eye,c.target.eye,0.08);
-    c.face.brow = lerp(c.face.brow,c.target.brow,0.08);
-    c.face.mouth = lerp(c.face.mouth,c.target.mouth,0.08);
+    c.face.eye=lerp(c.face.eye,c.target.eye,0.08);
+    c.face.brow=lerp(c.face.brow,c.target.brow,0.08);
+    c.face.mouth=lerp(c.face.mouth,c.target.mouth,0.08);
   });
 
-  // apply camera
   ctx.save();
-  const sx = (Math.random()-0.5)*camera.shake*10;
-  const sy = (Math.random()-0.5)*camera.shake*10;
+  const sx=(Math.random()-0.5)*camera.shake*10;
+  const sy=(Math.random()-0.5)*camera.shake*10;
   ctx.translate(-camera.x+sx,sy);
   ctx.scale(camera.zoom,camera.zoom);
 
   chars.forEach(drawChar);
-
   ctx.restore();
+
+  // PRIORITY RULE:
+  // subtitle faqat HECH QAYSIDA bubble bo‘lmasa
+  const anyBubble = chars.some(c=>c.bubble);
+  if(!anyBubble) drawSubtitle();
+
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 
