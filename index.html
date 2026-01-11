@@ -2,223 +2,151 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.20 — Story Timeline</title>
+<title>Stickman – Scene System 21 C.1</title>
 <style>
-body{margin:0;background:#111;display:flex;flex-direction:column;align-items:center}
-canvas{background:#e6f4ff}
-button{margin:6px;padding:8px 14px}
+  body {
+    margin: 0;
+    background: #111;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    background: #fff;
+  }
 </style>
 </head>
 <body>
 
-<button id="play">▶ PLAY EPISODE</button>
-<canvas id="c" width="360" height="640"></canvas>
+<canvas id="c"></canvas>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
+// =========================
+// CANVAS SETUP
+// =========================
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
 
-/* ================= CAMERA ================= */
-const Camera={
-  x:0,y:0,shake:0,zoom:1,target:null,
-  update(){
-    if(this.target){
-      this.x+=((this.target.x-180)-this.x)*0.12;
-      this.y+=((this.target.y-320)-this.y)*0.12;
-    }
-    this.shake*=0.85;
-    this.zoom+=(1-this.zoom)*0.08;
-  },
-  apply(){
-    const sx=(Math.random()-0.5)*this.shake;
-    const sy=(Math.random()-0.5)*this.shake;
-    ctx.setTransform(
-      this.zoom,0,0,this.zoom,
-      -this.x*this.zoom+sx+180*(1-this.zoom),
-      -this.y*this.zoom+sy+320*(1-this.zoom)
-    );
-  },
-  hit(v){this.shake=v},
-  zoomHit(z){this.zoom=z}
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// =========================
+// SCENE SYSTEM
+// =========================
+const scene = {
+  width: 3000,
+  height: 1500,
+  groundY: 900
 };
 
-/* ================= TRANSITION ================= */
-const Transition={
-  t:0,
-  smash(){this.t=16;Camera.hit(18)},
-  zoom(){Camera.zoomHit(1.4)}
+// =========================
+// CAMERA (21 C.1)
+// =========================
+const camera = {
+  x: 0,
+  y: 0,
+  zoom: 1
 };
 
-/* ================= SPEECH ================= */
-function bubble(x,y,text){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.font="bold 16px sans-serif";
-  const pad=8;
-  const w=ctx.measureText(text).width+pad*2;
-  const h=28;
-  const bx=x-w/2;
-  const by=y-h-12;
-  ctx.fillStyle="#fff";ctx.strokeStyle="#000";ctx.lineWidth=2;
-  ctx.beginPath();ctx.roundRect(bx,by,w,h,10);ctx.fill();ctx.stroke();
+function camX(x) {
+  return (x - camera.x) * camera.zoom;
+}
+function camY(y) {
+  return (y - camera.y) * camera.zoom;
+}
+
+// =========================
+// STICKMAN DATA
+// =========================
+const stickman = {
+  x: 400,
+  y: scene.groundY - 120,
+  headR: 18,
+  body: 50,
+  arm: 40,
+  leg: 45
+};
+
+// =========================
+// DRAW STICKMAN
+// =========================
+function drawStickman(p) {
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#000";
+
+  const headX = p.x;
+  const headY = p.y;
+
+  // Head
   ctx.beginPath();
-  ctx.moveTo(x-6,by+h);ctx.lineTo(x,by+h+8);ctx.lineTo(x+6,by+h);
-  ctx.fill();ctx.stroke();
-  ctx.fillStyle="#000";ctx.textAlign="center";
-  ctx.fillText(text,x,by+19);
-}
-
-/* ================= CHARACTER ================= */
-class Character{
-  constructor(x,color){
-    this.x=x;this.y=440;
-    this.color=color;
-    this.walk=Math.random()*10;
-    this.jump=0;
-    this.sayLine=null;
-  }
-  update(){
-    this.walk+=0.08;
-    this.jump*=0.82;
-  }
-  beat(power){
-    this.jump=power;
-  }
-  say(text){
-    this.sayLine={text,time:90};
-  }
-  draw(){
-    const step=Math.sin(this.walk)*5;
-    const j=this.jump;
-    ctx.strokeStyle=this.color;ctx.lineWidth=3;
-
-    ctx.beginPath();
-    ctx.moveTo(this.x,this.y-j);
-    ctx.lineTo(this.x,this.y+36-j);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(this.x,this.y+36-j);
-    ctx.lineTo(this.x-8,this.y+70-step-j);
-    ctx.moveTo(this.x,this.y+36-j);
-    ctx.lineTo(this.x+8,this.y+70+step-j);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(this.x,this.y+10-j);
-    ctx.lineTo(this.x-14,this.y+20-step);
-    ctx.moveTo(this.x,this.y+10-j);
-    ctx.lineTo(this.x+14,this.y+20+step);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(this.x,this.y-14-j,14,0,Math.PI*2);
-    ctx.stroke();
-
-    if(this.sayLine){
-      bubble(this.x,this.y-30-j,this.sayLine.text);
-      this.sayLine.time--;
-      if(this.sayLine.time<=0) this.sayLine=null;
-    }
-  }
-}
-
-/* ================= SCENE ================= */
-const chars=[
-  new Character(120,"#ff4444"),
-  new Character(160,"#44ff88"),
-  new Character(200,"#4488ff"),
-  new Character(240,"#ffaa44")
-];
-Camera.target=chars[0];
-
-/* ================= STORY TIMELINE ================= */
-const Story={
-  phase:"hook",
-  beat:0,
-  update(){
-    this.beat++;
-    if(this.phase==="hook" && this.beat>3) this.phase="build";
-    if(this.phase==="build" && this.beat>10) this.phase="punch";
-  },
-  onBeat(){
-    if(this.phase==="hook"){
-      Transition.zoom();
-      Transition.smash();
-      chars.forEach(c=>c.beat(14));
-      chars[0].say("WHAT just happened?! 😱");
-      Camera.target=chars[0];
-    }
-    if(this.phase==="build"){
-      const i=this.beat%chars.length;
-      chars.forEach((c,j)=>c.beat(j===i?14:8));
-      chars[i].say(i%2===0?"That was crazy!":"Bu juda telba edi 😂");
-      Camera.target=chars[i];
-    }
-    if(this.phase==="punch"){
-      Transition.smash();
-      chars.forEach(c=>c.beat(18));
-      chars[2].say("NO WAY 😳");
-      Camera.target=chars[2];
-    }
-  }
-};
-
-/* ================= AUDIO ================= */
-let audioCtx, analyser, data, lastEnergy=0, started=false;
-
-async function startAudio(){
-  audioCtx=new AudioContext();
-  analyser=audioCtx.createAnalyser();
-  analyser.fftSize=256;
-  data=new Uint8Array(analyser.frequencyBinCount);
-
-  const audio=new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_87c7c6c77f.mp3");
-  audio.crossOrigin="anonymous";
-  const src=audioCtx.createMediaElementSource(audio);
-  src.connect(analyser);
-  analyser.connect(audioCtx.destination);
-  audio.play();
-  started=true;
-}
-
-/* ================= LOOP ================= */
-function loop(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,360,640);
-
-  if(started){
-    analyser.getByteFrequencyData(data);
-    let energy=0;
-    for(let i=0;i<data.length;i++) energy+=data[i];
-    energy/=data.length;
-
-    if(energy-lastEnergy>18){
-      Story.update();
-      Story.onBeat();
-    }
-    lastEnergy=energy;
-  }
-
-  Camera.update();
-  ctx.save();
-  Camera.apply();
-
-  ctx.strokeStyle="#aaa";
-  ctx.beginPath();
-  ctx.moveTo(0,470);
-  ctx.lineTo(360,470);
+  ctx.arc(camX(headX), camY(headY), p.headR * camera.zoom, 0, Math.PI * 2);
   ctx.stroke();
 
-  chars.forEach(c=>{c.update();c.draw();});
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(camX(headX), camY(headY + p.headR));
+  ctx.lineTo(camX(headX), camY(headY + p.headR + p.body));
+  ctx.stroke();
 
-  ctx.restore();
+  const bodyEndY = headY + p.headR + p.body;
+
+  // Arms
+  ctx.beginPath();
+  ctx.moveTo(camX(headX), camY(headY + p.headR + 10));
+  ctx.lineTo(camX(headX - p.arm), camY(headY + p.headR + 25));
+  ctx.moveTo(camX(headX), camY(headY + p.headR + 10));
+  ctx.lineTo(camX(headX + p.arm), camY(headY + p.headR + 25));
+  ctx.stroke();
+
+  // Legs
+  ctx.beginPath();
+  ctx.moveTo(camX(headX), camY(bodyEndY));
+  ctx.lineTo(camX(headX - p.leg), camY(bodyEndY + p.leg));
+  ctx.moveTo(camX(headX), camY(bodyEndY));
+  ctx.lineTo(camX(headX + p.leg), camY(bodyEndY + p.leg));
+  ctx.stroke();
+}
+
+// =========================
+// DRAW GROUND
+// =========================
+function drawGround() {
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#777";
+
+  ctx.beginPath();
+  ctx.moveTo(camX(0), camY(scene.groundY));
+  ctx.lineTo(camX(scene.width), camY(scene.groundY));
+  ctx.stroke();
+}
+
+// =========================
+// UPDATE CAMERA (STATIC FOR 21 C.1)
+// =========================
+function updateCamera() {
+  // 21 C.1 da kamera faqat mavjud
+  // follow yo‘q (keyingi etapda)
+}
+
+// =========================
+// MAIN LOOP
+// =========================
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  updateCamera();
+  drawGround();
+  drawStickman(stickman);
+
   requestAnimationFrame(loop);
 }
-loop();
 
-document.getElementById("play").onclick=()=>{
-  if(!started) startAudio();
-};
+loop();
 </script>
+
 </body>
 </html>
