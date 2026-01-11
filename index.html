@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v20-A — Multi Character System</title>
+<title>Stickman v20-B — Character Identity System</title>
 <style>
 body{
   margin:0;
@@ -15,7 +15,7 @@ body{
 }
 canvas{background:#181818;margin-top:10px;}
 .ui{
-  margin:10px;
+  margin:8px;
   display:grid;
   grid-template-columns:repeat(5,1fr);
   gap:6px;
@@ -48,7 +48,7 @@ const ctx=c.getContext("2d");
 
 let t=0;
 
-// ===== SHARED STICK MODEL =====
+// ===== MODEL =====
 const model={
   headR:14,
   body:36,
@@ -66,40 +66,39 @@ const presets={
   rage:{eyeOpen:0.35,eyeScale:0.8,mouthOpen:0.5,brow:-1.6,armLift:-1,headSquash:0.25}
 };
 
-// ===== CHARACTER CLASS =====
+// ===== CHARACTER =====
 class Character{
-  constructor(x,y){
+  constructor(name,color,shirt,x,y){
+    this.name=name;
+    this.color=color;
+    this.shirt=shirt;
     this.x=x;
     this.y=y;
     this.target={...presets.dead};
     this.state={...this.target};
   }
-  setEmotion(name){
-    Object.assign(this.target,presets[name]);
-  }
+  setEmotion(e){Object.assign(this.target,presets[e]);}
   update(){
     for(let k in this.state){
       this.state[k]+= (this.target[k]-this.state[k])*0.18;
     }
   }
   draw(){
-    drawStick(this.x,this.y,this.state);
+    drawStick(this);
   }
 }
 
-// ===== CREATE CHARACTERS =====
+// ===== CHARACTERS (MISOL) =====
 const chars=[
-  new Character(100,260),
-  new Character(180,260),
-  new Character(260,260)
+  new Character("ALI","#ff4444",true,80,260),
+  new Character("BEX","#44ff88",false,180,260),
+  new Character("MAX","#4488ff",true,280,260)
 ];
 
 // ===== UI =====
-function setAll(name){
-  chars.forEach(c=>c.setEmotion(name));
-}
+function setAll(e){chars.forEach(c=>c.setEmotion(e));}
 
-// ===== DRAW HELPERS =====
+// ===== DRAW =====
 function jitter(v,a){return v+(Math.random()-0.5)*a}
 
 function line(x1,y1,x2,y2){
@@ -124,43 +123,49 @@ function arm(x,y,dir,lift){
   line(ex,ey,hx,hy);
 }
 
-function drawStick(x,y,s){
-  ctx.strokeStyle="#fff";
+function drawStick(ch){
+  const s=ch.state;
+  ctx.strokeStyle=ch.color;
   ctx.lineCap="round";
   ctx.lineWidth=2+jitter(0.5,0.6);
 
   const wob=Math.sin(t*0.12)*1.2;
 
   // body
-  line(x,y, x,y+model.body);
+  line(ch.x,ch.y,ch.x,ch.y+model.body);
+
+  // shirt
+  if(ch.shirt){
+    line(ch.x-8,ch.y+10,ch.x+8,ch.y+10);
+  }
 
   // legs
-  line(x,y+model.body, x-12,y+model.body+model.leg);
-  line(x,y+model.body, x+12,y+model.body+model.leg);
+  line(ch.x,ch.y+model.body,ch.x-12,ch.y+model.body+model.leg);
+  line(ch.x,ch.y+model.body,ch.x+12,ch.y+model.body+model.leg);
 
   // arms
   const lift=-s.armLift*25+wob;
-  arm(x-2,y+5,-1,lift);
-  arm(x+2,y+5, 1,lift);
+  arm(ch.x-2,ch.y+5,-1,lift);
+  arm(ch.x+2,ch.y+5, 1,lift);
 
   // head
   ctx.save();
-  ctx.translate(x,y-model.headR);
+  ctx.translate(ch.x,ch.y-model.headR);
   ctx.scale(1,1+s.headSquash);
   circle(0,0,model.headR);
   ctx.restore();
 
   // face
-  const hx=x;
-  const hy=y-model.headR;
+  const hx=ch.x;
+  const hy=ch.y-model.headR;
 
   ctx.beginPath();
   ctx.ellipse(hx-5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
   ctx.ellipse(hx+5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
   ctx.stroke();
 
-  line(hx-10,hy-7-s.brow*5, hx-2,hy-5-s.brow*5);
-  line(hx+2,hy-5-s.brow*5, hx+10,hy-7-s.brow*5);
+  line(hx-10,hy-7-s.brow*5,hx-2,hy-5-s.brow*5);
+  line(hx+2,hy-5-s.brow*5,hx+10,hy-7-s.brow*5);
 
   ctx.beginPath();
   ctx.arc(hx,hy+6,5,0,Math.PI*Math.min(s.mouthOpen,1.8));
