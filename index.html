@@ -2,10 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman IK Walk 7.7</title>
+<title>Stickman AI v10.1.0</title>
 <style>
-  body { margin:0; background:#111; overflow:hidden; }
-  canvas { display:block; margin:auto; background:#222; }
+  body { margin:0; background:#0e0e0e; overflow:hidden; }
+  canvas { display:block; margin:auto; background:#1a1a1a; }
 </style>
 </head>
 <body>
@@ -13,138 +13,142 @@
 <canvas id="c"></canvas>
 
 <script>
+// =================== SETUP ===================
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
-canvas.width = 600;
-canvas.height = 400;
+canvas.width = 700;
+canvas.height = 450;
 
-const groundY = 300;
-let t = 0;
+const GROUND_Y = 330;
+let time = 0;
 
-// ====== BONES ======
-const hip = { x: 300, y: 200 };
-const spine = { x: 300, y: 160 };
-const head = { x: 300, y: 130 };
+// =================== UTILS ===================
+const lerp = (a,b,t)=>a+(b-a)*t;
+const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 
-const legLen1 = 40;
-const legLen2 = 40;
+// =================== SKELETON ===================
+const skeleton = {
+  hip:   { x: 350, y: 240 },
+  spine: { x: 350, y: 190 },
+  head:  { x: 350, y: 155 },
 
-// foot lock
-const footL = { x: 0, y: groundY, lock: true };
-const footR = { x: 0, y: groundY, lock: false };
+  legs: {
+    L: { foot:{x:330,y:GROUND_Y,lock:true} },
+    R: { foot:{x:370,y:GROUND_Y,lock:false} }
+  }
+};
 
-// ====== IK SOLVER ======
-function solveLeg(hipX, hipY, footX, footY) {
-  let dx = footX - hipX;
-  let dy = footY - hipY;
-  let d = Math.hypot(dx, dy);
-  d = Math.min(d, legLen1 + legLen2 - 0.001);
+const LEG_A = 45;
+const LEG_B = 45;
 
-  let a1 = Math.acos(
-    (legLen1**2 + d**2 - legLen2**2) / (2 * legLen1 * d)
-  );
-  let a2 = Math.atan2(dy, dx);
-  let kneeX = hipX + Math.cos(a2 + a1) * legLen1;
-  let kneeY = hipY + Math.sin(a2 + a1) * legLen1;
+// =================== IK SOLVER ===================
+function solveIK(hx,hy,fx,fy){
+  let dx = fx-hx, dy = fy-hy;
+  let d = Math.hypot(dx,dy);
+  d = clamp(d, 1, LEG_A+LEG_B-0.001);
 
-  return { kneeX, kneeY };
+  let a = Math.acos((LEG_A**2 + d**2 - LEG_B**2)/(2*LEG_A*d));
+  let b = Math.atan2(dy,dx);
+
+  return {
+    x: hx + Math.cos(b+a)*LEG_A,
+    y: hy + Math.sin(b+a)*LEG_A
+  };
 }
 
-// ====== LOOP ======
-function update() {
-  t += 0.05;
+// =================== WALK CONTROLLER ===================
+function updateWalk(){
+  time += 0.045;
 
-  // step positions
-  let step = Math.sin(t);
-  let lift = Math.max(0, Math.sin(t + Math.PI / 2)) * 20;
+  const phase = Math.sin(time);
+  const lift  = Math.max(0, Math.sin(time+Math.PI/2)) * 22;
 
-  // switch foot lock
-  if (step > 0) {
-    footL.lock = true;
-    footR.lock = false;
-  } else {
-    footL.lock = false;
-    footR.lock = true;
+  const L = skeleton.legs.L;
+  const R = skeleton.legs.R;
+
+  if(phase > 0){
+    L.foot.lock = true;
+    R.foot.lock = false;
+  }else{
+    L.foot.lock = false;
+    R.foot.lock = true;
   }
 
-  if (!footL.lock) {
-    footL.x = hip.x - 20 + step * 30;
-    footL.y = groundY - lift;
-  }
-  if (!footR.lock) {
-    footR.x = hip.x + 20 - step * 30;
-    footR.y = groundY - lift;
+  if(!L.foot.lock){
+    L.foot.x = skeleton.hip.x - 22 + phase*32;
+    L.foot.y = GROUND_Y - lift;
   }
 
-  // ===== HIP TARGET (AVERAGE FOOT HEIGHT) =====
-  let targetHipY =
-    (footL.y + footR.y) / 2 - 60;
+  if(!R.foot.lock){
+    R.foot.x = skeleton.hip.x + 22 - phase*32;
+    R.foot.y = GROUND_Y - lift;
+  }
 
-  // damping
-  hip.y += (targetHipY - hip.y) * 0.15;
+  // ===== HIP TARGET =====
+  const targetHipY = (L.foot.y + R.foot.y)/2 - 65;
+  skeleton.hip.y = lerp(skeleton.hip.y, targetHipY, 0.15);
 
-  // small forward move
-  hip.x += 0.3;
+  // forward movement
+  skeleton.hip.x += 0.35;
 
-  // spine smoothing
-  spine.x += (hip.x - spine.x) * 0.2;
-  spine.y += (hip.y - 40 - spine.y) * 0.2;
+  // ===== SPINE FOLLOW =====
+  skeleton.spine.x = lerp(skeleton.spine.x, skeleton.hip.x, 0.25);
+  skeleton.spine.y = lerp(skeleton.spine.y, skeleton.hip.y-50, 0.25);
 
-  head.x = spine.x;
-  head.y = spine.y - 30;
+  skeleton.head.x = skeleton.spine.x;
+  skeleton.head.y = skeleton.spine.y - 35;
 }
 
-function drawLeg(foot, side) {
-  const hipOffsetX = side * 10;
-  const hipX = hip.x + hipOffsetX;
-  const hipY = hip.y;
+// =================== RENDER ===================
+function drawLeg(side,dir){
+  const hipX = skeleton.hip.x + dir*10;
+  const hipY = skeleton.hip.y;
+  const foot = skeleton.legs[side].foot;
 
-  const k = solveLeg(hipX, hipY, foot.x, foot.y);
+  const knee = solveIK(hipX,hipY,foot.x,foot.y);
 
   ctx.beginPath();
-  ctx.moveTo(hipX, hipY);
-  ctx.lineTo(k.kneeX, k.kneeY);
-  ctx.lineTo(foot.x, foot.y);
+  ctx.moveTo(hipX,hipY);
+  ctx.lineTo(knee.x,knee.y);
+  ctx.lineTo(foot.x,foot.y);
   ctx.stroke();
 }
 
-function draw() {
+function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 3;
-
   // ground
+  ctx.strokeStyle="#444";
   ctx.beginPath();
-  ctx.moveTo(0, groundY);
-  ctx.lineTo(canvas.width, groundY);
-  ctx.strokeStyle = "#555";
+  ctx.moveTo(0,GROUND_Y);
+  ctx.lineTo(canvas.width,GROUND_Y);
   ctx.stroke();
 
-  ctx.strokeStyle = "#fff";
+  ctx.strokeStyle="#fff";
+  ctx.lineWidth=3;
 
   // spine
   ctx.beginPath();
-  ctx.moveTo(hip.x, hip.y);
-  ctx.lineTo(spine.x, spine.y);
+  ctx.moveTo(skeleton.hip.x,skeleton.hip.y);
+  ctx.lineTo(skeleton.spine.x,skeleton.spine.y);
   ctx.stroke();
 
   // head
   ctx.beginPath();
-  ctx.arc(head.x, head.y, 10, 0, Math.PI * 2);
+  ctx.arc(skeleton.head.x,skeleton.head.y,12,0,Math.PI*2);
   ctx.stroke();
 
   // legs
-  drawLeg(footL, -1);
-  drawLeg(footR, 1);
+  drawLeg("L",-1);
+  drawLeg("R", 1);
 }
 
-function loop() {
-  update();
+// =================== LOOP ===================
+function loop(){
+  updateWalk();
   draw();
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 
