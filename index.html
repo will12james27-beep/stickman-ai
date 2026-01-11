@@ -162,6 +162,77 @@ function loop(){
 }
 loop();
 </script>
+<script>
+// ================= 21 B.2 — CHARACTER INTERACTION RULES =================
+
+// Interaction matrix: kim kimga qanday ta'sir qiladi
+const interactionRules = {
+  angry: {
+    angry:   { tension:+0.1, mood:"angry" },
+    confused:{ tension:+0.2, mood:"confused" },
+    shocked: { tension:+0.3, mood:"shocked" }
+  },
+  confused: {
+    angry:   { tension:+0.05 },
+    confused:{ tension:+0.1 },
+    shocked: { tension:+0.15 }
+  },
+  shocked: {
+    angry:   { tension:+0.15 },
+    confused:{ tension:+0.2 },
+    shocked: { tension:+0.25 }
+  }
+};
+
+// Default psychology init (agar yo‘q bo‘lsa)
+chars.forEach(c=>{
+  if(!c.psych){
+    c.psych={
+      mood:"confused",
+      tension:0.5
+    };
+  }
+});
+
+// Asosiy interaction funksiyasi
+function applyInteraction(speaker){
+  chars.forEach(target=>{
+    if(target===speaker) return;
+
+    const sMood = speaker.psych?.mood;
+    const tMood = target.psych?.mood;
+
+    if(interactionRules[sMood] && interactionRules[sMood][tMood]){
+      const rule = interactionRules[sMood][tMood];
+
+      // Tension oshishi
+      if(rule.tension){
+        target.psych.tension = Math.min(
+          1,
+          target.psych.tension + rule.tension
+        );
+      }
+
+      // Mood o‘zgarishi (agar belgilangan bo‘lsa)
+      if(rule.mood){
+        target.psych.mood = rule.mood;
+      }
+    }
+  });
+}
+
+// HOOK: kimdir gapirganda avtomatik ishlaydi
+const _oldShowSubtitle = showSubtitle;
+showSubtitle = function(text,shake,color){
+  _oldShowSubtitle(text,shake,color);
+
+  if(focusChar && focusChar.psych){
+    applyInteraction(focusChar);
+  }
+};
+
+console.log("✅ 21 B.2 Character Interaction Rules loaded");
+</script>
 
 </body>
 </html>
