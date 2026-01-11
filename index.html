@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>21 C.31 Multi Character Focus</title>
+<title>21 C.32 Focus Lock & Handoff</title>
 <style>
 body{margin:0;background:#111;}
 canvas{display:block;margin:auto;background:#fff;}
@@ -18,14 +18,9 @@ const ctx=c.getContext("2d");
 function lerp(a,b,t){return a+(b-a)*t}
 
 /* ======================
-   EMOTION DATA
+   EMOTION WEIGHT
 ====================== */
-const emoWeight={
- neutral:0,
- confused:1,
- shocked:2,
- angry:3
-};
+const emoWeight={neutral:0,confused:1,shocked:2,angry:3};
 
 /* ======================
    CHARACTER
@@ -38,80 +33,87 @@ function Char(x){
   interrupting:0,
   lastSpoke:0,
   cameraPriority:1,
-  face:{eye:1,brow:0,mouth:0},
-  target:{eye:1,brow:0,mouth:0}
+  face:{eye:1,brow:0,mouth:0}
  }
 }
-
-const chars=[
- new Char(180),
- new Char(360),
- new Char(540)
-];
+const chars=[new Char(180),new Char(360),new Char(540)];
 
 /* ======================
    CAMERA
 ====================== */
-const cam={x:0,zoom:1,tZoom:1};
+const cam={
+ x:0,zoom:1,
+ focus:null,
+ lock:0
+};
 
 /* ======================
-   DIRECTOR EVENTS
+   EVENTS (demo)
 ====================== */
 let time=0;
-
 const events=[
- {t:20,  c:0, emo:"confused", talk:1},
- {t:60,  c:1, emo:"shocked",  interrupt:1},
- {t:100, c:2, emo:"angry",    interrupt:1},
- {t:160, c:1, emo:"angry",    talk:1},
- {t:220, c:0, emo:"neutral"}
+ {t:20,c:0,emo:"confused",talk:1},
+ {t:60,c:1,emo:"shocked",interrupt:1},
+ {t:100,c:2,emo:"angry",interrupt:1},
+ {t:160,c:1,emo:"angry",talk:1}
 ];
 
 /* ======================
-   CAMERA FOCUS LOGIC
+   SCORE
+====================== */
+function score(c){
+ const recency=Math.max(0,120-(time-c.lastSpoke))/120;
+ return (
+  c.talking*3 +
+  c.interrupting*2.5 +
+  emoWeight[c.emo]*2 +
+  c.cameraPriority*1.5 +
+  recency
+ );
+}
+
+/* ======================
+   SELECT WITH LOCK
 ====================== */
 function selectFocus(){
- let best=null;
- let bestScore=-1;
-
+ let best=null,bestScore=-1;
  chars.forEach(c=>{
-  const recency=Math.max(0,120-(time-c.lastSpoke))/120;
-  const score=
-    c.talking*3 +
-    c.interrupting*2.5 +
-    emoWeight[c.emo]*2 +
-    c.cameraPriority*1.5 +
-    recency;
-
-  if(score>bestScore){
-   bestScore=score;
-   best=c;
-  }
+  const s=score(c);
+  if(s>bestScore){bestScore=s;best=c;}
  });
 
- return best;
+ if(!cam.focus){
+  cam.focus=best;
+  cam.lock=40;
+  return;
+ }
+
+ const currentScore=score(cam.focus);
+
+ // lock active
+ if(cam.lock>0){
+  cam.lock--;
+  if(bestScore-currentScore>2.5){
+   cam.focus=best;
+   cam.lock=40;
+  }
+ }else{
+  if(bestScore-currentScore>1){
+   cam.focus=best;
+   cam.lock=40;
+  }
+ }
 }
 
 /* ======================
    DRAW
 ====================== */
-function face(x,y,f){
- ctx.beginPath();
- ctx.arc(x,y,28,0,6.3);ctx.stroke();
- ctx.beginPath();
- ctx.ellipse(x-8,y,3,5*f.eye,0,0,6.3);ctx.stroke();
- ctx.beginPath();
- ctx.ellipse(x+8,y,3,5*f.eye,0,0,6.3);ctx.stroke();
- ctx.beginPath();
- ctx.arc(x,y+10,4+f.mouth/2,0,6.3);ctx.stroke();
-}
-
 function drawChar(c){
- face(c.x,c.y-40,c.face);
+ ctx.beginPath();
+ ctx.arc(c.x,c.y-40,28,0,6.3);ctx.stroke();
  ctx.beginPath();
  ctx.moveTo(c.x,c.y-10);
- ctx.lineTo(c.x,c.y+90);
- ctx.stroke();
+ ctx.lineTo(c.x,c.y+90);ctx.stroke();
 }
 
 /* ======================
@@ -121,35 +123,31 @@ function loop(){
  ctx.clearRect(0,0,c.width,c.height);
  time++;
 
- // reset flags
  chars.forEach(c=>{
   c.talking*=0.9;
   c.interrupting*=0.9;
  });
 
- // events
  events.forEach(e=>{
   if(e.t===time){
-   const c=chars[e.c];
-   c.emo=e.emo;
-   c.lastSpoke=time;
-   if(e.talk) c.talking=1;
-   if(e.interrupt) c.interrupting=1;
+   const ch=chars[e.c];
+   ch.emo=e.emo;
+   ch.lastSpoke=time;
+   if(e.talk) ch.talking=1;
+   if(e.interrupt) ch.interrupting=1;
   }
  });
 
- // select focus
- const focus=selectFocus();
- cam.x=lerp(cam.x,focus.x-c.width/2,0.08);
- cam.zoom=lerp(cam.zoom,1+emoWeight[focus.emo]*0.05,0.06);
+ selectFocus();
+
+ cam.x=lerp(cam.x,cam.focus.x-c.width/2,0.08);
+ cam.zoom=lerp(cam.zoom,1+emoWeight[cam.focus.emo]*0.05,0.05);
 
  ctx.save();
  ctx.translate(-cam.x,0);
- ctx.scale(cam.zoom,cam.zoom);
-
  chars.forEach(drawChar);
-
  ctx.restore();
+
  requestAnimationFrame(loop);
 }
 loop();
