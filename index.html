@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.18</title>
+<title>Stickman AI — Scene System 21 C.19</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -38,7 +38,11 @@ function createChar(x,color){
     head:18,body:50,arm:40,leg:45,
     bob:0,react:0,
     emoji:null,
-    talk:0
+    talk:0,
+
+    // 21 C.19 NEW
+    text:null,
+    textLife:0
   };
 }
 
@@ -63,6 +67,29 @@ function updateCamera(){
   const tx=focusChar.x-canvas.width/(2*camera.zoom);
   camera.x+=(tx-camera.x)*camera.smooth;
   camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
+}
+
+// ================= WORLD TEXT (21 C.19) =================
+function drawWorldText(text,x,y,opt={}){
+  const {size=22,color="#000",shake=0}=opt;
+
+  const ox=(Math.random()-0.5)*shake;
+  const oy=(Math.random()-0.5)*shake;
+
+  ctx.font=`bold ${size*camera.zoom}px Arial`;
+  ctx.fillStyle=color;
+  ctx.textAlign="center";
+
+  ctx.fillText(
+    text,
+    camX(x)+ox,
+    y*camera.zoom+oy
+  );
+}
+
+function sayChar(c,text,life=50){
+  c.text=text;
+  c.textLife=life;
 }
 
 // ================= EMOJI =================
@@ -157,6 +184,7 @@ function startChain(){
   focusChar.talk=1;
 
   showSubtitle(s.text,3,s.color);
+  sayChar(focusChar,s.text,50);
   spawnEmoji(focusChar,"💬");
 
   activeInterrupts=s.interrupts.map(i=>({...i,done:false}));
@@ -169,8 +197,6 @@ function updateChain(){
   timer++;
 
   chars.forEach(c=>{
-    c.react+=(0-c.react)*0.2;
-    c.bob+=(0-c.bob)*0.2;
     c.talk+=(0-c.talk)*0.2;
   });
 
@@ -181,10 +207,10 @@ function updateChain(){
       i.done=true;
       focusChar=chars[i.c];
       camera.targetZoom=1.8;
-      camera.shake=8;
 
       chars[i.c].talk=1;
       spawnEmoji(chars[i.c],i.e);
+      sayChar(chars[i.c],i.text,40);
       showSubtitle(i.text,6,"#ffeb3b");
     }
   });
@@ -240,11 +266,23 @@ function drawChar(c){
   ctx.lineTo(camX(hx+c.arm),hy+40);
   ctx.stroke();
 
+  // Emoji
   if(c.emoji){
     ctx.font=`${44*c.emoji.scale}px serif`;
     ctx.textAlign="center";
     ctx.fillText(c.emoji.s,camX(hx),hy-45-c.emoji.y);
     updateEmoji(c);
+  }
+
+  // World Text (21 C.19)
+  if(c.text && c.textLife>0){
+    c.textLife--;
+    drawWorldText(c.text,hx,hy-90,{
+      size:24,
+      color:"#111",
+      shake:2
+    });
+    if(c.textLife<=0)c.text=null;
   }
 }
 
