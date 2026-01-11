@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.9.0 – Easing Selector</title>
+<title>Stickman AI v9.0.0 – Keyframe Select & Delete</title>
 <style>
   body{
     margin:0;
@@ -22,16 +22,22 @@
     margin-top:8px;position:relative;
   }
   .dot{
-    position:absolute;top:18px;
+    position:absolute;
+    top:18px;
     width:10px;height:10px;
-    background:#ff5252;border-radius:50%;
+    background:#ff5252;
+    border-radius:50%;
     transform:translateX(-50%);
+    cursor:pointer;
+  }
+  .dot.selected{
+    background:#00e5ff;
+    box-shadow:0 0 6px #00e5ff;
   }
   .controls{
     margin-top:6px;
-    display:flex;
-    gap:10px;
     font-size:13px;
+    opacity:.9;
   }
   input,select{width:180px;}
 </style>
@@ -52,7 +58,8 @@
 </div>
 
 <div class="controls">
-  Pozani sozla → easing tanla → <b>K</b> bos
+  Pozani sozla → easing tanla → <b>K</b> bos  
+  <br>Timeline’da nuqtani bos → <b>DEL</b> = o‘chirish
 </div>
 
 <script>
@@ -74,18 +81,16 @@ const stickman={
     rl:{x:0,y:60, ang:-10,len:65}
   }
 };
-let active=null;
+let activeJoint=null;
+let selectedKeyframe=null;
 
 /* =====================
-   EASING FUNCTIONS
+   EASING
 ===================== */
 const Easings={
   linear:t=>t,
   ease:t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2,
-  bounce:t=>{
-    if(t<0.5) return (1-Math.cos(t*Math.PI))/2;
-    return 1;
-  }
+  bounce:t=>t<0.5?(1-Math.cos(t*Math.PI))/2:1
 };
 
 /* =====================
@@ -120,10 +125,15 @@ function applyPose(p){
 ===================== */
 function rebuildDots(){
   timelineEl.innerHTML="";
-  keyframes.forEach(k=>{
+  keyframes.forEach((k,i)=>{
     const d=document.createElement("div");
-    d.className="dot";
+    d.className="dot"+(k===selectedKeyframe?" selected":"");
     d.style.left=(k.t/2000)*600+"px";
+    d.onclick=()=>{
+      selectedKeyframe=k;
+      slider.value=k.t;
+      rebuildDots();
+    };
     timelineEl.appendChild(d);
   });
 }
@@ -186,7 +196,7 @@ function draw(){
 }
 
 /* =====================
-   MOUSE
+   MOUSE (POSE)
 ===================== */
 canvas.onmousedown=e=>{
   const r=canvas.getBoundingClientRect();
@@ -194,20 +204,20 @@ canvas.onmousedown=e=>{
   for(let k in stickman.joints){
     const j=stickman.joints[k];
     if(dist(mx,my,stickman.x+j.x,stickman.y+j.y)<15){
-      active=j; break;
+      activeJoint=j; break;
     }
   }
 };
 canvas.onmousemove=e=>{
-  if(!active)return;
+  if(!activeJoint)return;
   const r=canvas.getBoundingClientRect();
   const mx=e.clientX-r.left,my=e.clientY-r.top;
-  active.ang=angle(stickman.x+active.x,stickman.y+active.y,mx,my);
+  activeJoint.ang=angle(stickman.x+activeJoint.x,stickman.y+activeJoint.y,mx,my);
 };
-window.onmouseup=()=>active=null;
+window.onmouseup=()=>activeJoint=null;
 
 /* =====================
-   KEYFRAME INPUT
+   KEYBOARD
 ===================== */
 window.onkeydown=e=>{
   if(e.key.toLowerCase()==="k"){
@@ -216,6 +226,13 @@ window.onkeydown=e=>{
       pose:copyPose(),
       easing:Easings[easingSelect.value]
     });
+    selectedKeyframe=null;
+    rebuildDots();
+  }
+  if((e.key==="Delete"||e.key==="Backspace") && selectedKeyframe){
+    const i=keyframes.indexOf(selectedKeyframe);
+    if(i>-1) keyframes.splice(i,1);
+    selectedKeyframe=null;
     rebuildDots();
   }
 };
