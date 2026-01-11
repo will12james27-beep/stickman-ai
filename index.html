@@ -1,156 +1,151 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v10.0.0 – Walk + Foot Lock</title>
+<title>Stickman IK Walk 7.7</title>
 <style>
-body{
-  margin:0;
-  background:#111;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-canvas{background:#fff;}
-button{
-  position:fixed;
-  bottom:20px;
-  padding:6px 16px;
-}
+  body { margin:0; background:#111; overflow:hidden; }
+  canvas { display:block; margin:auto; background:#222; }
 </style>
 </head>
 <body>
 
-<canvas id="c" width="600" height="600"></canvas>
-<button id="play">▶ Play</button>
+<canvas id="c"></canvas>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
-const playBtn=document.getElementById("play");
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+canvas.width = 600;
+canvas.height = 400;
 
-let playing=false;
-let t=0;
+const groundY = 300;
+let t = 0;
 
-/* =====================
-   STICKMAN
-===================== */
-const man={
-  x:300,
-  y:260,
-  leg:{u:50,l:50},
-  arm:{u:40,l:35},
-  footL:{x:280,y:400,lock:true},
-  footR:{x:320,y:400,lock:false}
-};
+// ====== BONES ======
+const hip = { x: 300, y: 200 };
+const spine = { x: 300, y: 160 };
+const head = { x: 300, y: 130 };
 
-/* =====================
-   IK SOLVER
-===================== */
-function solveIK(base,target,l1,l2,flip){
-  const dx=target.x-base.x;
-  const dy=target.y-base.y;
-  let d=Math.hypot(dx,dy);
-  d=Math.min(d,l1+l2-0.001);
+const legLen1 = 40;
+const legLen2 = 40;
 
-  const a=Math.acos((l1*l1+d*d-l2*l2)/(2*l1*d));
-  const b=Math.atan2(dy,dx);
-  const ang=b+(flip?-a:a);
+// foot lock
+const footL = { x: 0, y: groundY, lock: true };
+const footR = { x: 0, y: groundY, lock: false };
 
-  return {
-    j:{x:base.x+Math.cos(ang)*l1,y:base.y+Math.sin(ang)*l1},
-    e:target
-  };
+// ====== IK SOLVER ======
+function solveLeg(hipX, hipY, footX, footY) {
+  let dx = footX - hipX;
+  let dy = footY - hipY;
+  let d = Math.hypot(dx, dy);
+  d = Math.min(d, legLen1 + legLen2 - 0.001);
+
+  let a1 = Math.acos(
+    (legLen1**2 + d**2 - legLen2**2) / (2 * legLen1 * d)
+  );
+  let a2 = Math.atan2(dy, dx);
+  let kneeX = hipX + Math.cos(a2 + a1) * legLen1;
+  let kneeY = hipY + Math.sin(a2 + a1) * legLen1;
+
+  return { kneeX, kneeY };
 }
 
-/* =====================
-   UPDATE (WALK LOGIC)
-===================== */
-function update(dt){
-  t+=dt*0.005;
-  const s=Math.sin(t);
+// ====== LOOP ======
+function update() {
+  t += 0.05;
+
+  // step positions
+  let step = Math.sin(t);
+  let lift = Math.max(0, Math.sin(t + Math.PI / 2)) * 20;
 
   // switch foot lock
-  if(s>0.99){ man.footL.lock=true; man.footR.lock=false; }
-  if(s<-0.99){ man.footL.lock=false; man.footR.lock=true; }
+  if (step > 0) {
+    footL.lock = true;
+    footR.lock = false;
+  } else {
+    footL.lock = false;
+    footR.lock = true;
+  }
 
-  // move free foot
-  if(!man.footL.lock){
-    man.footL.x=man.x-30+s*40;
-    man.footL.y=400-Math.max(0,s)*40;
+  if (!footL.lock) {
+    footL.x = hip.x - 20 + step * 30;
+    footL.y = groundY - lift;
   }
-  if(!man.footR.lock){
-    man.footR.x=man.x+30-s*40;
-    man.footR.y=400-Math.max(0,-s)*40;
+  if (!footR.lock) {
+    footR.x = hip.x + 20 - step * 30;
+    footR.y = groundY - lift;
   }
+
+  // ===== HIP TARGET (AVERAGE FOOT HEIGHT) =====
+  let targetHipY =
+    (footL.y + footR.y) / 2 - 60;
+
+  // damping
+  hip.y += (targetHipY - hip.y) * 0.15;
+
+  // small forward move
+  hip.x += 0.3;
+
+  // spine smoothing
+  spine.x += (hip.x - spine.x) * 0.2;
+  spine.y += (hip.y - 40 - spine.y) * 0.2;
+
+  head.x = spine.x;
+  head.y = spine.y - 30;
 }
 
-/* =====================
-   DRAW HELPERS
-===================== */
-function line(x1,y1,x2,y2){
+function drawLeg(foot, side) {
+  const hipOffsetX = side * 10;
+  const hipX = hip.x + hipOffsetX;
+  const hipY = hip.y;
+
+  const k = solveLeg(hipX, hipY, foot.x, foot.y);
+
   ctx.beginPath();
-  ctx.moveTo(x1,y1);
-  ctx.lineTo(x2,y2);
+  ctx.moveTo(hipX, hipY);
+  ctx.lineTo(k.kneeX, k.kneeY);
+  ctx.lineTo(foot.x, foot.y);
   ctx.stroke();
 }
 
-/* =====================
-   DRAW
-===================== */
-function draw(){
-  ctx.clearRect(0,0,600,600);
-  ctx.lineWidth=6;
-  ctx.lineCap="round";
-  ctx.strokeStyle="#000";
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  const hip={x:man.x,y:man.y};
-  const sh={x:man.x,y:man.y-45};
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 3;
 
-  // arms swing
-  const s=Math.sin(t);
-  const Lh={x:sh.x-60-s*25,y:sh.y+20};
-  const Rh={x:sh.x+60+s*25,y:sh.y+20};
-
-  const Larm=solveIK(sh,Lh,man.arm.u,man.arm.l,false);
-  const Rarm=solveIK(sh,Rh,man.arm.u,man.arm.l,true);
-
-  const Lleg=solveIK(hip,man.footL,man.leg.u,man.leg.l,false);
-  const Rleg=solveIK(hip,man.footR,man.leg.u,man.leg.l,true);
-
-  /* BODY */
-  line(sh.x,sh.y-50,sh.x,hip.y);
+  // ground
   ctx.beginPath();
-  ctx.arc(sh.x,sh.y-80,22,0,Math.PI*2);
+  ctx.moveTo(0, groundY);
+  ctx.lineTo(canvas.width, groundY);
+  ctx.strokeStyle = "#555";
   ctx.stroke();
 
-  /* ARMS */
-  line(sh.x,sh.y,Larm.j.x,Larm.j.y);
-  line(Larm.j.x,Larm.j.y,Larm.e.x,Larm.e.y);
-  line(sh.x,sh.y,Rarm.j.x,Rarm.j.y);
-  line(Rarm.j.x,Rarm.j.y,Rarm.e.x,Rarm.e.y);
+  ctx.strokeStyle = "#fff";
 
-  /* LEGS */
-  line(hip.x,hip.y,Lleg.j.x,Lleg.j.y);
-  line(Lleg.j.x,Lleg.j.y,Lleg.e.x,Lleg.e.y);
-  line(hip.x,hip.y,Rleg.j.x,Rleg.j.y);
-  line(Rleg.j.x,Rleg.j.y,Rleg.e.x,Rleg.e.y);
+  // spine
+  ctx.beginPath();
+  ctx.moveTo(hip.x, hip.y);
+  ctx.lineTo(spine.x, spine.y);
+  ctx.stroke();
+
+  // head
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 10, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // legs
+  drawLeg(footL, -1);
+  drawLeg(footR, 1);
 }
 
-/* =====================
-   LOOP
-===================== */
-let last=0;
-function loop(ts){
-  const dt=ts-last; last=ts;
-  if(playing) update(dt);
+function loop() {
+  update();
   draw();
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
 
-playBtn.onclick=()=>playing=!playing;
+loop();
 </script>
 
 </body>
