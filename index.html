@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>21 C.25 Emotion + Camera Sync</title>
+<title>21 C.26 Multi Character Emotion Sync</title>
 <style>
   body{margin:0;background:#111;}
   canvas{display:block;margin:auto;background:#fff;}
@@ -10,14 +10,14 @@
 </head>
 <body>
 
-<canvas id="c" width="480" height="640"></canvas>
+<canvas id="c" width="720" height="480"></canvas>
 
 <script>
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
 /* =========================
-   EMOTION DATA
+   EMOTIONS
 ========================= */
 
 const Emotion = {
@@ -35,24 +35,33 @@ const faceMap = {
 };
 
 /* =========================
-   CAMERA MAP (NEW)
+   CHARACTER FACTORY
 ========================= */
 
-const cameraMap = {
-  neutral:  { zoom:1,   shake:0 },
-  confused: { zoom:1.05,shake:0.3 },
-  shocked:  { zoom:1.25,shake:1.2 },
-  angry:    { zoom:1.15,shake:0.8 }
-};
+function createChar(x){
+  return{
+    x,
+    y:260,
+    face:{ eye:1,brow:0,mouth:0 },
+    target:{ eye:1,brow:0,mouth:0 },
+    emotion:Emotion.NEUTRAL
+  };
+}
+
+const chars = [
+  createChar(180),
+  createChar(360),
+  createChar(540)
+];
+
+let focusChar = chars[1];
 
 /* =========================
-   BLEND STATE
+   CAMERA
 ========================= */
 
-let currentFace = { eye:1, brow:0, mouth:0 };
-let targetFace  = { ...currentFace };
-
-let camera = {
+const camera = {
+  x:0,
   zoom:1,
   targetZoom:1,
   shake:0,
@@ -63,28 +72,27 @@ let camera = {
    HELPERS
 ========================= */
 
-function lerp(a,b,t){ return a+(b-a)*t; }
+function lerp(a,b,t){return a+(b-a)*t;}
 
-function setEmotion(e){
-  targetFace = { ...faceMap[e] };
-  camera.targetZoom  = cameraMap[e].zoom;
-  camera.targetShake = cameraMap[e].shake;
+function setEmotion(char, emotion){
+  char.emotion = emotion;
+  char.target = { ...faceMap[emotion] };
 }
 
 /* =========================
    DRAW FACE
 ========================= */
 
-function drawEye(x,y,open){
+function drawEye(x,y,o){
   ctx.beginPath();
-  ctx.ellipse(x,y,3,5*open,0,0,Math.PI*2);
+  ctx.ellipse(x,y,3,5*o,0,0,Math.PI*2);
   ctx.stroke();
 }
 
-function drawBrow(x,y,tilt){
+function drawBrow(x,y,t){
   ctx.save();
   ctx.translate(x,y);
-  ctx.rotate(tilt*Math.PI/180);
+  ctx.rotate(t*Math.PI/180);
   ctx.beginPath();
   ctx.moveTo(-6,0);
   ctx.lineTo(6,0);
@@ -92,71 +100,89 @@ function drawBrow(x,y,tilt){
   ctx.restore();
 }
 
-function drawMouth(x,y,open){
+function drawMouth(x,y,o){
   ctx.beginPath();
-  if(open<2){
+  if(o<2){
     ctx.moveTo(x-6,y);
-    ctx.lineTo(x+6,y+open);
+    ctx.lineTo(x+6,y+o);
   }else{
-    ctx.arc(x,y,4+open/2,0,Math.PI*2);
+    ctx.arc(x,y,4+o/2,0,Math.PI*2);
   }
   ctx.stroke();
 }
 
-function drawFace(x,y){
-  drawEye(x-10,y,currentFace.eye);
-  drawEye(x+10,y,currentFace.eye);
-  drawBrow(x-10,y-10,currentFace.brow);
-  drawBrow(x+10,y-10,currentFace.brow);
-  drawMouth(x,y+12,currentFace.mouth);
+function drawFace(x,y,f){
+  drawEye(x-10,y,f.eye);
+  drawEye(x+10,y,f.eye);
+  drawBrow(x-10,y-10,f.brow);
+  drawBrow(x+10,y-10,f.brow);
+  drawMouth(x,y+12,f.mouth);
 }
 
 /* =========================
-   CHARACTER
+   DRAW CHARACTER
 ========================= */
 
-function drawCharacter(){
-  ctx.lineWidth=2;
+function drawChar(c){
   ctx.strokeStyle="#000";
+  ctx.lineWidth=2;
 
   // head
   ctx.beginPath();
-  ctx.arc(240,200,40,0,Math.PI*2);
+  ctx.arc(c.x,c.y-40,30,0,Math.PI*2);
   ctx.stroke();
 
-  drawFace(240,200);
+  drawFace(c.x,c.y-40,c.face);
 
   // body
   ctx.beginPath();
-  ctx.moveTo(240,240);
-  ctx.lineTo(240,360);
+  ctx.moveTo(c.x,c.y-10);
+  ctx.lineTo(c.x,c.y+80);
   ctx.stroke();
 
   // arms
   ctx.beginPath();
-  ctx.moveTo(240,280);
-  ctx.lineTo(190,320);
-  ctx.moveTo(240,280);
-  ctx.lineTo(290,320);
+  ctx.moveTo(c.x,c.y+20);
+  ctx.lineTo(c.x-40,c.y+50);
+  ctx.moveTo(c.x,c.y+20);
+  ctx.lineTo(c.x+40,c.y+50);
   ctx.stroke();
 
   // legs
   ctx.beginPath();
-  ctx.moveTo(240,360);
-  ctx.lineTo(210,440);
-  ctx.moveTo(240,360);
-  ctx.lineTo(270,440);
+  ctx.moveTo(c.x,c.y+80);
+  ctx.lineTo(c.x-25,c.y+140);
+  ctx.moveTo(c.x,c.y+80);
+  ctx.lineTo(c.x+25,c.y+140);
   ctx.stroke();
 }
 
 /* =========================
-   EMOTION SEQUENCE
+   GROUP REACTION EVENT
 ========================= */
 
-setTimeout(()=>setEmotion(Emotion.CONFUSED),1000);
-setTimeout(()=>setEmotion(Emotion.SHOCKED),2600);
-setTimeout(()=>setEmotion(Emotion.ANGRY),4300);
-setTimeout(()=>setEmotion(Emotion.NEUTRAL),6500);
+function groupShock(){
+  setEmotion(chars[0],Emotion.CONFUSED);
+  setEmotion(chars[1],Emotion.SHOCKED);
+  setEmotion(chars[2],Emotion.ANGRY);
+
+  focusChar = chars[1];
+  camera.targetZoom = 1.25;
+  camera.targetShake = 1.2;
+}
+
+function calmDown(){
+  chars.forEach(c=>setEmotion(c,Emotion.NEUTRAL));
+  camera.targetZoom = 1;
+  camera.targetShake = 0;
+}
+
+/* =========================
+   TIMELINE
+========================= */
+
+setTimeout(groupShock,1200);
+setTimeout(calmDown,4200);
 
 /* =========================
    LOOP
@@ -165,30 +191,28 @@ setTimeout(()=>setEmotion(Emotion.NEUTRAL),6500);
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // smooth face
-  currentFace.eye   = lerp(currentFace.eye,   targetFace.eye,   0.08);
-  currentFace.brow  = lerp(currentFace.brow,  targetFace.brow,  0.08);
-  currentFace.mouth = lerp(currentFace.mouth, targetFace.mouth, 0.08);
+  // update camera
+  camera.zoom = lerp(camera.zoom,camera.targetZoom,0.06);
+  camera.shake = lerp(camera.shake,camera.targetShake,0.1);
+  camera.x = lerp(camera.x,focusChar.x-canvas.width/2,0.08);
 
-  // smooth camera
-  camera.zoom  = lerp(camera.zoom,  camera.targetZoom,  0.06);
-  camera.shake = lerp(camera.shake, camera.targetShake, 0.1);
+  // update faces
+  chars.forEach(c=>{
+    c.face.eye = lerp(c.face.eye,c.target.eye,0.08);
+    c.face.brow = lerp(c.face.brow,c.target.brow,0.08);
+    c.face.mouth = lerp(c.face.mouth,c.target.mouth,0.08);
+  });
 
-  // apply camera
+  // camera transform
   ctx.save();
   const sx = (Math.random()-0.5)*camera.shake*10;
   const sy = (Math.random()-0.5)*camera.shake*10;
-
-  ctx.translate(
-    canvas.width/2 + sx,
-    canvas.height/2 + sy
-  );
+  ctx.translate(-camera.x+sx,sy);
   ctx.scale(camera.zoom,camera.zoom);
-  ctx.translate(-canvas.width/2,-canvas.height/2);
 
-  drawCharacter();
+  chars.forEach(drawChar);
+
   ctx.restore();
-
   requestAnimationFrame(loop);
 }
 
