@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v10.3.0</title>
+<title>Stickman AI v10.4.0</title>
 <style>
   body { margin:0; background:#0e0e0e; overflow:hidden; }
   canvas { display:block; margin:auto; background:#1a1a1a; }
@@ -13,32 +13,31 @@
 <canvas id="c"></canvas>
 
 <script>
-// =================== SETUP ===================
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
-canvas.width = 700;
-canvas.height = 450;
+// ================= SETUP =================
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+canvas.width=700; canvas.height=450;
 
-const GROUND_Y = 330;
-let time = 0;
-let speed = 1.0; // ⭐ speed controller
+const GROUND_Y=330;
+let time=0;
+let speed=1.0;
 
-// =================== INPUT ===================
-window.addEventListener("keydown", e=>{
-  if(e.key === "ArrowUp")   speed += 0.1;
-  if(e.key === "ArrowDown") speed -= 0.1;
-  speed = Math.max(0.3, Math.min(2.2, speed));
+// =============== INPUT ==================
+window.addEventListener("keydown",e=>{
+  if(e.key==="ArrowUp")speed+=0.1;
+  if(e.key==="ArrowDown")speed-=0.1;
+  speed=Math.max(0.3,Math.min(2.2,speed));
 });
 
-// =================== UTILS ===================
-const lerp = (a,b,t)=>a+(b-a)*t;
-const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+// =============== UTILS ==================
+const lerp=(a,b,t)=>a+(b-a)*t;
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
-// =================== SKELETON ===================
-const skeleton = {
+// =============== SKELETON ===============
+const sk={
   hip:{x:350,y:240},
   spine:{x:350,y:190},
-  head:{x:350,y:155},
+  head:{x:350,y:155,scaleY:1},
   arms:{L:{a:0},R:{a:0}},
   legs:{
     L:{foot:{x:330,y:GROUND_Y,lock:true}},
@@ -46,11 +45,9 @@ const skeleton = {
   }
 };
 
-const LEG_A = 45;
-const LEG_B = 45;
-const ARM_LEN = 40;
+const LEG_A=45, LEG_B=45, ARM_LEN=40;
 
-// =================== IK ===================
+// =============== IK =====================
 function solveIK(hx,hy,fx,fy){
   let dx=fx-hx, dy=fy-hy;
   let d=Math.hypot(dx,dy);
@@ -60,68 +57,67 @@ function solveIK(hx,hy,fx,fy){
   return {x:hx+Math.cos(b+a)*LEG_A,y:hy+Math.sin(b+a)*LEG_A};
 }
 
-// =================== WALK ===================
+// =============== WALK ===================
 function updateWalk(){
-  time += 0.045 * speed;
+  time+=0.045*speed;
 
-  const phase = Math.sin(time);
-  const stepLen = 32 * speed;
-  const lift = Math.max(0,Math.sin(time+Math.PI/2)) * (18+10*speed);
+  const phase=Math.sin(time);
+  const lift=Math.max(0,Math.sin(time+Math.PI/2))*(18+10*speed);
+  const stepLen=32*speed;
 
-  const L=skeleton.legs.L;
-  const R=skeleton.legs.R;
+  const L=sk.legs.L, R=sk.legs.R;
 
   if(phase>0){L.foot.lock=true;R.foot.lock=false;}
   else{L.foot.lock=false;R.foot.lock=true;}
 
   if(!L.foot.lock){
-    L.foot.x=skeleton.hip.x-22+phase*stepLen;
+    L.foot.x=sk.hip.x-22+phase*stepLen;
     L.foot.y=GROUND_Y-lift;
   }
   if(!R.foot.lock){
-    R.foot.x=skeleton.hip.x+22-phase*stepLen;
+    R.foot.x=sk.hip.x+22-phase*stepLen;
     R.foot.y=GROUND_Y-lift;
   }
 
-  // HIP
   const targetHipY=(L.foot.y+R.foot.y)/2-(65-10*speed);
-  skeleton.hip.y=lerp(skeleton.hip.y,targetHipY,0.15);
-  skeleton.hip.x+=0.35*speed;
+  sk.hip.y=lerp(sk.hip.y,targetHipY,0.15);
+  sk.hip.x+=0.35*speed;
 
-  // SPINE
-  skeleton.spine.x=lerp(skeleton.spine.x,skeleton.hip.x,0.25);
-  skeleton.spine.y=lerp(skeleton.spine.y,skeleton.hip.y-(50-10*speed),0.25);
+  sk.spine.x=lerp(sk.spine.x,sk.hip.x,0.25);
+  sk.spine.y=lerp(sk.spine.y,sk.hip.y-(50-10*speed),0.25);
 
-  skeleton.head.x=skeleton.spine.x;
-  skeleton.head.y=skeleton.spine.y-35;
+  // ===== HEAD SECONDARY MOTION =====
+  const bounce=Math.abs(phase)*0.15*speed;
+  sk.head.scaleY=lerp(sk.head.scaleY,1-bounce,0.2);
+  sk.head.x=sk.spine.x;
+  sk.head.y=lerp(sk.head.y,sk.spine.y-35+phase*4,0.25);
 
   // ARMS
-  skeleton.arms.L.a=-phase*(0.8+0.4*speed);
-  skeleton.arms.R.a= phase*(0.8+0.4*speed);
+  sk.arms.L.a=-phase*(0.8+0.4*speed);
+  sk.arms.R.a= phase*(0.8+0.4*speed);
 }
 
-// =================== DRAW ===================
+// =============== DRAW ===================
 function drawLeg(side,dir){
-  const hipX=skeleton.hip.x+dir*10;
-  const hipY=skeleton.hip.y;
-  const f=skeleton.legs[side].foot;
-  const k=solveIK(hipX,hipY,f.x,f.y);
+  const hx=sk.hip.x+dir*10, hy=sk.hip.y;
+  const f=sk.legs[side].foot;
+  const k=solveIK(hx,hy,f.x,f.y);
   ctx.beginPath();
-  ctx.moveTo(hipX,hipY);
+  ctx.moveTo(hx,hy);
   ctx.lineTo(k.x,k.y);
   ctx.lineTo(f.x,f.y);
   ctx.stroke();
 }
 
 function drawArm(side,dir){
-  const sx=skeleton.spine.x+dir*15;
-  const sy=skeleton.spine.y+10;
-  const a=skeleton.arms[side].a;
-  const hx=sx+Math.cos(a+Math.PI/2)*ARM_LEN;
-  const hy=sy+Math.sin(a+Math.PI/2)*ARM_LEN;
+  const sx=sk.spine.x+dir*15, sy=sk.spine.y+10;
+  const a=sk.arms[side].a;
   ctx.beginPath();
   ctx.moveTo(sx,sy);
-  ctx.lineTo(hx,hy);
+  ctx.lineTo(
+    sx+Math.cos(a+Math.PI/2)*ARM_LEN,
+    sy+Math.sin(a+Math.PI/2)*ARM_LEN
+  );
   ctx.stroke();
 }
 
@@ -138,29 +134,29 @@ function draw(){
   ctx.lineWidth=3;
 
   ctx.beginPath();
-  ctx.moveTo(skeleton.hip.x,skeleton.hip.y);
-  ctx.lineTo(skeleton.spine.x,skeleton.spine.y);
+  ctx.moveTo(sk.hip.x,sk.hip.y);
+  ctx.lineTo(sk.spine.x,sk.spine.y);
   ctx.stroke();
 
+  // head squash
+  ctx.save();
+  ctx.translate(sk.head.x,sk.head.y);
+  ctx.scale(1,sk.head.scaleY);
   ctx.beginPath();
-  ctx.arc(skeleton.head.x,skeleton.head.y,12,0,Math.PI*2);
+  ctx.arc(0,0,12,0,Math.PI*2);
   ctx.stroke();
+  ctx.restore();
 
   drawArm("L",-1); drawArm("R",1);
   drawLeg("L",-1); drawLeg("R",1);
 
-  // UI
   ctx.fillStyle="#aaa";
   ctx.font="14px monospace";
-  ctx.fillText("Speed: "+speed.toFixed(2)+"  (↑ / ↓)",10,20);
+  ctx.fillText("Speed: "+speed.toFixed(2),10,20);
 }
 
-// =================== LOOP ===================
-function loop(){
-  updateWalk();
-  draw();
-  requestAnimationFrame(loop);
-}
+// =============== LOOP ===================
+function loop(){updateWalk();draw();requestAnimationFrame(loop);}
 loop();
 </script>
 
