@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.2</title>
+<title>Stickman AI — Scene System 21 C.3</title>
 <style>
 html, body {
   margin: 0;
@@ -39,7 +39,7 @@ window.addEventListener("resize", resize);
 // SCENE
 // =========================
 const scene = {
-  width: 4000,
+  width: 5000,
   height: 2000,
   groundY: 900
 };
@@ -48,9 +48,9 @@ const scene = {
 // STICKMAN
 // =========================
 const stickman = {
-  x: 500,
+  x: 600,
   y: scene.groundY - 120,
-  vx: 1.2,          // sekin yurish (test uchun)
+  vx: 1.5,
   head: 18,
   body: 50,
   arm: 40,
@@ -58,21 +58,30 @@ const stickman = {
 };
 
 // =========================
-// CAMERA (SMOOTH FOLLOW)
+// CAMERA (FOLLOW + ZOOM)
 // =========================
 const camera = {
   x: 0,
   y: 0,
   zoom: 1,
-  smooth: 0.08     // qancha kichik bo‘lsa — shuncha yumshoq
+  targetZoom: 1,
+  smooth: 0.08,
+  zoomSmooth: 0.06
 };
 
+// =========================
+// CAMERA UPDATE
+// =========================
 function updateCamera() {
-  const targetX = stickman.x - canvas.width / 2;
-  const targetY = stickman.y - canvas.height / 2;
+  // FOLLOW
+  const targetX = stickman.x - canvas.width / (2 * camera.zoom);
+  const targetY = stickman.y - canvas.height / (2 * camera.zoom);
 
   camera.x += (targetX - camera.x) * camera.smooth;
   camera.y += (targetY - camera.y) * camera.smooth;
+
+  // ZOOM SMOOTH
+  camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomSmooth;
 }
 
 function camX(x) {
@@ -80,6 +89,25 @@ function camX(x) {
 }
 function camY(y) {
   return (y - camera.y) * camera.zoom;
+}
+
+// =========================
+// ZOOM LOGIC (PUNCH)
+// =========================
+let zoomTimer = 0;
+
+function updateZoom() {
+  zoomTimer++;
+
+  // har 240 frame’da punch-in
+  if (zoomTimer % 240 === 0) {
+    camera.targetZoom = 1.4;
+  }
+
+  // 30 frame keyin qaytadi
+  if (zoomTimer % 240 === 30) {
+    camera.targetZoom = 1;
+  }
 }
 
 // =========================
@@ -109,7 +137,7 @@ function drawStickman(p) {
 
   // Head
   ctx.beginPath();
-  ctx.arc(camX(hx), camY(hy), p.head, 0, Math.PI * 2);
+  ctx.arc(camX(hx), camY(hy), p.head * camera.zoom, 0, Math.PI * 2);
   ctx.stroke();
 
   // Body
@@ -138,15 +166,16 @@ function drawStickman(p) {
 }
 
 // =========================
-// UPDATE (TEST WALK)
+// UPDATE LOGIC
 // =========================
 function update() {
   stickman.x += stickman.vx;
 
-  // sahna cheti
-  if (stickman.x > scene.width - 200 || stickman.x < 200) {
+  if (stickman.x > scene.width - 300 || stickman.x < 300) {
     stickman.vx *= -1;
   }
+
+  updateZoom();
 }
 
 // =========================
