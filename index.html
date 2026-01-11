@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v17-C — Arms + Emotion</title>
+<title>Stickman v18-A — Emotion Presets</title>
 <style>
 body{
   margin:0;
@@ -30,10 +30,10 @@ button:hover{background:#333}
 <canvas id="c" width="360" height="540"></canvas>
 
 <div class="ui">
-  <button onclick="setEmotion('neutral')">😐</button>
-  <button onclick="setEmotion('happy')">🙂</button>
-  <button onclick="setEmotion('surprised')">😮</button>
-  <button onclick="setEmotion('angry')">😠</button>
+  <button onclick="setPreset('neutral')">😐 Neutral</button>
+  <button onclick="setPreset('happy')">🙂 Happy</button>
+  <button onclick="setPreset('surprised')">😮 Surprise</button>
+  <button onclick="setPreset('angry')">😠 Angry</button>
   <button onclick="addKey()">ADD KEY</button>
   <button onclick="play()">▶ PLAY</button>
   <button onclick="stop()">■ STOP</button>
@@ -57,27 +57,31 @@ const stick={
   armL:20
 };
 
-// ===== FACE + EMOTION =====
-let face={
+// ===== CURRENT STATE =====
+let state={
   eyeOpen:1, eyeScale:1,
   mouthOpen:0, brow:0,
   armLift:0
 };
 
-const emotions={
+// ===== EMOTION PRESETS =====
+const emotionPresets={
   neutral:{eyeOpen:1,eyeScale:1,mouthOpen:0,brow:0,armLift:0},
   happy:{eyeOpen:0.7,eyeScale:0.9,mouthOpen:0.4,brow:0.2,armLift:0.3},
   surprised:{eyeOpen:1.3,eyeScale:1.2,mouthOpen:1,brow:0.8,armLift:0.9},
   angry:{eyeOpen:0.6,eyeScale:0.8,mouthOpen:0.2,brow:-0.8,armLift:-0.4}
 };
 
-function setEmotion(name){
-  Object.assign(face,emotions[name]);
+function setPreset(name){
+  Object.assign(state, emotionPresets[name]);
 }
 
 // ===== KEYFRAME =====
 function addKey(){
-  timeline.push({frame,face:{...face}});
+  timeline.push({
+    frame,
+    preset: {...state}
+  });
 }
 
 function play(){
@@ -93,8 +97,8 @@ function applyTimeline(){
   const a=timeline[0];
   const b=timeline[timeline.length-1];
   const t=(frame%60)/60;
-  for(let k in face){
-    face[k]=lerp(a.face[k],b.face[k],t);
+  for(let k in state){
+    state[k]=lerp(a.preset[k],b.preset[k],t);
   }
 }
 
@@ -126,8 +130,7 @@ function draw(){
 
   // arms
   const shoulderY=stick.y+5;
-  const lift=-face.armLift*25;
-
+  const lift=-state.armLift*25;
   drawArm(stick.x-2,shoulderY,-1,lift);
   drawArm(stick.x+2,shoulderY,1,lift);
 
@@ -144,7 +147,6 @@ function drawArm(x,y,dir,lift){
   const ey=y+lift;
   const hx=ex+dir*stick.armL;
   const hy=ey+lift*0.6;
-
   ctx.beginPath();
   ctx.moveTo(x,y);
   ctx.lineTo(ex,ey);
@@ -158,21 +160,21 @@ function drawFace(){
 
   // eyes
   ctx.beginPath();
-  ctx.ellipse(hx-6,hy-3,3*face.eyeScale,3*face.eyeOpen,0,0,Math.PI*2);
-  ctx.ellipse(hx+6,hy-3,3*face.eyeScale,3*face.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(hx-6,hy-3,3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(hx+6,hy-3,3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
   ctx.stroke();
 
   // brows
   ctx.beginPath();
-  ctx.moveTo(hx-10,hy-8-face.brow*4);
-  ctx.lineTo(hx-2,hy-6-face.brow*4);
-  ctx.moveTo(hx+2,hy-6-face.brow*4);
-  ctx.lineTo(hx+10,hy-8-face.brow*4);
+  ctx.moveTo(hx-10,hy-8-state.brow*4);
+  ctx.lineTo(hx-2,hy-6-state.brow*4);
+  ctx.moveTo(hx+2,hy-6-state.brow*4);
+  ctx.lineTo(hx+10,hy-8-state.brow*4);
   ctx.stroke();
 
   // mouth
   ctx.beginPath();
-  ctx.arc(hx,hy+7,5,0,Math.PI*face.mouthOpen);
+  ctx.arc(hx,hy+7,5,0,Math.PI*state.mouthOpen);
   ctx.stroke();
 }
 
