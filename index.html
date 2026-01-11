@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v10.5.0 — Timeline</title>
+<title>Stickman AI v10.6.0 — Turning</title>
 <style>
   body { margin:0; background:#0e0e0e; color:#aaa; font-family:monospace; }
   #ui {
@@ -19,10 +19,8 @@
 <canvas id="c"></canvas>
 
 <div id="ui">
-  <button id="play">⏸</button>
-  <span>Timeline</span>
-  <input id="timeline" type="range" min="0" max="1000" value="0">
-  <span id="frame">0</span>
+  <span>← / → Turn</span>
+  <span id="dir">Dir: 1</span>
 </div>
 
 <script>
@@ -33,29 +31,20 @@ canvas.width=700; canvas.height=450;
 
 const GROUND_Y=330;
 let time=0;
-let speed=1.0;
-let playing=true;
+let direction=1;      // -1 = left, 1 = right
+let targetDir=1;
 
-// UI
-const playBtn=document.getElementById("play");
-const slider=document.getElementById("timeline");
-const frameTxt=document.getElementById("frame");
+// INPUT
+window.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft")  targetDir=-1;
+  if(e.key==="ArrowRight") targetDir= 1;
+});
 
-playBtn.onclick=()=>{
-  playing=!playing;
-  playBtn.textContent=playing?"⏸":"▶";
-};
-
-slider.oninput=()=>{
-  time=slider.value/50;
-  frameTxt.textContent=slider.value;
-};
-
-// =============== UTILS ==================
+// UTILS
 const lerp=(a,b,t)=>a+(b-a)*t;
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
-// =============== SKELETON ===============
+// ================= SKELETON =================
 const sk={
   hip:{x:350,y:240},
   spine:{x:350,y:190},
@@ -69,7 +58,7 @@ const sk={
 
 const LEG_A=45, LEG_B=45, ARM_LEN=40;
 
-// =============== IK =====================
+// ================= IK =====================
 function solveIK(hx,hy,fx,fy){
   let dx=fx-hx, dy=fy-hy;
   let d=Math.hypot(dx,dy);
@@ -79,8 +68,14 @@ function solveIK(hx,hy,fx,fy){
   return {x:hx+Math.cos(b+a)*LEG_A,y:hy+Math.sin(b+a)*LEG_A};
 }
 
-// =============== WALK ===================
-function updateWalk(){
+// ================= WALK + TURN =================
+function update(){
+  time+=0.045;
+
+  // smooth turning
+  direction=lerp(direction,targetDir,0.08);
+  document.getElementById("dir").textContent="Dir: "+direction.toFixed(2);
+
   const phase=Math.sin(time);
   const lift=Math.max(0,Math.sin(time+Math.PI/2))*22;
   const stepLen=32;
@@ -91,33 +86,36 @@ function updateWalk(){
   else{L.foot.lock=false;R.foot.lock=true;}
 
   if(!L.foot.lock){
-    L.foot.x=sk.hip.x-22+phase*stepLen;
+    L.foot.x=sk.hip.x-22*direction+phase*stepLen*direction;
     L.foot.y=GROUND_Y-lift;
   }
   if(!R.foot.lock){
-    R.foot.x=sk.hip.x+22-phase*stepLen;
+    R.foot.x=sk.hip.x+22*direction-phase*stepLen*direction;
     R.foot.y=GROUND_Y-lift;
   }
 
   const targetHipY=(L.foot.y+R.foot.y)/2-65;
   sk.hip.y=lerp(sk.hip.y,targetHipY,0.15);
-  sk.hip.x+=0.35;
+  sk.hip.x+=0.35*direction;
 
   sk.spine.x=lerp(sk.spine.x,sk.hip.x,0.25);
   sk.spine.y=lerp(sk.spine.y,sk.hip.y-50,0.25);
 
+  // head secondary
   const bounce=Math.abs(phase)*0.15;
   sk.head.scaleY=lerp(sk.head.scaleY,1-bounce,0.2);
   sk.head.x=sk.spine.x;
   sk.head.y=lerp(sk.head.y,sk.spine.y-35+phase*4,0.25);
 
-  sk.arms.L.a=-phase*0.8;
-  sk.arms.R.a= phase*0.8;
+  // arms counter-swing (respect direction)
+  sk.arms.L.a=-phase*0.8*direction;
+  sk.arms.R.a= phase*0.8*direction;
 }
 
-// =============== DRAW ===================
+// ================= DRAW =================
 function drawLeg(side,dir){
-  const hx=sk.hip.x+dir*10, hy=sk.hip.y;
+  const hx=sk.hip.x+dir*10*direction;
+  const hy=sk.hip.y;
   const f=sk.legs[side].foot;
   const k=solveIK(hx,hy,f.x,f.y);
   ctx.beginPath();
@@ -128,7 +126,8 @@ function drawLeg(side,dir){
 }
 
 function drawArm(side,dir){
-  const sx=sk.spine.x+dir*15, sy=sk.spine.y+10;
+  const sx=sk.spine.x+dir*15*direction;
+  const sy=sk.spine.y+10;
   const a=sk.arms[side].a;
   ctx.beginPath();
   ctx.moveTo(sx,sy);
@@ -168,14 +167,9 @@ function draw(){
   drawLeg("L",-1); drawLeg("R",1);
 }
 
-// =============== LOOP ===================
+// ================= LOOP =================
 function loop(){
-  if(playing){
-    time+=0.045;
-    slider.value=Math.floor(time*50);
-    frameTxt.textContent=slider.value;
-  }
-  updateWalk();
+  update();
   draw();
   requestAnimationFrame(loop);
 }
