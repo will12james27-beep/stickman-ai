@@ -475,6 +475,68 @@ draw = function(){
 
 console.log("🧠 21 B.6 Scene-relative Psychology Text loaded");
 </script>
+<script>
+// ================= 21 B.7 — TEXT LAYERING & PRIORITY =================
+
+// Text layer aniqlash
+function getTextLayer(c){
+  if(c.talk && c.talk > 0) return 3;          // gapiryapti
+  if(c.mood && c.mood !== "neutral") return 2; // reaction
+  return 1;                                   // idle
+}
+
+// Scene-relative psychology text (layer bilan)
+function drawLayeredPsychText(c){
+  const layer = getTextLayer(c);
+
+  const worldX = c.pos.x;
+  const worldY = c.pos.y - 40;
+
+  const screenX = (worldX - camera.x) * camera.zoom;
+  const screenY = (worldY - camera.y) * camera.zoom;
+
+  // Vizual farq
+  if(layer === 3){
+    ctx.font = "bold 15px Arial";
+  }else if(layer === 2){
+    ctx.font = "14px Arial";
+  }else{
+    ctx.font = "13px Arial";
+  }
+
+  ctx.fillStyle = "#000";
+
+  ctx.fillText(
+    `Mood: ${c.mood}`,
+    screenX,
+    screenY
+  );
+
+  ctx.fillText(
+    `Tension: ${c.tension.toFixed(2)}`,
+    screenX,
+    screenY + 16
+  );
+}
+
+// draw() ni yana xavfsiz kengaytiramiz
+const _draw21B7 = draw;
+draw = function(){
+  _draw21B7();
+
+  ctx.textAlign = "center";
+
+  // layer bo‘yicha sort qilib chizamiz
+  characters
+    .slice()
+    .sort((a,b)=>getTextLayer(a)-getTextLayer(b))
+    .forEach(c=>{
+      drawLayeredPsychText(c);
+    });
+};
+
+console.log("🧩 21 B.7 Text Layering & Priority loaded");
+</script>
 
 </body>
 </html>
