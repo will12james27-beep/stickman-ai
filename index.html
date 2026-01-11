@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.5</title>
+<title>Stickman AI — Scene System 21 C.6</title>
 <style>
 html, body {
   margin: 0;
@@ -67,12 +67,16 @@ const camera = {
   y: 0,
   zoom: 1,
   targetZoom: 1,
+
   followSmooth: 0.08,
-  zoomSmooth: 0.12,
+  zoomSmooth: 0.15,
 
   shakeX: 0,
   shakeY: 0,
-  shakePower: 0
+  shakePower: 0,
+
+  cutMode: false,
+  cutCooldown: 0
 };
 
 // =========================
@@ -92,15 +96,39 @@ function updateCamera() {
   const tx = stickman.x - canvas.width / (2 * camera.zoom);
   const ty = stickman.y - canvas.height / (2 * camera.zoom);
 
-  camera.x += (tx - camera.x) * camera.followSmooth;
-  camera.y += (ty - camera.y) * camera.followSmooth;
+  if (camera.cutMode) {
+    camera.x = tx;
+    camera.y = ty;
+  } else {
+    camera.x += (tx - camera.x) * camera.followSmooth;
+    camera.y += (ty - camera.y) * camera.followSmooth;
+  }
+
   camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomSmooth;
 
   updateShake();
+  updateCutCooldown();
 }
 
 // =========================
-// SHAKE SYSTEM
+// CUT SYSTEM
+// =========================
+function cameraCut() {
+  camera.cutMode = true;
+  camera.cutCooldown = 6; // frames (qisqa cut)
+}
+
+function updateCutCooldown() {
+  if (camera.cutCooldown > 0) {
+    camera.cutCooldown--;
+    if (camera.cutCooldown === 0) {
+      camera.cutMode = false;
+    }
+  }
+}
+
+// =========================
+// SHAKE
 // =========================
 function updateShake() {
   if (camera.shakePower > 0) {
@@ -114,31 +142,35 @@ function updateShake() {
 }
 
 // =========================
-// EMOTION SYSTEM
+// EMOTION + CUT
 // =========================
 function cameraEmotion(type) {
   switch (type) {
-    case "shock":
-      camera.targetZoom = 1.8;
-      camera.shakePower = 20;
+    case "impact":
+      camera.targetZoom = 1.9;
+      camera.shakePower = 18;
+      cameraCut();
       zoomRelease(18);
       break;
 
-    case "fear":
-      camera.targetZoom = 0.75;
-      camera.shakePower = 8;
+    case "panic":
+      camera.targetZoom = 0.7;
+      camera.shakePower = 10;
+      cameraCut();
       zoomRelease(30);
       break;
 
-    case "anger":
+    case "rage":
       camera.targetZoom = 1.5;
       camera.shakePower = 14;
-      zoomRelease(20);
+      cameraCut();
+      zoomRelease(22);
       break;
 
     case "focus":
       camera.targetZoom = 2.2;
       camera.shakePower = 0;
+      cameraCut();
       zoomRelease(25);
       break;
   }
@@ -151,17 +183,17 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space" && stickman.onGround) {
     stickman.vy = -16;
     stickman.onGround = false;
-    cameraEmotion("shock");
+    cameraEmotion("impact");
   }
 
-  if (e.code === "Digit1") cameraEmotion("shock");
-  if (e.code === "Digit2") cameraEmotion("fear");
-  if (e.code === "Digit3") cameraEmotion("anger");
+  if (e.code === "Digit1") cameraEmotion("impact");
+  if (e.code === "Digit2") cameraEmotion("panic");
+  if (e.code === "Digit3") cameraEmotion("rage");
   if (e.code === "Digit4") cameraEmotion("focus");
 });
 
 canvas.addEventListener("mousedown", () => {
-  cameraEmotion("anger");
+  cameraEmotion("rage");
 });
 
 // =========================
@@ -199,6 +231,7 @@ function updateStickman() {
 
   if (stickman.x < 300 || stickman.x > scene.width - 300) {
     stickman.vx *= -1;
+    cameraEmotion("panic");
   }
 }
 
