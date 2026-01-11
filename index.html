@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v12-A – Mouse Pose</title>
+<title>Stickman v12-B – 2 Segment IK</title>
 <style>
  html,body{margin:0;background:#111;color:#fff;font-family:sans-serif}
  canvas{display:block;margin:auto;background:#1a1a1a}
  #ui{
   position:fixed;bottom:10px;left:50%;
   transform:translateX(-50%);
-  display:flex;gap:6px;align-items:center
+  display:flex;gap:6px
  }
- button,label{
+ button{
   background:#222;color:#fff;
   border:1px solid #444;
   padding:6px 10px;cursor:pointer
@@ -23,169 +23,139 @@
 <canvas id="c" width="800" height="400"></canvas>
 
 <div id="ui">
- <button onclick="startRecord()">⏺ REC</button>
- <button onclick="stopRecord()">■ STOP</button>
- <button onclick="startPlay()">▶ PLAY</button>
+ <button onclick="mode='auto'">AUTO</button>
+ <button onclick="mode='pose'">POSE</button>
 </div>
 
 <script>
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 
-const MODE={LIVE:0,RECORD:1,PLAY:2};
-let mode=MODE.LIVE;
-
 const groundY=300;
+let mode="auto";
 
-let stick={
- x:400,
- y:groundY-90,
- legL:0,
- legR:0,
- armL:0,
- armR:0
+const hip={x:400,y:groundY-100};
+
+const L1=35, L2=35;
+
+// targets (mouse draggable)
+let targets={
+ legL:{x:370,y:groundY},
+ legR:{x:430,y:groundY},
+ armL:{x:360,y:groundY-90},
+ armR:{x:440,y:groundY-90}
 };
 
-let timeline=[];
-let playI=0;
+function ik2(bx,by,tx,ty,l1,l2,flip){
+ const dx=tx-bx, dy=ty-by;
+ const d=Math.hypot(dx,dy);
+ const a=Math.min(Math.max(d,1),l1+l2-0.001);
 
-// -------- DRAW --------
-function line(x1,y1,x2,y2){
- ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+ const cos2=(a*a-l1*l1-l2*l2)/(-2*l1*l2);
+ const ang2=Math.acos(cos2)*(flip?-1:1);
+
+ const ang1=Math.atan2(dy,dx)-
+ Math.atan2(l2*Math.sin(ang2),l1+l2*Math.cos(ang2));
+
+ const mx=bx+Math.cos(ang1)*l1;
+ const my=by+Math.sin(ang1)*l1;
+
+ return {mx,my,tx,ty};
 }
 
-function draw(){
+function drawLimb(base,tar,flip){
+ const p=ik2(base.x,base.y,tar.x,tar.y,L1,L2,flip);
+
+ ctx.beginPath();
+ ctx.moveTo(base.x,base.y);
+ ctx.lineTo(p.mx,p.my);
+ ctx.lineTo(p.tx,p.ty);
+ ctx.stroke();
+
+ drawDot(p.tx,p.ty);
+}
+
+function drawDot(x,y){
+ ctx.fillStyle="#f55";
+ ctx.beginPath();
+ ctx.arc(x,y,5,0,Math.PI*2);
+ ctx.fill();
+}
+
+let t=0;
+function update(){
  ctx.clearRect(0,0,c.width,c.height);
 
  // ground
  ctx.strokeStyle="#444";
- line(0,groundY,c.width,groundY);
+ ctx.beginPath();
+ ctx.moveTo(0,groundY);
+ ctx.lineTo(c.width,groundY);
+ ctx.stroke();
+
+ if(mode==="auto"){
+  t+=0.05;
+  targets.legL.x=hip.x-20;
+  targets.legL.y=groundY-10*Math.sin(t);
+
+  targets.legR.x=hip.x+20;
+  targets.legR.y=groundY+10*Math.sin(t);
+
+  targets.armL.x=hip.x-40;
+  targets.armL.y=hip.y-20+10*Math.sin(t);
+
+  targets.armR.x=hip.x+40;
+  targets.armR.y=hip.y-20-10*Math.sin(t);
+ }
 
  ctx.strokeStyle="#fff";
  ctx.lineWidth=3;
 
  // head
  ctx.beginPath();
- ctx.arc(stick.x,stick.y-35,12,0,Math.PI*2);
+ ctx.arc(hip.x,hip.y-40,12,0,Math.PI*2);
  ctx.stroke();
 
  // body
- line(stick.x,stick.y-20,stick.x,stick.y+30);
+ ctx.beginPath();
+ ctx.moveTo(hip.x,hip.y-25);
+ ctx.lineTo(hip.x,hip.y+25);
+ ctx.stroke();
 
  // legs
- drawLimb(stick.legL,25,stick.y+30,true);
- drawLimb(stick.legR,25,stick.y+30,false);
+ drawLimb({x:hip.x,y:hip.y+25},targets.legL,true);
+ drawLimb({x:hip.x,y:hip.y+25},targets.legR,false);
 
  // arms
- drawLimb(stick.armL,15,stick.y,true,true);
- drawLimb(stick.armR,15,stick.y,false,true);
-}
+ drawLimb({x:hip.x,y:hip.y-15},targets.armL,true);
+ drawLimb({x:hip.x,y:hip.y-15},targets.armR,false);
 
-function drawLimb(angle,offsetY,yBase,left,isArm=false){
- const dir=left?-1:1;
- const len=isArm?35:45;
- const x1=stick.x;
- const y1=yBase;
- const x2=x1+Math.sin(angle)*len*dir;
- const y2=y1+Math.cos(angle)*len;
- line(x1,y1,x2,y2);
-
- // joint handle
- ctx.fillStyle="#f55";
- ctx.beginPath();
- ctx.arc(x2,y2,5,0,Math.PI*2);
- ctx.fill();
-}
-
-// -------- ANIMATION --------
-let t=0;
-function update(){
- if(mode===MODE.LIVE){
-  t+=0.05;
-  stick.legL=Math.sin(t);
-  stick.legR=-Math.sin(t);
-  stick.armL=-Math.sin(t);
-  stick.armR=Math.sin(t);
- }
-
- if(mode===MODE.RECORD){
-  timeline.push(JSON.parse(JSON.stringify(stick)));
- }
-
- if(mode===MODE.PLAY){
-  stick=JSON.parse(JSON.stringify(timeline[playI]));
-  playI++;
-  if(playI>=timeline.length) mode=MODE.LIVE;
- }
-
- draw();
  requestAnimationFrame(update);
 }
 
-// -------- RECORD / PLAY --------
-function startRecord(){
- timeline=[];
- mode=MODE.RECORD;
-}
-function stopRecord(){
- mode=MODE.LIVE;
-}
-function startPlay(){
- playI=0;
- mode=MODE.PLAY;
-}
-
-// -------- MOUSE POSE --------
 let drag=null;
-
 c.addEventListener("mousedown",e=>{
  const r=c.getBoundingClientRect();
  const mx=e.clientX-r.left;
  const my=e.clientY-r.top;
 
- const joints=getJoints();
- for(const j of joints){
-  const dx=mx-j.x, dy=my-j.y;
-  if(Math.hypot(dx,dy)<8){
-   drag=j;
-   mode=MODE.LIVE;
-   break;
+ for(const k in targets){
+  const t=targets[k];
+  if(Math.hypot(mx-t.x,my-t.y)<8){
+   drag=t;
+   mode="pose";
   }
  }
 });
 
 c.addEventListener("mousemove",e=>{
- if(!drag) return;
+ if(!drag)return;
  const r=c.getBoundingClientRect();
- const mx=e.clientX-r.left;
- const my=e.clientY-r.top;
-
- const dx=mx-stick.x;
- const dy=my-drag.yBase;
-
- drag.set(Math.atan2(dx,dy));
+ drag.x=e.clientX-r.left;
+ drag.y=e.clientY-r.top;
 });
-
 c.addEventListener("mouseup",()=>drag=null);
 c.addEventListener("mouseleave",()=>drag=null);
-
-function getJoints(){
- return [
-  joint("legL",stick.y+30),
-  joint("legR",stick.y+30),
-  joint("armL",stick.y),
-  joint("armR",stick.y)
- ];
-}
-
-function joint(name,yBase){
- return{
-  x:stick.x+Math.sin(stick[name])*(name.includes("arm")?35:45),
-  y:yBase+Math.cos(stick[name])*(name.includes("arm")?35:45),
-  yBase,
-  set:v=>stick[name]=v
- };
-}
 
 update();
 </script>
