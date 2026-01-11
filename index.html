@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.3</title>
+<title>Stickman AI — Scene System 21 C.4</title>
 <style>
 html, body {
   margin: 0;
@@ -23,7 +23,7 @@ canvas {
 
 <script>
 // =========================
-// CANVAS SETUP
+// CANVAS
 // =========================
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -39,7 +39,7 @@ window.addEventListener("resize", resize);
 // SCENE
 // =========================
 const scene = {
-  width: 5000,
+  width: 6000,
   height: 2000,
   groundY: 900
 };
@@ -48,9 +48,11 @@ const scene = {
 // STICKMAN
 // =========================
 const stickman = {
-  x: 600,
+  x: 800,
   y: scene.groundY - 120,
-  vx: 1.5,
+  vx: 2,
+  vy: 0,
+  onGround: true,
   head: 18,
   body: 50,
   arm: 40,
@@ -58,32 +60,20 @@ const stickman = {
 };
 
 // =========================
-// CAMERA (FOLLOW + ZOOM)
+// CAMERA
 // =========================
 const camera = {
   x: 0,
   y: 0,
   zoom: 1,
   targetZoom: 1,
-  smooth: 0.08,
-  zoomSmooth: 0.06
+  followSmooth: 0.08,
+  zoomSmooth: 0.1
 };
 
 // =========================
-// CAMERA UPDATE
+// CAMERA HELPERS
 // =========================
-function updateCamera() {
-  // FOLLOW
-  const targetX = stickman.x - canvas.width / (2 * camera.zoom);
-  const targetY = stickman.y - canvas.height / (2 * camera.zoom);
-
-  camera.x += (targetX - camera.x) * camera.smooth;
-  camera.y += (targetY - camera.y) * camera.smooth;
-
-  // ZOOM SMOOTH
-  camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomSmooth;
-}
-
 function camX(x) {
   return (x - camera.x) * camera.zoom;
 }
@@ -92,26 +82,87 @@ function camY(y) {
 }
 
 // =========================
-// ZOOM LOGIC (PUNCH)
+// CAMERA UPDATE
 // =========================
-let zoomTimer = 0;
+function updateCamera() {
+  const targetX = stickman.x - canvas.width / (2 * camera.zoom);
+  const targetY = stickman.y - canvas.height / (2 * camera.zoom);
 
-function updateZoom() {
-  zoomTimer++;
+  camera.x += (targetX - camera.x) * camera.followSmooth;
+  camera.y += (targetY - camera.y) * camera.followSmooth;
+  camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomSmooth;
+}
 
-  // har 240 frame’da punch-in
-  if (zoomTimer % 240 === 0) {
-    camera.targetZoom = 1.4;
+// =========================
+// INPUT (EVENTS)
+// =========================
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" && stickman.onGround) {
+    stickman.vy = -16;
+    stickman.onGround = false;
+
+    // EVENT: JUMP ZOOM
+    camera.targetZoom = 1.5;
+    zoomRelease(15);
   }
 
-  // 30 frame keyin qaytadi
-  if (zoomTimer % 240 === 30) {
-    camera.targetZoom = 1;
+  if (e.code === "KeyZ") {
+    camera.targetZoom = 1.8; // MANUAL PUNCH
+    zoomRelease(20);
+  }
+
+  if (e.code === "KeyX") {
+    camera.targetZoom = 0.8; // DRAMATIC ZOOM OUT
+    zoomRelease(30);
+  }
+});
+
+// mouse click = reaction zoom
+canvas.addEventListener("mousedown", () => {
+  camera.targetZoom = 1.6;
+  zoomRelease(12);
+});
+
+// =========================
+// ZOOM RELEASE SYSTEM
+// =========================
+let zoomBackTimer = 0;
+
+function zoomRelease(frames) {
+  zoomBackTimer = frames;
+}
+
+function updateZoomRelease() {
+  if (zoomBackTimer > 0) {
+    zoomBackTimer--;
+    if (zoomBackTimer === 0) {
+      camera.targetZoom = 1;
+    }
   }
 }
 
 // =========================
-// DRAW FUNCTIONS
+// PHYSICS
+// =========================
+function updateStickman() {
+  stickman.x += stickman.vx;
+
+  stickman.vy += 0.8; // gravity
+  stickman.y += stickman.vy;
+
+  if (stickman.y >= scene.groundY - 120) {
+    stickman.y = scene.groundY - 120;
+    stickman.vy = 0;
+    stickman.onGround = true;
+  }
+
+  if (stickman.x < 300 || stickman.x > scene.width - 300) {
+    stickman.vx *= -1;
+  }
+}
+
+// =========================
+// DRAW
 // =========================
 function drawBackground() {
   ctx.fillStyle = "#fff";
@@ -135,12 +186,12 @@ function drawStickman(p) {
   const hx = p.x;
   const hy = p.y;
 
-  // Head
+  // head
   ctx.beginPath();
   ctx.arc(camX(hx), camY(hy), p.head * camera.zoom, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Body
+  // body
   ctx.beginPath();
   ctx.moveTo(camX(hx), camY(hy + p.head));
   ctx.lineTo(camX(hx), camY(hy + p.head + p.body));
@@ -148,7 +199,7 @@ function drawStickman(p) {
 
   const by = hy + p.head + p.body;
 
-  // Arms
+  // arms
   ctx.beginPath();
   ctx.moveTo(camX(hx), camY(hy + 25));
   ctx.lineTo(camX(hx - p.arm), camY(hy + 40));
@@ -156,7 +207,7 @@ function drawStickman(p) {
   ctx.lineTo(camX(hx + p.arm), camY(hy + 40));
   ctx.stroke();
 
-  // Legs
+  // legs
   ctx.beginPath();
   ctx.moveTo(camX(hx), camY(by));
   ctx.lineTo(camX(hx - p.leg), camY(by + p.leg));
@@ -166,27 +217,17 @@ function drawStickman(p) {
 }
 
 // =========================
-// UPDATE LOGIC
-// =========================
-function update() {
-  stickman.x += stickman.vx;
-
-  if (stickman.x > scene.width - 300 || stickman.x < 300) {
-    stickman.vx *= -1;
-  }
-
-  updateZoom();
-}
-
-// =========================
 // MAIN LOOP
 // =========================
 function loop() {
-  update();
+  updateStickman();
+  updateZoomRelease();
   updateCamera();
+
   drawBackground();
   drawGround();
   drawStickman(stickman);
+
   requestAnimationFrame(loop);
 }
 
