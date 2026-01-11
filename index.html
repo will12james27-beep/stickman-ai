@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.16</title>
+<title>Stickman AI — Scene System 21 C.17</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -26,22 +26,6 @@ function resize(){
 }
 resize(); window.addEventListener("resize",resize);
 
-// ================= BPM CLOCK =================
-const BPM = 120;
-const beatInterval = 60 / BPM;
-let lastBeat = performance.now();
-let beatPulse = 0;
-
-function updateBeat(){
-  const now = performance.now();
-  if((now - lastBeat)/1000 >= beatInterval){
-    lastBeat = now;
-    beatPulse = 1;
-    onBeat();
-  }
-  beatPulse *= 0.85;
-}
-
 // ================= SCENE =================
 const scene={width:5000,groundY:900};
 
@@ -52,69 +36,56 @@ function createChar(x,color){
     y:scene.groundY-120,
     color,
     head:18,body:50,arm:40,leg:45,
-    bob:0,
+    bob:0,react:0,
     emoji:null
   };
 }
 
 const chars=[
   createChar(800,"#e91e63"),
-  createChar(1400,"#000"),
-  createChar(2000,"#2196f3")
+  createChar(1300,"#000"),
+  createChar(1800,"#2196f3"),
+  createChar(2300,"#4caf50")
 ];
-
-let focusChar=chars[0];
 
 // ================= CAMERA =================
 const camera={
-  x:0,y:0,
-  zoom:1,targetZoom:1,
+  x:0,y:0,zoom:1,targetZoom:1,
   smooth:0.15,zoomSmooth:0.2,
-  shake:0,freeze:0,flash:0
+  shake:0
 };
+let focusChar=chars[0];
 
 function camX(x){return(x-camera.x)*camera.zoom;}
-function camY(y){return(y-camera.y)*camera.zoom;}
 
 function updateCamera(){
-  if(camera.freeze>0){camera.freeze--;return;}
   const tx=focusChar.x-canvas.width/(2*camera.zoom);
   camera.x+=(tx-camera.x)*camera.smooth;
   camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
 }
 
-// ================= BEAT REACTION =================
-function onBeat(){
-  camera.shake=8;
-  focusChar.bob=-8;
-  if(subtitle.punch){
-    camera.flash=4;
-  }
-}
-
 // ================= EMOJI =================
 function spawnEmoji(c,s){
-  c.emoji={s,life:40,scale:0.3,y:0};
+  c.emoji={s,life:40,scale:0.4,y:0};
 }
 function updateEmoji(c){
   if(!c.emoji)return;
   c.emoji.life--;
-  c.emoji.scale+=0.04;
-  c.emoji.y+=1.1;
+  c.emoji.scale+=0.03;
+  c.emoji.y+=1;
   if(c.emoji.life<=0)c.emoji=null;
 }
 
 // ================= SUBTITLE =================
 const subtitle={
-  words:[],index:0,timer:0,active:false,punch:false
+  words:[],index:0,timer:0,active:false
 };
 
 function startSubtitle(text){
   subtitle.words=text.split(" ");
   subtitle.index=0;
-  subtitle.timer=10;
+  subtitle.timer=12;
   subtitle.active=true;
-  subtitle.punch=false;
 }
 
 function updateSubtitle(){
@@ -122,18 +93,9 @@ function updateSubtitle(){
   subtitle.timer--;
   if(subtitle.timer<=0){
     subtitle.index++;
-    subtitle.timer=10;
-
-    if(subtitle.index===subtitle.words.length-1){
-      subtitle.punch=true;
-      camera.targetZoom=2.2;
-      camera.freeze=12;
-    }
-
+    subtitle.timer=12;
     if(subtitle.index>=subtitle.words.length){
       subtitle.active=false;
-      subtitle.punch=false;
-      camera.targetZoom=1;
     }
   }
 }
@@ -141,17 +103,16 @@ function updateSubtitle(){
 function drawSubtitle(){
   if(!subtitle.active)return;
   ctx.fillStyle="#000";
-  ctx.fillRect(0,canvas.height-150,canvas.width,150);
+  ctx.fillRect(0,canvas.height-140,canvas.width,140);
 
   ctx.textAlign="center";
-  ctx.font="bold 36px Arial";
+  ctx.font="bold 34px Arial";
   let x=canvas.width/2,y=canvas.height-70,off=-140;
 
   subtitle.words.forEach((w,i)=>{
     let s=1,c="#aaa";
     if(i===subtitle.index){
-      s=subtitle.punch?1.9:1.4;
-      c=subtitle.punch?"#ff1744":"#ffeb3b";
+      s=1.5;c="#ffeb3b";
     }
     ctx.save();
     ctx.translate(x+off,y);
@@ -163,53 +124,71 @@ function drawSubtitle(){
   });
 }
 
-// ================= SCENE CUT =================
-let cutAlpha=0,cutting=false;
-function startSceneCut(){
-  cutting=true;cutAlpha=0;
-}
-function updateSceneCut(){
-  if(!cutting)return;
-  cutAlpha+=0.15;
-  if(cutAlpha>=1){
-    cutAlpha=1;cutting=false;
+// ================= REACTION CHAIN =================
+const chain=[
+  {
+    speaker:0,
+    text:"THIS IS IMPOSSIBLE",
+    reactions:[
+      {c:1,e:"😳"},
+      {c:2,e:"🤨"},
+      {c:3,e:"😐"}
+    ]
+  },
+  {
+    speaker:2,
+    text:"NO IT ACTUALLY WORKS",
+    reactions:[
+      {c:0,e:"😡"},
+      {c:1,e:"😱"},
+      {c:3,e:"😮"}
+    ]
+  },
+  {
+    speaker:1,
+    text:"WAIT WHAT",
+    reactions:[
+      {c:0,e:"😎"},
+      {c:2,e:"🔥"},
+      {c:3,e:"😂"}
+    ]
   }
-}
-function drawSceneCut(){
-  if(cutAlpha<=0)return;
-  ctx.globalAlpha=cutAlpha;
-  ctx.fillStyle="#000";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.globalAlpha=1;
-}
-
-// ================= DIALOG / BEATS =================
-const beats=[
-  {c:0,t:"MY BRAIN IS MELTING",e:"🤯"},
-  {c:1,t:"THIS MAKES NO SENSE",e:"😱"},
-  {c:2,t:"WAIT I GET IT NOW",e:"😎"}
 ];
 
-let beatIndex=0;
-let beatTimer=0;
+let chainIndex=0;
+let chainTimer=0;
 
-function startBeatScene(){
-  const b=beats[beatIndex];
-  focusChar=chars[b.c];
-  spawnEmoji(focusChar,b.e);
-  startSubtitle(b.t);
-  camera.targetZoom=1.5;
-  beatTimer=b.t.split(" ").length*12+40;
+function startChain(){
+  const s=chain[chainIndex];
+  focusChar=chars[s.speaker];
+  camera.targetZoom=1.6;
+  startSubtitle(s.text);
+  spawnEmoji(focusChar,"💬");
+  focusChar.react=1;
+
+  s.reactions.forEach((r,i)=>{
+    setTimeout(()=>{
+      spawnEmoji(chars[r.c],r.e);
+      chars[r.c].react=1;
+      camera.shake=6;
+    },200+i*140);
+  });
+
+  chainTimer=s.text.split(" ").length*15+50;
 }
 
-startBeatScene();
+startChain();
 
-function updateBeatScenes(){
-  if(beatTimer>0)beatTimer--;
+function updateChain(){
+  chars.forEach(c=>{
+    c.react+=(0-c.react)*0.15;
+    c.bob+=(0-c.bob)*0.2;
+  });
+
+  if(chainTimer>0)chainTimer--;
   else{
-    startSceneCut();
-    beatIndex=(beatIndex+1)%beats.length;
-    setTimeout(startBeatScene,160);
+    chainIndex=(chainIndex+1)%chain.length;
+    startChain();
   }
 }
 
@@ -228,12 +207,11 @@ function drawGround(){
 }
 
 function drawChar(c){
-  c.bob+=(0-c.bob)*0.2;
   ctx.strokeStyle=c.color;
   ctx.lineWidth=4;
 
   const hx=c.x;
-  const hy=c.y+c.bob;
+  const hy=c.y+c.bob-c.react*8;
 
   ctx.beginPath();
   ctx.arc(camX(hx),hy,c.head*camera.zoom,0,Math.PI*2);
@@ -260,7 +238,7 @@ function drawChar(c){
   ctx.stroke();
 
   if(c.emoji){
-    ctx.font=`${40*c.emoji.scale}px serif`;
+    ctx.font=`${42*c.emoji.scale}px serif`;
     ctx.textAlign="center";
     ctx.fillText(c.emoji.s,camX(hx),hy-40-c.emoji.y);
     updateEmoji(c);
@@ -269,17 +247,14 @@ function drawChar(c){
 
 // ================= LOOP =================
 function loop(){
-  updateBeat();
-  updateBeatScenes();
-  updateSubtitle();
   updateCamera();
-  updateSceneCut();
+  updateChain();
+  updateSubtitle();
 
   drawBG();
   drawGround();
   chars.forEach(drawChar);
   drawSubtitle();
-  drawSceneCut();
 
   if(camera.shake>0){
     ctx.translate(
@@ -287,14 +262,6 @@ function loop(){
       (Math.random()-0.5)*camera.shake
     );
     camera.shake*=0.7;
-  }
-
-  if(camera.flash>0){
-    ctx.globalAlpha=camera.flash/5;
-    ctx.fillStyle="#fff";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.globalAlpha=1;
-    camera.flash--;
   }
 
   requestAnimationFrame(loop);
