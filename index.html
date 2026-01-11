@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v12-B – 2 Segment IK</title>
+<title>Stickman v13-A – Foot Lock</title>
 <style>
  html,body{margin:0;background:#111;color:#fff;font-family:sans-serif}
  canvas{display:block;margin:auto;background:#1a1a1a}
@@ -38,7 +38,13 @@ const hip={x:400,y:groundY-100};
 
 const L1=35, L2=35;
 
-// targets (mouse draggable)
+// FOOT LOCK STATE
+const footLock={
+ L:{locked:false,x:0,y:0},
+ R:{locked:false,x:0,y:0}
+};
+
+// IK targets
 let targets={
  legL:{x:370,y:groundY},
  legR:{x:430,y:groundY},
@@ -46,6 +52,7 @@ let targets={
  armR:{x:440,y:groundY-90}
 };
 
+// 2-segment IK
 function ik2(bx,by,tx,ty,l1,l2,flip){
  const dx=tx-bx, dy=ty-by;
  const d=Math.hypot(dx,dy);
@@ -63,23 +70,45 @@ function ik2(bx,by,tx,ty,l1,l2,flip){
  return {mx,my,tx,ty};
 }
 
-function drawLimb(base,tar,flip){
- const p=ik2(base.x,base.y,tar.x,tar.y,L1,L2,flip);
-
- ctx.beginPath();
- ctx.moveTo(base.x,base.y);
- ctx.lineTo(p.mx,p.my);
- ctx.lineTo(p.tx,p.ty);
- ctx.stroke();
-
- drawDot(p.tx,p.ty);
-}
-
 function drawDot(x,y){
  ctx.fillStyle="#f55";
  ctx.beginPath();
  ctx.arc(x,y,5,0,Math.PI*2);
  ctx.fill();
+}
+
+function drawLimb(base,tar,flip,drawHandle=true){
+ const p=ik2(base.x,base.y,tar.x,tar.y,L1,L2,flip);
+ ctx.beginPath();
+ ctx.moveTo(base.x,base.y);
+ ctx.lineTo(p.mx,p.my);
+ ctx.lineTo(p.tx,p.ty);
+ ctx.stroke();
+ if(drawHandle) drawDot(p.tx,p.ty);
+}
+
+// FOOT LOCK LOGIC
+function applyFootLock(key,target,phase){
+ const f=footLock[key];
+
+ // oyoq pastga yetganda — LOCK
+ if(!f.locked && phase>0.9){
+  f.locked=true;
+  f.x=target.x;
+  f.y=groundY;
+ }
+
+ // phase boshlansa — UNLOCK
+ if(f.locked && phase<0.2){
+  f.locked=false;
+ }
+
+ if(f.locked){
+  target.x=f.x;
+  target.y=f.y;
+ }else{
+  target.y=groundY;
+ }
 }
 
 let t=0;
@@ -94,18 +123,22 @@ function update(){
  ctx.stroke();
 
  if(mode==="auto"){
-  t+=0.05;
-  targets.legL.x=hip.x-20;
-  targets.legL.y=groundY-10*Math.sin(t);
+  t+=0.04;
 
+  const phaseL=(Math.sin(t)+1)/2;
+  const phaseR=(Math.sin(t+Math.PI)+1)/2;
+
+  targets.legL.x=hip.x-20;
   targets.legR.x=hip.x+20;
-  targets.legR.y=groundY+10*Math.sin(t);
+
+  applyFootLock("L",targets.legL,phaseL);
+  applyFootLock("R",targets.legR,phaseR);
 
   targets.armL.x=hip.x-40;
-  targets.armL.y=hip.y-20+10*Math.sin(t);
+  targets.armL.y=hip.y-20+15*Math.sin(t);
 
   targets.armR.x=hip.x+40;
-  targets.armR.y=hip.y-20-10*Math.sin(t);
+  targets.armR.y=hip.y-20-15*Math.sin(t);
  }
 
  ctx.strokeStyle="#fff";
@@ -122,9 +155,9 @@ function update(){
  ctx.lineTo(hip.x,hip.y+25);
  ctx.stroke();
 
- // legs
- drawLimb({x:hip.x,y:hip.y+25},targets.legL,true);
- drawLimb({x:hip.x,y:hip.y+25},targets.legR,false);
+ // legs (no handle draw)
+ drawLimb({x:hip.x,y:hip.y+25},targets.legL,true,false);
+ drawLimb({x:hip.x,y:hip.y+25},targets.legR,false,false);
 
  // arms
  drawLimb({x:hip.x,y:hip.y-15},targets.armL,true);
@@ -147,7 +180,6 @@ c.addEventListener("mousedown",e=>{
   }
  }
 });
-
 c.addEventListener("mousemove",e=>{
  if(!drag)return;
  const r=c.getBoundingClientRect();
