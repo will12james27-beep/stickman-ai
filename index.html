@@ -647,6 +647,78 @@ draw = function(){
 
 console.log("✨ 21 B.8 Text Fade/Pop/Shake loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.9 — TEXT TIMING & DECAY =================
+// SAFE MODE: append-only
+
+const TEXT_LIFETIME = 120; // frame (~2 soniya 60fps da)
+
+// Har character uchun text time
+function ensureTextTime(c){
+  if(c._textTime === undefined){
+    c._textTime = 0;
+  }
+  return c._textTime;
+}
+
+// Layer o‘zgarsa timer reset bo‘ladi
+function updateTextTiming(c){
+  const layer = (typeof getTextLayer === "function") ? getTextLayer(c) : 1;
+
+  if(c._lastTextLayer === undefined){
+    c._lastTextLayer = layer;
+  }
+
+  if(layer !== c._lastTextLayer){
+    c._textTime = 0;
+    c._lastTextLayer = layer;
+  }else{
+    c._textTime++;
+  }
+}
+
+// Fade-out hisoblash
+function getTextAlphaByTime(c){
+  const t = ensureTextTime(c);
+  if(t < TEXT_LIFETIME * 0.6) return 1;
+
+  const fade = (t - TEXT_LIFETIME * 0.6) / (TEXT_LIFETIME * 0.4);
+  return Math.max(0, 1 - fade);
+}
+
+// draw() ga yana SAFE ulanamiz
+const _draw21B9 = draw;
+draw = function(){
+  _draw21B9();
+
+  ctx.save();
+  ctx.textAlign = "center";
+
+  characters.forEach(c=>{
+    updateTextTiming(c);
+
+    const alpha = getTextAlphaByTime(c);
+    if(alpha <= 0) return;
+
+    const worldX = c.pos.x;
+    const worldY = c.pos.y - 40;
+
+    const screenX = (worldX - camera.x) * camera.zoom;
+    const screenY = (worldY - camera.y) * camera.zoom;
+
+    ctx.globalAlpha = alpha;
+    ctx.font = "12px Arial";
+    ctx.fillStyle = "#000";
+
+    ctx.fillText(`Mood: ${c.mood}`, screenX, screenY);
+    ctx.fillText(`Tension: ${c.tension.toFixed(2)}`, screenX, screenY + 14);
+  });
+
+  ctx.restore();
+};
+
+console.log("⏱️ 21 B.9 Text Timing & Decay loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
