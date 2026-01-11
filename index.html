@@ -1,185 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Stickman v20-B — Character Identity System</title>
-<style>
-body{
-  margin:0;
-  background:#111;
-  color:#fff;
-  font-family:sans-serif;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-}
-canvas{background:#181818;margin-top:10px;}
-.ui{
-  margin:8px;
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:6px;
-}
-button{
-  padding:6px;
-  background:#222;
-  color:#fff;
-  border:1px solid #444;
-  cursor:pointer;
-}
-button:hover{background:#333}
-</style>
+  <meta charset="UTF-8">
+  <title>Stickman Scene System 21A</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      background: #000;
+    }
+  </style>
 </head>
 <body>
 
-<canvas id="c" width="360" height="540"></canvas>
-
-<div class="ui">
-  <button onclick="setAll('dead')">😐</button>
-  <button onclick="setAll('softHappy')">🙂</button>
-  <button onclick="setAll('ultraHappy')">😆</button>
-  <button onclick="setAll('shock')">😱</button>
-  <button onclick="setAll('rage')">🤬</button>
-</div>
+<canvas id="scene"></canvas>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
+/* =========================
+   CANVAS SETUP
+========================= */
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
 
-let t=0;
+canvas.width = 1080;
+canvas.height = 1920;
 
-// ===== MODEL =====
-const model={
-  headR:14,
-  body:36,
-  leg:30,
-  armU:20,
-  armL:18
-};
-
-// ===== EMOTIONS =====
-const presets={
-  dead:{eyeOpen:0.25,eyeScale:1.1,mouthOpen:0,brow:-0.1,armLift:-0.2,headSquash:-0.1},
-  softHappy:{eyeOpen:0.7,eyeScale:0.9,mouthOpen:0.4,brow:0.2,armLift:0.3,headSquash:0.1},
-  ultraHappy:{eyeOpen:0.4,eyeScale:0.7,mouthOpen:1.4,brow:0.8,armLift:1.2,headSquash:0.35},
-  shock:{eyeOpen:1.8,eyeScale:1.5,mouthOpen:1.8,brow:1.2,armLift:1.6,headSquash:-0.3},
-  rage:{eyeOpen:0.35,eyeScale:0.8,mouthOpen:0.5,brow:-1.6,armLift:-1,headSquash:0.25}
-};
-
-// ===== CHARACTER =====
-class Character{
-  constructor(name,color,shirt,x,y){
-    this.name=name;
-    this.color=color;
-    this.shirt=shirt;
-    this.x=x;
-    this.y=y;
-    this.target={...presets.dead};
-    this.state={...this.target};
-  }
-  setEmotion(e){Object.assign(this.target,presets[e]);}
-  update(){
-    for(let k in this.state){
-      this.state[k]+= (this.target[k]-this.state[k])*0.18;
+/* =========================
+   SCENE SYSTEM (21 A)
+========================= */
+function createScene(config){
+  return {
+    id: config.id,
+    width: config.width,
+    height: config.height,
+    groundY: config.groundY,
+    background: config.background,
+    objects: [],
+    characters: [],
+    camera: {
+      x: 0,
+      y: 0,
+      zoom: 1
     }
-  }
-  draw(){
-    drawStick(this);
-  }
+  };
 }
 
-// ===== CHARACTERS (MISOL) =====
-const chars=[
-  new Character("ALI","#ff4444",true,80,260),
-  new Character("BEX","#44ff88",false,180,260),
-  new Character("MAX","#4488ff",true,280,260)
-];
-
-// ===== UI =====
-function setAll(e){chars.forEach(c=>c.setEmotion(e));}
-
-// ===== DRAW =====
-function jitter(v,a){return v+(Math.random()-0.5)*a}
-
-function line(x1,y1,x2,y2){
-  ctx.beginPath();
-  ctx.moveTo(jitter(x1,0.5),jitter(y1,0.5));
-  ctx.lineTo(jitter(x2,0.5),jitter(y2,0.5));
-  ctx.stroke();
-}
-
-function circle(x,y,r){
-  ctx.beginPath();
-  ctx.arc(jitter(x,0.4),jitter(y,0.4),r,0,Math.PI*2);
-  ctx.stroke();
-}
-
-function arm(x,y,dir,lift){
-  const ex=x+dir*model.armU;
-  const ey=y+lift;
-  const hx=ex+dir*model.armL;
-  const hy=ey+lift*0.7;
-  line(x,y,ex,ey);
-  line(ex,ey,hx,hy);
-}
-
-function drawStick(ch){
-  const s=ch.state;
-  ctx.strokeStyle=ch.color;
-  ctx.lineCap="round";
-  ctx.lineWidth=2+jitter(0.5,0.6);
-
-  const wob=Math.sin(t*0.12)*1.2;
-
-  // body
-  line(ch.x,ch.y,ch.x,ch.y+model.body);
-
-  // shirt
-  if(ch.shirt){
-    line(ch.x-8,ch.y+10,ch.x+8,ch.y+10);
-  }
-
-  // legs
-  line(ch.x,ch.y+model.body,ch.x-12,ch.y+model.body+model.leg);
-  line(ch.x,ch.y+model.body,ch.x+12,ch.y+model.body+model.leg);
-
-  // arms
-  const lift=-s.armLift*25+wob;
-  arm(ch.x-2,ch.y+5,-1,lift);
-  arm(ch.x+2,ch.y+5, 1,lift);
-
-  // head
+/* =========================
+   DRAW SCENE
+========================= */
+function drawScene(scene){
   ctx.save();
-  ctx.translate(ch.x,ch.y-model.headR);
-  ctx.scale(1,1+s.headSquash);
-  circle(0,0,model.headR);
+
+  // Background
+  ctx.fillStyle = scene.background;
+  ctx.fillRect(0, 0, scene.width, scene.height);
+
+  // Ground line
+  ctx.strokeStyle = "#888";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, scene.groundY);
+  ctx.lineTo(scene.width, scene.groundY);
+  ctx.stroke();
+
   ctx.restore();
-
-  // face
-  const hx=ch.x;
-  const hy=ch.y-model.headR;
-
-  ctx.beginPath();
-  ctx.ellipse(hx-5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
-  ctx.ellipse(hx+5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
-  ctx.stroke();
-
-  line(hx-10,hy-7-s.brow*5,hx-2,hy-5-s.brow*5);
-  line(hx+2,hy-5-s.brow*5,hx+10,hy-7-s.brow*5);
-
-  ctx.beginPath();
-  ctx.arc(hx,hy+6,5,0,Math.PI*Math.min(s.mouthOpen,1.8));
-  ctx.stroke();
 }
 
-// ===== LOOP =====
+/* =========================
+   MAIN SCENE
+========================= */
+const mainScene = createScene({
+  id: "street_scene",
+  width: 1080,
+  height: 1920,
+  groundY: 1450,
+  background: "#e6f4ff"
+});
+
+/* =========================
+   LOOP
+========================= */
 function loop(){
-  ctx.clearRect(0,0,c.width,c.height);
-  chars.forEach(c=>{c.update();c.draw();});
-  t++;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawScene(mainScene);
   requestAnimationFrame(loop);
 }
+
 loop();
 </script>
+
 </body>
 </html>
