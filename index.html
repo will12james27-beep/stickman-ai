@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v9.4.1 – IK Legs + Arms</title>
+<title>Stickman AI v9.5.0 – Full IK Body</title>
 <style>
 body{
   margin:0;
@@ -34,17 +34,17 @@ let playing=false;
 let t=0;
 
 /* =====================
-   STICKMAN
+   STICKMAN DATA
 ===================== */
 const stickman={
   x:300,
   y:260,
   leg:{ upper:45, lower:45 },
-  arm:{ len:55 }
+  arm:{ upper:40, lower:35 }
 };
 
 /* =====================
-   IK SOLVER (2 BONE)
+   GENERIC 2-BONE IK
 ===================== */
 function solveIK(base, target, l1, l2, flip){
   const dx=target.x-base.x;
@@ -57,16 +57,16 @@ function solveIK(base, target, l1, l2, flip){
   const angle1=b+(flip?-a:a);
 
   return {
-    knee:{
+    joint:{
       x:base.x+Math.cos(angle1)*l1,
       y:base.y+Math.sin(angle1)*l1
     },
-    foot:target
+    end:target
   };
 }
 
 /* =====================
-   DEMO WALK
+   DEMO MOTION
 ===================== */
 function update(dt){
   t+=dt*0.005;
@@ -92,32 +92,44 @@ function draw(){
   ctx.strokeStyle="#000";
 
   const hip={x:stickman.x,y:stickman.y};
+  const shoulder={x:stickman.x,y:stickman.y-40};
 
-  // FOOT TARGETS
   const s=Math.sin(t);
+
+  /* ===== FOOT TARGETS ===== */
   const Lfoot={x:hip.x-20+s*20, y:hip.y+140+Math.max(0,s)*-30};
   const Rfoot={x:hip.x+20-s*20, y:hip.y+140+Math.max(0,-s)*-30};
 
-  // IK
-  const L=solveIK(hip,Lfoot,stickman.leg.upper,stickman.leg.lower,false);
-  const R=solveIK(hip,Rfoot,stickman.leg.upper,stickman.leg.lower,true);
+  /* ===== HAND TARGETS ===== */
+  const Lhand={x:shoulder.x-60-s*25, y:shoulder.y+20+Math.abs(s)*10};
+  const Rhand={x:shoulder.x+60+s*25, y:shoulder.y+20+Math.abs(s)*10};
 
-  // BODY
-  line(hip.x,hip.y-60,hip.x,hip.y);
+  /* ===== IK SOLVE ===== */
+  const Lleg=solveIK(hip,Lfoot,stickman.leg.upper,stickman.leg.lower,false);
+  const Rleg=solveIK(hip,Rfoot,stickman.leg.upper,stickman.leg.lower,true);
+
+  const Larm=solveIK(shoulder,Lhand,stickman.arm.upper,stickman.arm.lower,false);
+  const Rarm=solveIK(shoulder,Rhand,stickman.arm.upper,stickman.arm.lower,true);
+
+  /* ===== BODY ===== */
+  line(shoulder.x,shoulder.y-50,shoulder.x,hip.y);
   ctx.beginPath();
-  ctx.arc(hip.x,hip.y-90,22,0,Math.PI*2);
+  ctx.arc(shoulder.x,shoulder.y-80,22,0,Math.PI*2);
   ctx.stroke();
 
-  // ARMS (simple)
-  line(hip.x,hip.y-40,hip.x-35,hip.y-10);
-  line(hip.x,hip.y-40,hip.x+35,hip.y-10);
+  /* ===== ARMS ===== */
+  line(shoulder.x,shoulder.y,Larm.joint.x,Larm.joint.y);
+  line(Larm.joint.x,Larm.joint.y,Larm.end.x,Larm.end.y);
 
-  // LEGS
-  line(hip.x,hip.y,L.knee.x,L.knee.y);
-  line(L.knee.x,L.knee.y,L.foot.x,L.foot.y);
+  line(shoulder.x,shoulder.y,Rarm.joint.x,Rarm.joint.y);
+  line(Rarm.joint.x,Rarm.joint.y,Rarm.end.x,Rarm.end.y);
 
-  line(hip.x,hip.y,R.knee.x,R.knee.y);
-  line(R.knee.x,R.knee.y,R.foot.x,R.foot.y);
+  /* ===== LEGS ===== */
+  line(hip.x,hip.y,Lleg.joint.x,Lleg.joint.y);
+  line(Lleg.joint.x,Lleg.joint.y,Lleg.end.x,Lleg.end.y);
+
+  line(hip.x,hip.y,Rleg.joint.x,Rleg.joint.y);
+  line(Rleg.joint.x,Rleg.joint.y,Rleg.end.x,Rleg.end.y);
 }
 
 /* =====================
