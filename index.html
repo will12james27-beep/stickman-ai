@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI – 21 C.1 FIX</title>
+<title>TEST – JS + CANVAS</title>
 <style>
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background: #222;
+  background: black;
 }
 canvas {
   display: block;
@@ -21,128 +21,27 @@ canvas {
 <canvas id="c"></canvas>
 
 <script>
-// =========================
-// SAFE CANVAS INIT
-// =========================
+// ====== ABSOLUT TEST ======
+alert("JS ISHLAYAPTI");
+
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-function resize() {
-  canvas.width = window.innerWidth || 800;
-  canvas.height = window.innerHeight || 600;
-}
-resize();
-window.addEventListener("resize", resize);
+canvas.width = 400;
+canvas.height = 400;
 
-// =========================
-// SCENE
-// =========================
-const scene = {
-  width: 3000,
-  height: 1500,
-  groundY: 900
-};
+// fon
+ctx.fillStyle = "white";
+ctx.fillRect(0, 0, 400, 400);
 
-// =========================
-// CAMERA (SAFE)
-// =========================
-const camera = {
-  x: 0,
-  y: 0,
-  zoom: 1
-};
+// qizil kvadrat
+ctx.fillStyle = "red";
+ctx.fillRect(100, 100, 200, 200);
 
-function camX(x) {
-  return (x - camera.x) * camera.zoom;
-}
-function camY(y) {
-  return (y - camera.y) * camera.zoom;
-}
-
-// =========================
-// STICKMAN
-// =========================
-const stickman = {
-  x: 400,
-  y: scene.groundY - 120,
-  head: 18,
-  body: 50,
-  arm: 40,
-  leg: 45
-};
-
-// =========================
-// DRAW FUNCTIONS
-// =========================
-function drawBackground() {
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawGround() {
-  ctx.strokeStyle = "#aaa";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(camX(0), camY(scene.groundY));
-  ctx.lineTo(camX(scene.width), camY(scene.groundY));
-  ctx.stroke();
-}
-
-function drawStickman(p) {
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 4;
-  ctx.lineCap = "round";
-
-  const hx = p.x;
-  const hy = p.y;
-
-  // head
-  ctx.beginPath();
-  ctx.arc(camX(hx), camY(hy), p.head, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // body
-  ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(hy + p.head));
-  ctx.lineTo(camX(hx), camY(hy + p.head + p.body));
-  ctx.stroke();
-
-  const by = hy + p.head + p.body;
-
-  // arms
-  ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(hy + 25));
-  ctx.lineTo(camX(hx - p.arm), camY(hy + 40));
-  ctx.moveTo(camX(hx), camY(hy + 25));
-  ctx.lineTo(camX(hx + p.arm), camY(hy + 40));
-  ctx.stroke();
-
-  // legs
-  ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(by));
-  ctx.lineTo(camX(hx - p.leg), camY(by + p.leg));
-  ctx.moveTo(camX(hx), camY(by));
-  ctx.lineTo(camX(hx + p.leg), camY(by + p.leg));
-  ctx.stroke();
-}
-
-// =========================
-// MAIN LOOP
-// =========================
-function loop() {
-  drawBackground();
-
-  // DEBUG MARKER (agar buni ko‘rsang – canvas ishlayapti)
-  ctx.fillStyle = "red";
-  ctx.fillRect(10, 10, 10, 10);
-
-  drawGround();
-  drawStickman(stickman);
-
-  requestAnimationFrame(loop);
-}
-
-loop();
+// yozuv
+ctx.fillStyle = "black";
+ctx.font = "20px Arial";
+ctx.fillText("CANVAS ISHLAYAPTI", 90, 50);
 </script>
 
 </body>
