@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.4</title>
+<title>Stickman AI — Scene System 21 C.5</title>
 <style>
 html, body {
   margin: 0;
@@ -68,74 +68,115 @@ const camera = {
   zoom: 1,
   targetZoom: 1,
   followSmooth: 0.08,
-  zoomSmooth: 0.1
+  zoomSmooth: 0.12,
+
+  shakeX: 0,
+  shakeY: 0,
+  shakePower: 0
 };
 
 // =========================
 // CAMERA HELPERS
 // =========================
 function camX(x) {
-  return (x - camera.x) * camera.zoom;
+  return (x - camera.x) * camera.zoom + camera.shakeX;
 }
 function camY(y) {
-  return (y - camera.y) * camera.zoom;
+  return (y - camera.y) * camera.zoom + camera.shakeY;
 }
 
 // =========================
 // CAMERA UPDATE
 // =========================
 function updateCamera() {
-  const targetX = stickman.x - canvas.width / (2 * camera.zoom);
-  const targetY = stickman.y - canvas.height / (2 * camera.zoom);
+  const tx = stickman.x - canvas.width / (2 * camera.zoom);
+  const ty = stickman.y - canvas.height / (2 * camera.zoom);
 
-  camera.x += (targetX - camera.x) * camera.followSmooth;
-  camera.y += (targetY - camera.y) * camera.followSmooth;
+  camera.x += (tx - camera.x) * camera.followSmooth;
+  camera.y += (ty - camera.y) * camera.followSmooth;
   camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomSmooth;
+
+  updateShake();
 }
 
 // =========================
-// INPUT (EVENTS)
+// SHAKE SYSTEM
+// =========================
+function updateShake() {
+  if (camera.shakePower > 0) {
+    camera.shakeX = (Math.random() - 0.5) * camera.shakePower;
+    camera.shakeY = (Math.random() - 0.5) * camera.shakePower;
+    camera.shakePower *= 0.85;
+  } else {
+    camera.shakeX = 0;
+    camera.shakeY = 0;
+  }
+}
+
+// =========================
+// EMOTION SYSTEM
+// =========================
+function cameraEmotion(type) {
+  switch (type) {
+    case "shock":
+      camera.targetZoom = 1.8;
+      camera.shakePower = 20;
+      zoomRelease(18);
+      break;
+
+    case "fear":
+      camera.targetZoom = 0.75;
+      camera.shakePower = 8;
+      zoomRelease(30);
+      break;
+
+    case "anger":
+      camera.targetZoom = 1.5;
+      camera.shakePower = 14;
+      zoomRelease(20);
+      break;
+
+    case "focus":
+      camera.targetZoom = 2.2;
+      camera.shakePower = 0;
+      zoomRelease(25);
+      break;
+  }
+}
+
+// =========================
+// INPUT
 // =========================
 document.addEventListener("keydown", e => {
   if (e.code === "Space" && stickman.onGround) {
     stickman.vy = -16;
     stickman.onGround = false;
-
-    // EVENT: JUMP ZOOM
-    camera.targetZoom = 1.5;
-    zoomRelease(15);
+    cameraEmotion("shock");
   }
 
-  if (e.code === "KeyZ") {
-    camera.targetZoom = 1.8; // MANUAL PUNCH
-    zoomRelease(20);
-  }
-
-  if (e.code === "KeyX") {
-    camera.targetZoom = 0.8; // DRAMATIC ZOOM OUT
-    zoomRelease(30);
-  }
+  if (e.code === "Digit1") cameraEmotion("shock");
+  if (e.code === "Digit2") cameraEmotion("fear");
+  if (e.code === "Digit3") cameraEmotion("anger");
+  if (e.code === "Digit4") cameraEmotion("focus");
 });
 
-// mouse click = reaction zoom
 canvas.addEventListener("mousedown", () => {
-  camera.targetZoom = 1.6;
-  zoomRelease(12);
+  cameraEmotion("anger");
 });
 
 // =========================
-// ZOOM RELEASE SYSTEM
+// ZOOM RESET
 // =========================
-let zoomBackTimer = 0;
+let zoomTimer = 0;
 
 function zoomRelease(frames) {
-  zoomBackTimer = frames;
+  zoomTimer = frames;
 }
 
 function updateZoomRelease() {
-  if (zoomBackTimer > 0) {
-    zoomBackTimer--;
-    if (zoomBackTimer === 0) {
+  if (zoomTimer > 0) {
+    zoomTimer--;
+    if (zoomTimer === 0) {
       camera.targetZoom = 1;
     }
   }
@@ -147,7 +188,7 @@ function updateZoomRelease() {
 function updateStickman() {
   stickman.x += stickman.vx;
 
-  stickman.vy += 0.8; // gravity
+  stickman.vy += 0.8;
   stickman.y += stickman.vy;
 
   if (stickman.y >= scene.groundY - 120) {
@@ -217,7 +258,7 @@ function drawStickman(p) {
 }
 
 // =========================
-// MAIN LOOP
+// LOOP
 // =========================
 function loop() {
   updateStickman();
