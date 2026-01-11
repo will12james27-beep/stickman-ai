@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v9.4.0 – Leg IK</title>
+<title>Stickman AI v9.4.1 – IK Legs + Arms</title>
 <style>
 body{
   margin:0;
@@ -16,8 +16,6 @@ canvas{background:#fff;}
 button{
   position:fixed;
   bottom:20px;
-  left:50%;
-  transform:translateX(-50%);
   padding:6px 14px;
 }
 </style>
@@ -36,65 +34,46 @@ let playing=false;
 let t=0;
 
 /* =====================
-   STICKMAN STRUCTURE
+   STICKMAN
 ===================== */
 const stickman={
   x:300,
   y:260,
-  hipY:260,
-  leg:{
-    upper:45,
-    lower:45
-  },
-  feet:{
-    left:{x:-18,y:140},
-    right:{x:18,y:140}
-  }
+  leg:{ upper:45, lower:45 },
+  arm:{ len:55 }
 };
 
 /* =====================
-   IK SOLVER (2-BONE)
+   IK SOLVER (2 BONE)
 ===================== */
-function solveIK(base, target, l1, l2, flip=false){
+function solveIK(base, target, l1, l2, flip){
   const dx=target.x-base.x;
   const dy=target.y-base.y;
   let d=Math.hypot(dx,dy);
   d=Math.min(d,l1+l2-0.001);
 
-  const a1=Math.acos(
-    (l1*l1 + d*d - l2*l2)/(2*l1*d)
-  );
-  const a2=Math.atan2(dy,dx);
-  const angle1=a2 + (flip?-a1:a1);
-  const angle2=Math.acos(
-    (l1*l1 + l2*l2 - d*d)/(2*l1*l2)
-  );
+  const a=Math.acos((l1*l1+d*d-l2*l2)/(2*l1*d));
+  const b=Math.atan2(dy,dx);
+  const angle1=b+(flip?-a:a);
 
   return {
     knee:{
-      x:base.x + Math.cos(angle1)*l1,
-      y:base.y + Math.sin(angle1)*l1
+      x:base.x+Math.cos(angle1)*l1,
+      y:base.y+Math.sin(angle1)*l1
     },
     foot:target
   };
 }
 
 /* =====================
-   DEMO WALK (FOOT TARGETS)
+   DEMO WALK
 ===================== */
-function updateFeet(dt){
+function update(dt){
   t+=dt*0.005;
-  const s=Math.sin(t);
-
-  stickman.feet.left.y = 140 + Math.max(0,s)*-30;
-  stickman.feet.right.y = 140 + Math.max(0,-s)*-30;
-
-  stickman.feet.left.x = -20 + s*20;
-  stickman.feet.right.x = 20 - s*20;
 }
 
 /* =====================
-   DRAW
+   DRAW HELPERS
 ===================== */
 function line(x1,y1,x2,y2){
   ctx.beginPath();
@@ -103,6 +82,9 @@ function line(x1,y1,x2,y2){
   ctx.stroke();
 }
 
+/* =====================
+   DRAW
+===================== */
 function draw(){
   ctx.clearRect(0,0,600,600);
   ctx.lineWidth=6;
@@ -111,33 +93,29 @@ function draw(){
 
   const hip={x:stickman.x,y:stickman.y};
 
-  // solve IK
-  const L=solveIK(
-    hip,
-    {x:stickman.x+stickman.feet.left.x,y:stickman.y+stickman.feet.left.y},
-    stickman.leg.upper,
-    stickman.leg.lower,
-    false
-  );
-  const R=solveIK(
-    hip,
-    {x:stickman.x+stickman.feet.right.x,y:stickman.y+stickman.feet.right.y},
-    stickman.leg.upper,
-    stickman.leg.lower,
-    true
-  );
+  // FOOT TARGETS
+  const s=Math.sin(t);
+  const Lfoot={x:hip.x-20+s*20, y:hip.y+140+Math.max(0,s)*-30};
+  const Rfoot={x:hip.x+20-s*20, y:hip.y+140+Math.max(0,-s)*-30};
 
-  // body
+  // IK
+  const L=solveIK(hip,Lfoot,stickman.leg.upper,stickman.leg.lower,false);
+  const R=solveIK(hip,Rfoot,stickman.leg.upper,stickman.leg.lower,true);
+
+  // BODY
   line(hip.x,hip.y-60,hip.x,hip.y);
   ctx.beginPath();
   ctx.arc(hip.x,hip.y-90,22,0,Math.PI*2);
   ctx.stroke();
 
-  // left leg
+  // ARMS (simple)
+  line(hip.x,hip.y-40,hip.x-35,hip.y-10);
+  line(hip.x,hip.y-40,hip.x+35,hip.y-10);
+
+  // LEGS
   line(hip.x,hip.y,L.knee.x,L.knee.y);
   line(L.knee.x,L.knee.y,L.foot.x,L.foot.y);
 
-  // right leg
   line(hip.x,hip.y,R.knee.x,R.knee.y);
   line(R.knee.x,R.knee.y,R.foot.x,R.foot.y);
 }
@@ -148,15 +126,12 @@ function draw(){
 let last=0;
 function loop(ts){
   const dt=ts-last; last=ts;
-  if(playing) updateFeet(dt);
+  if(playing) update(dt);
   draw();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
-/* =====================
-   CONTROL
-===================== */
 playBtn.onclick=()=>playing=!playing;
 </script>
 
