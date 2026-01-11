@@ -1,206 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Stickman v15-A – Keyframe Editor</title>
+<meta charset="UTF-8" />
+<title>Stickman v17-A — Face System</title>
 <style>
- html,body{margin:0;background:#111;color:#fff;font-family:sans-serif}
- canvas{display:block;margin:auto;background:#1a1a1a}
- #ui{
-  position:fixed;bottom:10px;left:50%;
-  transform:translateX(-50%);
-  display:flex;gap:6px;align-items:center
- }
- button{
-  background:#222;color:#fff;
-  border:1px solid #444;
-  padding:6px 10px;cursor:pointer
- }
- input[type=range]{width:200px}
+  body {
+    margin: 0;
+    background: #111;
+    color: #fff;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  canvas {
+    background: #181818;
+    margin-top: 10px;
+  }
+  .ui {
+    margin: 10px;
+    display: flex;
+    gap: 6px;
+  }
+  button {
+    padding: 6px 10px;
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    cursor: pointer;
+  }
+  button:hover { background:#333; }
 </style>
 </head>
 <body>
 
-<canvas id="c" width="800" height="400"></canvas>
+<canvas id="c" width="360" height="540"></canvas>
 
-<div id="ui">
- <button onclick="addKey()">➕ KEY</button>
- <button onclick="delKey()">🗑 DEL</button>
- <button onclick="play()">▶ PLAY</button>
- <button onclick="stop()">■ STOP</button>
- <input id="slider" type="range" min="0" max="120" value="0">
+<div class="ui">
+  <button onclick="setEmotion('neutral')">😐</button>
+  <button onclick="setEmotion('happy')">🙂</button>
+  <button onclick="setEmotion('surprised')">😮</button>
+  <button onclick="addKey()">ADD KEY</button>
+  <button onclick="play()">▶ PLAY</button>
+  <button onclick="stop()">■ STOP</button>
 </div>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
-const slider=document.getElementById("slider");
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
 
-const groundY=300;
-const hip={x:400,y:groundY-100};
-const L1=35,L2=35;
+let frame = 0;
+let playing = false;
 
-// ---------- STATE ----------
-let targets={
- legL:{x:370,y:groundY},
- legR:{x:430,y:groundY},
- armL:{x:360,y:groundY-90},
- armR:{x:440,y:groundY-90}
+// ===== TIMELINE =====
+const timeline = [];
+
+// ===== STICKMAN BASE =====
+const stick = {
+  x: 180,
+  y: 260,
+  headR: 16,
+  body: 40,
+  leg: 35,
 };
 
-let keyframes=[]; // {t, pose}
-let selectedKey=-1;
-let playing=false;
-let time=0;
+// ===== FACE STATE =====
+let face = {
+  eyeOpen: 1,
+  mouthOpen: 0
+};
 
-// ---------- IK ----------
-function ik2(bx,by,tx,ty,l1,l2,flip){
- const dx=tx-bx, dy=ty-by;
- const d=Math.hypot(dx,dy);
- const a=Math.min(Math.max(d,1),l1+l2-0.001);
- const cos2=(a*a-l1*l1-l2*l2)/(-2*l1*l2);
- const ang2=Math.acos(cos2)*(flip?-1:1);
- const ang1=Math.atan2(dy,dx)-Math.atan2(l2*Math.sin(ang2),l1+l2*Math.cos(ang2));
- return{
-  mx:bx+Math.cos(ang1)*l1,
-  my:by+Math.sin(ang1)*l1,
-  tx,ty
- };
+const emotions = {
+  neutral: { eyeOpen:1, mouthOpen:0 },
+  happy: { eyeOpen:0.8, mouthOpen:0.4 },
+  surprised: { eyeOpen:1.2, mouthOpen:1 }
+};
+
+function setEmotion(name){
+  face.eyeOpen = emotions[name].eyeOpen;
+  face.mouthOpen = emotions[name].mouthOpen;
 }
 
-// ---------- DRAW ----------
-function line(x1,y1,x2,y2){
- ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-}
-function dot(x,y,color="#f55"){
- ctx.fillStyle=color;
- ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();
-}
-
-function drawLimb(base,tar,flip,handle=true){
- const p=ik2(base.x,base.y,tar.x,tar.y,L1,L2,flip);
- line(base.x,base.y,p.mx,p.my);
- line(p.mx,p.my,p.tx,p.ty);
- if(handle) dot(p.tx,p.ty);
-}
-
-// ---------- KEYFRAME OPS ----------
+// ===== KEYFRAME =====
 function addKey(){
- const t=parseInt(slider.value);
- const idx=keyframes.findIndex(k=>k.t===t);
- if(idx>=0){
-  keyframes[idx].pose=JSON.parse(JSON.stringify(targets));
-  selectedKey=idx;
- }else{
-  keyframes.push({t,pose:JSON.parse(JSON.stringify(targets))});
-  keyframes.sort((a,b)=>a.t-b.t);
-  selectedKey=keyframes.findIndex(k=>k.t===t);
- }
+  timeline.push({
+    frame,
+    face: {...face}
+  });
 }
 
-function delKey(){
- if(selectedKey<0) return;
- keyframes.splice(selectedKey,1);
- selectedKey=-1;
+// ===== PLAYBACK =====
+function play(){
+  if(timeline.length < 2) return;
+  playing = true;
 }
 
-function getKeyAtTime(t){
- return keyframes.findIndex(k=>k.t===t);
+function stop(){
+  playing = false;
 }
 
-function interpolatePose(t){
- if(keyframes.length===0) return;
+// ===== INTERPOLATION =====
+function lerp(a,b,t){ return a + (b-a)*t; }
 
- let a=keyframes[0],b=keyframes[keyframes.length-1];
- for(let i=0;i<keyframes.length-1;i++){
-  if(t>=keyframes[i].t && t<=keyframes[i+1].t){
-   a=keyframes[i];
-   b=keyframes[i+1];
-   break;
+function applyTimeline(){
+  if(timeline.length < 2) return;
+
+  let a = timeline[0];
+  let b = timeline[timeline.length-1];
+
+  const t = (frame % 60) / 60;
+
+  face.eyeOpen = lerp(a.face.eyeOpen, b.face.eyeOpen, t);
+  face.mouthOpen = lerp(a.face.mouthOpen, b.face.mouthOpen, t);
+}
+
+// ===== DRAW =====
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // ground
+  ctx.strokeStyle="#333";
+  ctx.beginPath();
+  ctx.moveTo(0,320);
+  ctx.lineTo(360,320);
+  ctx.stroke();
+
+  ctx.strokeStyle="#fff";
+  ctx.lineWidth=2;
+
+  // body
+  ctx.beginPath();
+  ctx.moveTo(stick.x, stick.y);
+  ctx.lineTo(stick.x, stick.y+stick.body);
+  ctx.stroke();
+
+  // legs
+  ctx.beginPath();
+  ctx.moveTo(stick.x, stick.y+stick.body);
+  ctx.lineTo(stick.x-15, stick.y+stick.body+stick.leg);
+  ctx.moveTo(stick.x, stick.y+stick.body);
+  ctx.lineTo(stick.x+15, stick.y+stick.body+stick.leg);
+  ctx.stroke();
+
+  // head
+  ctx.beginPath();
+  ctx.arc(stick.x, stick.y-stick.headR, stick.headR,0,Math.PI*2);
+  ctx.stroke();
+
+  // ===== FACE =====
+  const hx = stick.x;
+  const hy = stick.y-stick.headR;
+
+  // eyes
+  ctx.beginPath();
+  ctx.arc(hx-6, hy-3, 3*face.eyeOpen,0,Math.PI*2);
+  ctx.arc(hx+6, hy-3, 3*face.eyeOpen,0,Math.PI*2);
+  ctx.stroke();
+
+  // mouth
+  ctx.beginPath();
+  ctx.arc(hx, hy+6, 5, 0, Math.PI*face.mouthOpen);
+  ctx.stroke();
+}
+
+// ===== LOOP =====
+function loop(){
+  if(playing){
+    frame++;
+    applyTimeline();
   }
- }
- const f=(t-a.t)/(b.t-a.t||1);
- for(const k in targets){
-  targets[k].x=a.pose[k].x+(b.pose[k].x-a.pose[k].x)*f;
-  targets[k].y=a.pose[k].y+(b.pose[k].y-a.pose[k].y)*f;
- }
+  draw();
+  requestAnimationFrame(loop);
 }
 
-// ---------- PLAY ----------
-function play(){ playing=true; time=0; }
-function stop(){ playing=false; }
-
-// ---------- UPDATE ----------
-function update(){
- ctx.clearRect(0,0,c.width,c.height);
-
- // ground
- ctx.strokeStyle="#444";
- line(0,groundY,c.width,groundY);
-
- const keyIdx=getKeyAtTime(parseInt(slider.value));
- selectedKey=keyIdx;
-
- if(playing){
-  interpolatePose(time);
-  slider.value=time;
-  time++;
-  if(time>slider.max) playing=false;
- }else{
-  interpolatePose(parseInt(slider.value));
- }
-
- ctx.strokeStyle="#fff";
- ctx.lineWidth=3;
-
- // head
- ctx.beginPath();
- ctx.arc(hip.x,hip.y-40,12,0,Math.PI*2);
- ctx.stroke();
-
- // body
- line(hip.x,hip.y-25,hip.x,hip.y+25);
-
- // legs
- drawLimb({x:hip.x,y:hip.y+25},targets.legL,true,false);
- drawLimb({x:hip.x,y:hip.y+25},targets.legR,false,false);
-
- // arms
- drawLimb({x:hip.x,y:hip.y-15},targets.armL,true);
- drawLimb({x:hip.x,y:hip.y-15},targets.armR,false);
-
- // timeline key indicators
- keyframes.forEach(k=>{
-  const x=50+(k.t/slider.max)*(c.width-100);
-  dot(x,groundY+25, k===keyframes[selectedKey]?"#0f0":"#888");
- });
-
- requestAnimationFrame(update);
-}
-
-// ---------- MOUSE POSE ----------
-let drag=null;
-c.addEventListener("mousedown",e=>{
- const r=c.getBoundingClientRect();
- const mx=e.clientX-r.left;
- const my=e.clientY-r.top;
- for(const k in targets){
-  if(Math.hypot(mx-targets[k].x,my-targets[k].y)<8){
-   drag=targets[k];
-   break;
-  }
- }
-});
-c.addEventListener("mousemove",e=>{
- if(!drag)return;
- const r=c.getBoundingClientRect();
- drag.x=e.clientX-r.left;
- drag.y=e.clientY-r.top;
-});
-c.addEventListener("mouseup",()=>drag=null);
-c.addEventListener("mouseleave",()=>drag=null);
-
-update();
+loop();
 </script>
 </body>
 </html>
