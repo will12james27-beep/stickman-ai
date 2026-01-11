@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>21 C.32 Focus Lock & Handoff</title>
+<title>21 C.33 Scene Entry Exit</title>
 <style>
 body{margin:0;background:#111;}
 canvas{display:block;margin:auto;background:#fff;}
@@ -18,136 +18,69 @@ const ctx=c.getContext("2d");
 function lerp(a,b,t){return a+(b-a)*t}
 
 /* ======================
-   EMOTION WEIGHT
-====================== */
-const emoWeight={neutral:0,confused:1,shocked:2,angry:3};
-
-/* ======================
-   CHARACTER
+   CHAR
 ====================== */
 function Char(x){
- return{
-  x,y:260,
-  emo:"neutral",
-  talking:0,
-  interrupting:0,
-  lastSpoke:0,
-  cameraPriority:1,
-  face:{eye:1,brow:0,mouth:0}
- }
+ return{ x,y:260,active:false }
 }
-const chars=[new Char(180),new Char(360),new Char(540)];
+const chars=[
+ new Char(180),
+ new Char(360),
+ new Char(540)
+];
 
 /* ======================
    CAMERA
 ====================== */
-const cam={
- x:0,zoom:1,
- focus:null,
- lock:0
-};
+const cam={x:0,zoom:1};
 
 /* ======================
-   EVENTS (demo)
+   SCENE SCRIPT
 ====================== */
-let time=0;
-const events=[
- {t:20,c:0,emo:"confused",talk:1},
- {t:60,c:1,emo:"shocked",interrupt:1},
- {t:100,c:2,emo:"angry",interrupt:1},
- {t:160,c:1,emo:"angry",talk:1}
+let t=0;
+const script=[
+ {t:20,type:"enter",c:0},
+ {t:40,type:"enter",c:1},
+ {t:60,type:"enter",c:2},
+ {t:140,type:"exit", c:1}
 ];
-
-/* ======================
-   SCORE
-====================== */
-function score(c){
- const recency=Math.max(0,120-(time-c.lastSpoke))/120;
- return (
-  c.talking*3 +
-  c.interrupting*2.5 +
-  emoWeight[c.emo]*2 +
-  c.cameraPriority*1.5 +
-  recency
- );
-}
-
-/* ======================
-   SELECT WITH LOCK
-====================== */
-function selectFocus(){
- let best=null,bestScore=-1;
- chars.forEach(c=>{
-  const s=score(c);
-  if(s>bestScore){bestScore=s;best=c;}
- });
-
- if(!cam.focus){
-  cam.focus=best;
-  cam.lock=40;
-  return;
- }
-
- const currentScore=score(cam.focus);
-
- // lock active
- if(cam.lock>0){
-  cam.lock--;
-  if(bestScore-currentScore>2.5){
-   cam.focus=best;
-   cam.lock=40;
-  }
- }else{
-  if(bestScore-currentScore>1){
-   cam.focus=best;
-   cam.lock=40;
-  }
- }
-}
-
-/* ======================
-   DRAW
-====================== */
-function drawChar(c){
- ctx.beginPath();
- ctx.arc(c.x,c.y-40,28,0,6.3);ctx.stroke();
- ctx.beginPath();
- ctx.moveTo(c.x,c.y-10);
- ctx.lineTo(c.x,c.y+90);ctx.stroke();
-}
 
 /* ======================
    LOOP
 ====================== */
 function loop(){
  ctx.clearRect(0,0,c.width,c.height);
- time++;
+ t++;
 
- chars.forEach(c=>{
-  c.talking*=0.9;
-  c.interrupting*=0.9;
- });
-
- events.forEach(e=>{
-  if(e.t===time){
-   const ch=chars[e.c];
-   ch.emo=e.emo;
-   ch.lastSpoke=time;
-   if(e.talk) ch.talking=1;
-   if(e.interrupt) ch.interrupting=1;
+ script.forEach(s=>{
+  if(s.t===t){
+   if(s.type==="enter") chars[s.c].active=true;
+   if(s.type==="exit")  chars[s.c].active=false;
   }
  });
 
- selectFocus();
-
- cam.x=lerp(cam.x,cam.focus.x-c.width/2,0.08);
- cam.zoom=lerp(cam.zoom,1+emoWeight[cam.focus.emo]*0.05,0.05);
+ const active=chars.filter(c=>c.active);
+ if(active.length){
+  const min=Math.min(...active.map(c=>c.x));
+  const max=Math.max(...active.map(c=>c.x));
+  cam.x=lerp(cam.x,(min+max)/2-c.width/2,0.08);
+  cam.zoom=lerp(cam.zoom,1-0.05*(active.length-1),0.05);
+ }
 
  ctx.save();
  ctx.translate(-cam.x,0);
- chars.forEach(drawChar);
- ctx.restore();
+ ctx.scale(cam.zoom,cam.zoom);
 
+ chars.forEach(c=>{
+  if(!c.active) return;
+  ctx.beginPath();
+  ctx.arc(c.x,c.y-40,28,0,6.3);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(c.x,c.y-10);
+  ctx.lineTo(c.x,c.y+90);ctx.stroke();
+ });
+
+ ctx.restore();
  requestAnimationFrame(loop);
 }
 loop();
