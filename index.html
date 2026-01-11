@@ -1,8 +1,8 @@
-21 C.8 davom et<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.7</title>
+<title>Stickman AI — Scene System 21 C.8</title>
 <style>
 html, body {
   margin: 0;
@@ -12,9 +12,7 @@ html, body {
   overflow: hidden;
   background: #000;
 }
-canvas {
-  display: block;
-}
+canvas { display:block; }
 </style>
 </head>
 <body>
@@ -28,7 +26,7 @@ canvas {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-function resize() {
+function resize(){
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
@@ -45,11 +43,20 @@ const scene = {
 };
 
 // =========================
-// TIME CONTROL
+// TIME SYSTEM
 // =========================
-let timeScale = 1;      // 1 = normal
+let timeScale = 1;
 let targetTimeScale = 1;
 let freezeFrames = 0;
+
+// speed-ramp timeline
+let rampTimer = 0;
+let rampPhase = "none"; // fast | slow | recover
+
+function startSpeedRamp(){
+  rampPhase = "fast";
+  rampTimer = 0;
+}
 
 // =========================
 // STICKMAN
@@ -86,24 +93,17 @@ const camera = {
   cutCooldown: 0
 };
 
-// =========================
-// CAMERA HELPERS
-// =========================
-function camX(x) {
-  return (x - camera.x) * camera.zoom + camera.shakeX;
-}
-function camY(y) {
-  return (y - camera.y) * camera.zoom + camera.shakeY;
-}
+function camX(x){ return (x - camera.x) * camera.zoom + camera.shakeX; }
+function camY(y){ return (y - camera.y) * camera.zoom + camera.shakeY; }
 
 // =========================
 // CAMERA UPDATE
 // =========================
-function updateCamera() {
+function updateCamera(){
   const tx = stickman.x - canvas.width / (2 * camera.zoom);
   const ty = stickman.y - canvas.height / (2 * camera.zoom);
 
-  if (camera.cutMode) {
+  if(camera.cutMode){
     camera.x = tx;
     camera.y = ty;
   } else {
@@ -117,28 +117,24 @@ function updateCamera() {
   updateCutCooldown();
 }
 
-// =========================
-// CUT
-// =========================
-function cameraCut() {
+function cameraCut(){
   camera.cutMode = true;
   camera.cutCooldown = 6;
 }
-
-function updateCutCooldown() {
-  if (camera.cutCooldown > 0) {
+function updateCutCooldown(){
+  if(camera.cutCooldown>0){
     camera.cutCooldown--;
-    if (camera.cutCooldown === 0) camera.cutMode = false;
+    if(camera.cutCooldown===0) camera.cutMode=false;
   }
 }
 
 // =========================
 // SHAKE
 // =========================
-function updateShake() {
-  if (camera.shakePower > 0) {
-    camera.shakeX = (Math.random() - 0.5) * camera.shakePower;
-    camera.shakeY = (Math.random() - 0.5) * camera.shakePower;
+function updateShake(){
+  if(camera.shakePower>0){
+    camera.shakeX = (Math.random()-0.5)*camera.shakePower;
+    camera.shakeY = (Math.random()-0.5)*camera.shakePower;
     camera.shakePower *= 0.85;
   } else {
     camera.shakeX = 0;
@@ -147,128 +143,148 @@ function updateShake() {
 }
 
 // =========================
-// IMPACT EFFECTS
+// BEAT / IMPACT
 // =========================
-function impactEffect() {
-  // frame freeze
-  freezeFrames = 3;
-
-  // slow motion
-  targetTimeScale = 0.25;
-
-  // camera
-  camera.targetZoom = 2.1;
-  camera.shakePower = 18;
+function beatImpact(){
+  freezeFrames = 2;
+  camera.targetZoom = 2.0;
+  camera.shakePower = 16;
   cameraCut();
+  startSpeedRamp();
 
-  // release
-  setTimeout(() => {
-    targetTimeScale = 1;
+  setTimeout(()=>{
     camera.targetZoom = 1;
-  }, 300);
+  },300);
+}
+
+// =========================
+// SPEED RAMP UPDATE
+// =========================
+function updateSpeedRamp(){
+  if(rampPhase==="none") return;
+
+  rampTimer++;
+
+  if(rampPhase==="fast"){
+    targetTimeScale = 1.6;
+    if(rampTimer>8){
+      rampPhase="slow";
+      rampTimer=0;
+    }
+  }
+  else if(rampPhase==="slow"){
+    targetTimeScale = 0.25;
+    if(rampTimer>12){
+      rampPhase="recover";
+      rampTimer=0;
+    }
+  }
+  else if(rampPhase==="recover"){
+    targetTimeScale = 1;
+    if(rampTimer>14){
+      rampPhase="none";
+      rampTimer=0;
+    }
+  }
 }
 
 // =========================
 // INPUT
 // =========================
-document.addEventListener("keydown", e => {
-  if (e.code === "Space" && stickman.onGround) {
+document.addEventListener("keydown", e=>{
+  if(e.code==="Space" && stickman.onGround){
     stickman.vy = -16;
     stickman.onGround = false;
-    impactEffect();
+    beatImpact();
   }
-
-  if (e.code === "Digit1") impactEffect();
+  if(e.code==="Digit1") beatImpact();
 });
-
-canvas.addEventListener("mousedown", impactEffect);
+canvas.addEventListener("mousedown", beatImpact);
 
 // =========================
 // TIME UPDATE
 // =========================
-function updateTime() {
-  timeScale += (targetTimeScale - timeScale) * 0.15;
+function updateTime(){
+  timeScale += (targetTimeScale - timeScale) * 0.18;
 }
 
 // =========================
 // PHYSICS
 // =========================
-function updateStickman() {
+function updateStickman(){
   stickman.x += stickman.vx * timeScale;
 
   stickman.vy += 0.8 * timeScale;
   stickman.y += stickman.vy * timeScale;
 
-  if (stickman.y >= scene.groundY - 120) {
+  if(stickman.y >= scene.groundY - 120){
     stickman.y = scene.groundY - 120;
     stickman.vy = 0;
     stickman.onGround = true;
   }
 
-  if (stickman.x < 300 || stickman.x > scene.width - 300) {
+  if(stickman.x < 300 || stickman.x > scene.width-300){
     stickman.vx *= -1;
-    impactEffect();
+    beatImpact();
   }
 }
 
 // =========================
 // DRAW
 // =========================
-function drawBackground() {
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+function drawBackground(){
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 }
-
-function drawGround() {
-  ctx.strokeStyle = "#999";
-  ctx.lineWidth = 2;
+function drawGround(){
+  ctx.strokeStyle="#999";
+  ctx.lineWidth=2;
   ctx.beginPath();
   ctx.moveTo(camX(0), camY(scene.groundY));
   ctx.lineTo(camX(scene.width), camY(scene.groundY));
   ctx.stroke();
 }
+function drawStickman(p){
+  ctx.strokeStyle="#000";
+  ctx.lineWidth=4;
+  ctx.lineCap="round";
 
-function drawStickman(p) {
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 4;
-  ctx.lineCap = "round";
-
-  const hx = p.x;
-  const hy = p.y;
+  const hx=p.x, hy=p.y;
 
   ctx.beginPath();
-  ctx.arc(camX(hx), camY(hy), p.head * camera.zoom, 0, Math.PI * 2);
+  ctx.arc(camX(hx), camY(hy), p.head*camera.zoom, 0, Math.PI*2);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(hy + p.head));
-  ctx.lineTo(camX(hx), camY(hy + p.head + p.body));
+  ctx.moveTo(camX(hx), camY(hy+p.head));
+  ctx.lineTo(camX(hx), camY(hy+p.head+p.body));
   ctx.stroke();
 
-  const by = hy + p.head + p.body;
+  const by=hy+p.head+p.body;
 
   ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(hy + 25));
-  ctx.lineTo(camX(hx - p.arm), camY(hy + 40));
-  ctx.moveTo(camX(hx), camY(hy + 25));
-  ctx.lineTo(camX(hx + p.arm), camY(hy + 40));
+  ctx.moveTo(camX(hx), camY(hy+25));
+  ctx.lineTo(camX(hx-p.arm), camY(hy+40));
+  ctx.moveTo(camX(hx), camY(hy+25));
+  ctx.lineTo(camX(hx+p.arm), camY(hy+40));
   ctx.stroke();
 
   ctx.beginPath();
   ctx.moveTo(camX(hx), camY(by));
-  ctx.lineTo(camX(hx - p.leg), camY(by + p.leg));
+  ctx.lineTo(camX(hx-p.leg), camY(by+p.leg));
   ctx.moveTo(camX(hx), camY(by));
-  ctx.lineTo(camX(hx + p.leg), camY(by + p.leg));
+  ctx.lineTo(camX(hx+p.leg), camY(by+p.leg));
   ctx.stroke();
 }
 
 // =========================
 // LOOP
 // =========================
-function loop() {
-  if (freezeFrames > 0) {
+function loop(){
+  if(freezeFrames>0){
     freezeFrames--;
   } else {
+    updateSpeedRamp();
     updateTime();
     updateStickman();
     updateCamera();
@@ -280,7 +296,6 @@ function loop() {
 
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 
