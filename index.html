@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.21</title>
+<title>Stickman AI — Scene System 21 C.22</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -42,7 +42,13 @@ function createChar(x,color){
     priority:0,
 
     text:null,
-    textLife:0
+    textLife:0,
+
+    // 21 C.22 NEW (micro motion)
+    idlePhase:Math.random()*Math.PI*2,
+    eyeDir:0,
+    eyeTarget:0,
+    blink:0
   };
 }
 
@@ -99,30 +105,24 @@ function updateEmoji(c){
 
 // ================= SUBTITLE =================
 const subtitle={text:"",life:0,shake:0,color:"#ffeb3b"};
-
 function showSubtitle(text,shake=4,color="#ffeb3b"){
   subtitle.text=text;
   subtitle.life=80;
   subtitle.shake=shake;
   subtitle.color=color;
 }
-function clearSubtitle(){
-  subtitle.life=0;
-}
+function clearSubtitle(){ subtitle.life=0; }
 
 function drawSubtitle(){
   if(subtitle.life<=0)return;
   subtitle.life--;
-
   ctx.fillStyle="#000";
   ctx.fillRect(0,canvas.height-150,canvas.width,150);
 
   ctx.font="bold 36px Arial";
   ctx.textAlign="center";
-
   const ox=(Math.random()-0.5)*subtitle.shake;
   const oy=(Math.random()-0.5)*subtitle.shake;
-
   ctx.fillStyle=subtitle.color;
   ctx.fillText(subtitle.text,canvas.width/2+ox,canvas.height-80+oy);
 }
@@ -137,28 +137,15 @@ function setSpeaker(index){
   camera.targetZoom=1.7;
 }
 
-// ================= SCENE BEAT SYSTEM (21 C.21) =================
-let beatTimer=0;
-let beatActive=false;
-let beatDuration=0;
-let beatZoom=1;
-let beatSilence=false;
-
-function startBeat({
-  duration=30,
-  zoom=1.9,
-  silence=true
-}={}){
+// ================= SCENE BEAT =================
+let beatActive=false,beatTimer=0,beatDuration=0;
+function startBeat({duration=30,zoom=1.9,silence=true}={}){
   beatActive=true;
   beatTimer=0;
   beatDuration=duration;
-  beatZoom=zoom;
-  beatSilence=silence;
-
   camera.targetZoom=zoom;
   if(silence) clearSubtitle();
 }
-
 function updateBeat(){
   if(!beatActive)return;
   beatTimer++;
@@ -168,6 +155,25 @@ function updateBeat(){
   }
 }
 
+// ================= MICRO MOTION (21 C.22) =================
+function updateMicro(c){
+  // idle breathing
+  c.idlePhase+=0.03;
+  const idleBob=Math.sin(c.idlePhase)*2;
+
+  // eye random target
+  if(Math.random()<0.01){
+    c.eyeTarget=(Math.random()*2-1)*4;
+  }
+  c.eyeDir+=(c.eyeTarget-c.eyeDir)*0.1;
+
+  // blink
+  if(c.blink>0) c.blink--;
+  else if(Math.random()<0.005) c.blink=4;
+
+  return idleBob;
+}
+
 // ================= CHAIN =================
 const chain=[
   {
@@ -175,68 +181,46 @@ const chain=[
     text:"THIS MAKES NO SENSE",
     color:"#ff5252",
     interrupts:[
-      {t:25,c:1,text:"WAIT WAIT",e:"✋"},
-      {t:50,beat:{duration:35,zoom:2,silence:true}},
-      {t:80,c:2,text:"BRO LISTEN",e:"😤"}
-    ]
-  },
-  {
-    speaker:2,
-    text:"I ALREADY EXPLAINED IT",
-    color:"#03a9f4",
-    interrupts:[
-      {t:30,beat:{duration:40,zoom:2.1,silence:true}},
-      {t:60,c:3,text:"NO YOU DID NOT",e:"🤬"}
+      {t:30,beat:{duration:35,zoom:2,silence:true}},
+      {t:70,c:1,text:"WAIT…",e:"😐"}
     ]
   },
   {
     speaker:1,
-    text:"EVERYONE CALM DOWN",
-    color:"#4caf50",
+    text:"…",
+    color:"#999",
     interrupts:[
-      {t:25,beat:{duration:30,zoom:2,silence:true}},
-      {t:55,c:2,text:"NO",e:"💥"}
+      {t:40,beat:{duration:45,zoom:2.1,silence:true}},
+      {t:90,c:2,text:"BRO?",e:"😑"}
     ]
   }
 ];
 
-let chainIndex=0;
-let timer=0;
-let activeInterrupts=[];
+let chainIndex=0,timer=0,activeInterrupts=[];
 
 function startChain(){
   const s=chain[chainIndex];
   setSpeaker(s.speaker);
-
-  showSubtitle(s.text,3,s.color);
+  showSubtitle(s.text,2,s.color);
   sayChar(chars[s.speaker],s.text,50);
   spawnEmoji(chars[s.speaker],"💬");
-
   activeInterrupts=s.interrupts.map(i=>({...i,done:false}));
   timer=0;
 }
-
 startChain();
 
 function updateChain(){
   timer++;
-
   activeInterrupts.forEach(i=>{
-    if(i.done || timer<i.t)return;
+    if(i.done||timer<i.t)return;
     i.done=true;
-
-    if(i.beat){
-      startBeat(i.beat);
-      return;
-    }
-
+    if(i.beat){ startBeat(i.beat); return; }
     setSpeaker(i.c);
     spawnEmoji(chars[i.c],i.e);
     sayChar(chars[i.c],i.text,40);
-    showSubtitle(i.text,6,"#ffeb3b");
+    showSubtitle(i.text,4,"#ffeb3b");
   });
-
-  if(timer>140){
+  if(timer>160){
     chainIndex=(chainIndex+1)%chain.length;
     startChain();
   }
@@ -247,7 +231,6 @@ function drawBG(){
   ctx.fillStyle="#fff";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }
-
 function drawGround(){
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
@@ -259,6 +242,7 @@ function drawGround(){
 function drawChar(c){
   const scale=1+0.15*c.priority;
   const alpha=0.5+0.5*c.priority;
+  const idle=updateMicro(c);
 
   ctx.save();
   ctx.globalAlpha=alpha;
@@ -266,18 +250,31 @@ function drawChar(c){
   ctx.lineWidth=4*scale;
 
   const hx=c.x;
-  const hy=c.y - c.talk*12;
+  const hy=c.y - c.talk*12 + idle;
 
+  // head
   ctx.beginPath();
   ctx.arc(camX(hx),hy,c.head*scale*camera.zoom,0,Math.PI*2);
   ctx.stroke();
 
+  // eyes
+  if(c.blink===0){
+    ctx.fillStyle=c.color;
+    ctx.beginPath();
+    ctx.arc(camX(hx-4+c.eyeDir),hy-2,2,0,Math.PI*2);
+    ctx.arc(camX(hx+4+c.eyeDir),hy-2,2,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  // body
   ctx.beginPath();
   ctx.moveTo(camX(hx),hy+c.head*scale);
   ctx.lineTo(camX(hx),hy+(c.head+c.body)*scale);
   ctx.stroke();
 
   const by=hy+(c.head+c.body)*scale;
+
+  // legs
   ctx.beginPath();
   ctx.moveTo(camX(hx),by);
   ctx.lineTo(camX(hx-c.leg*scale),by+c.leg*scale);
@@ -285,6 +282,7 @@ function drawChar(c){
   ctx.lineTo(camX(hx+c.leg*scale),by+c.leg*scale);
   ctx.stroke();
 
+  // arms
   ctx.beginPath();
   ctx.moveTo(camX(hx),hy+25*scale);
   ctx.lineTo(camX(hx-c.arm*scale),hy+40*scale);
@@ -292,6 +290,7 @@ function drawChar(c){
   ctx.lineTo(camX(hx+c.arm*scale),hy+40*scale);
   ctx.stroke();
 
+  // emoji
   if(c.emoji){
     ctx.font=`${44*c.emoji.scale}px serif`;
     ctx.textAlign="center";
@@ -299,13 +298,10 @@ function drawChar(c){
     updateEmoji(c);
   }
 
+  // world text
   if(c.text && c.textLife>0){
     c.textLife--;
-    drawWorldText(c.text,hx,hy-90,{
-      size:24,
-      color:"#111",
-      shake:2
-    });
+    drawWorldText(c.text,hx,hy-90,{size:24,color:"#111",shake:2});
     if(c.textLife<=0)c.text=null;
   }
 
