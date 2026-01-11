@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.14</title>
+<title>Stickman AI — Scene System 21 C.15</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -27,43 +27,58 @@ function resize(){
 resize(); window.addEventListener("resize",resize);
 
 // ================= SCENE =================
-const scene={width:6000,groundY:900};
+const scene={width:5000,groundY:900};
 
 // ================= CHAR =================
-function char(x,color){
-  return{ x,y:scene.groundY-120,color,head:18,body:50,arm:40,leg:45,emoji:null };
+function createChar(x,color){
+  return{
+    x,
+    y:scene.groundY-120,
+    color,
+    head:18,body:50,arm:40,leg:45,
+    emoji:null
+  };
 }
-const chars=[char(800,"#e91e63"),char(1400,"#000")];
-let focus=chars[0];
+
+const chars=[
+  createChar(800,"#e91e63"),
+  createChar(1400,"#000"),
+  createChar(2000,"#2196f3")
+];
+
+let focusChar=chars[0];
 
 // ================= CAMERA =================
 const camera={
-  x:0,y:0,zoom:1,targetZoom:1,
-  smooth:0.12,zoomSmooth:0.18,
-  shake:0,freeze:0
+  x:0,y:0,
+  zoom:1,targetZoom:1,
+  smooth:0.15,zoomSmooth:0.2,
+  freeze:0,flash:0
 };
+
 function camX(x){return(x-camera.x)*camera.zoom;}
 function camY(y){return(y-camera.y)*camera.zoom;}
 
 function updateCamera(){
   if(camera.freeze>0){camera.freeze--;return;}
-  const tx=focus.x-canvas.width/(2*camera.zoom);
+  const tx=focusChar.x-canvas.width/(2*camera.zoom);
   camera.x+=(tx-camera.x)*camera.smooth;
   camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
-  if(camera.shake>0)camera.shake*=0.85;
 }
 
 // ================= EMOJI =================
 function spawnEmoji(c,s){
-  c.emoji={s,life:40,scale:0.3,y:0};
+  c.emoji={s,life:35,scale:0.3,y:0};
 }
 function updateEmoji(c){
   if(!c.emoji)return;
-  c.emoji.life--; c.emoji.scale+=0.05; c.emoji.y+=1;
+  c.emoji.life--;
+  c.emoji.scale+=0.05;
+  c.emoji.y+=1.2;
   if(c.emoji.life<=0)c.emoji=null;
 }
 
-// ================= SUBTITLE (FIXED) =================
+// ================= SUBTITLE =================
 const subtitle={
   words:[],index:0,timer:0,active:false,punch:false
 };
@@ -83,12 +98,12 @@ function updateSubtitle(){
     subtitle.index++;
     subtitle.timer=10;
 
-    // punchline
+    // punchline moment
     if(subtitle.index===subtitle.words.length-1){
       subtitle.punch=true;
-      camera.targetZoom=2.3;
-      camera.freeze=18;
-      camera.shake=8;
+      camera.targetZoom=2.2;
+      camera.freeze=15;
+      camera.flash=6;
     }
 
     if(subtitle.index>=subtitle.words.length){
@@ -109,7 +124,7 @@ function drawSubtitle(){
   ctx.textAlign="center";
   ctx.font="bold 36px Arial";
 
-  let offset=0;
+  let offset=-150;
   subtitle.words.forEach((w,i)=>{
     let scale=1,color="#aaa";
     if(i===subtitle.index){
@@ -126,25 +141,60 @@ function drawSubtitle(){
   });
 }
 
-// ================= DIALOG =================
-const dialog=[
- {c:0,t:"MY BRAIN IS MELTING",e:"🤯"},
- {c:1,t:"THIS MAKES NO SENSE",e:"😱"}
-];
-let step=0,delay=0;
+// ================= SCENE CUT SYSTEM =================
+let cutAlpha=0;
+let cutting=false;
 
-function nextDialog(){
-  const d=dialog[step];
-  focus=chars[d.c];
-  spawnEmoji(focus,d.e);
-  startSubtitle(d.t);
-  delay=d.t.split(" ").length*12+30;
+function startSceneCut(){
+  cutting=true;
+  cutAlpha=0;
 }
-nextDialog();
 
-function updateDialog(){
-  if(delay>0)delay--;
-  else{step=(step+1)%dialog.length;nextDialog();}
+function updateSceneCut(){
+  if(!cutting)return;
+  cutAlpha+=0.12;
+  if(cutAlpha>=1){
+    cutAlpha=1;
+    cutting=false;
+  }
+}
+
+function drawSceneCut(){
+  if(cutAlpha<=0)return;
+  ctx.globalAlpha=cutAlpha;
+  ctx.fillStyle="#000";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.globalAlpha=1;
+}
+
+// ================= DIALOG / BEAT =================
+const beats=[
+  {c:0,t:"MY BRAIN IS MELTING",e:"🤯"},
+  {c:1,t:"THIS MAKES NO SENSE",e:"😱"},
+  {c:2,t:"WAIT I UNDERSTAND NOW",e:"😎"}
+];
+
+let beatIndex=0;
+let beatTimer=0;
+
+function startBeat(){
+  const b=beats[beatIndex];
+  focusChar=chars[b.c];
+  spawnEmoji(focusChar,b.e);
+  startSubtitle(b.t);
+  camera.targetZoom=1.6;
+  beatTimer=b.t.split(" ").length*12+30;
+}
+
+startBeat();
+
+function updateBeats(){
+  if(beatTimer>0)beatTimer--;
+  else{
+    startSceneCut(); // AUTO CUT
+    beatIndex=(beatIndex+1)%beats.length;
+    setTimeout(startBeat,150);
+  }
 }
 
 // ================= DRAW =================
@@ -152,6 +202,7 @@ function drawBG(){
   ctx.fillStyle="#fff";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }
+
 function drawGround(){
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
@@ -159,22 +210,35 @@ function drawGround(){
   ctx.lineTo(camX(scene.width),scene.groundY);
   ctx.stroke();
 }
+
 function drawChar(c){
   ctx.strokeStyle=c.color;
   ctx.lineWidth=4;
   const hx=c.x,hy=c.y;
-  ctx.beginPath();ctx.arc(camX(hx),hy,c.head*camera.zoom,0,Math.PI*2);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(camX(hx),hy+c.head);
-  ctx.lineTo(camX(hx),hy+c.head+c.body);ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(camX(hx),hy,c.head*camera.zoom,0,Math.PI*2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(camX(hx),hy+c.head);
+  ctx.lineTo(camX(hx),hy+c.head+c.body);
+  ctx.stroke();
+
   const by=hy+c.head+c.body;
-  ctx.beginPath();ctx.moveTo(camX(hx),by);
+  ctx.beginPath();
+  ctx.moveTo(camX(hx),by);
   ctx.lineTo(camX(hx-c.leg),by+c.leg);
   ctx.moveTo(camX(hx),by);
-  ctx.lineTo(camX(hx+c.leg),by+c.leg);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(camX(hx),hy+25);
+  ctx.lineTo(camX(hx+c.leg),by+c.leg);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(camX(hx),hy+25);
   ctx.lineTo(camX(hx-c.arm),hy+40);
   ctx.moveTo(camX(hx),hy+25);
-  ctx.lineTo(camX(hx+c.arm),hy+40);ctx.stroke();
+  ctx.lineTo(camX(hx+c.arm),hy+40);
+  ctx.stroke();
 
   if(c.emoji){
     ctx.font=`${40*c.emoji.scale}px serif`;
@@ -186,14 +250,24 @@ function drawChar(c){
 
 // ================= LOOP =================
 function loop(){
-  updateDialog();
+  updateBeats();
   updateSubtitle();
   updateCamera();
+  updateSceneCut();
 
   drawBG();
   drawGround();
   chars.forEach(drawChar);
   drawSubtitle();
+  drawSceneCut();
+
+  if(camera.flash>0){
+    ctx.globalAlpha=camera.flash/6;
+    ctx.fillStyle="#fff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalAlpha=1;
+    camera.flash--;
+  }
 
   requestAnimationFrame(loop);
 }
