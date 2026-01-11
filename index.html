@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v18-B — Secondary Motion</title>
+<title>Stickman v19-A — Hand Drawn Style</title>
 <style>
 body{
   margin:0;
@@ -34,18 +34,13 @@ button:hover{background:#333}
   <button onclick="setPreset('happy')">🙂</button>
   <button onclick="setPreset('surprised')">😮</button>
   <button onclick="setPreset('angry')">😠</button>
-  <button onclick="addKey()">ADD KEY</button>
-  <button onclick="play()">▶ PLAY</button>
-  <button onclick="stop()">■ STOP</button>
 </div>
 
 <script>
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 
-let frame=0;
-let playing=false;
-const timeline=[];
+let t=0;
 
 // ===== STICK =====
 const stick={
@@ -57,135 +52,105 @@ const stick={
   armL:20
 };
 
-// ===== TARGET STATE (from presets / timeline) =====
-let target={
-  eyeOpen:1, eyeScale:1,
-  mouthOpen:0, brow:0,
-  armLift:0
-};
-
-// ===== ACTUAL STATE (with inertia) =====
+// ===== TARGET / STATE =====
+let target={eyeOpen:1,eyeScale:1,mouthOpen:0,brow:0,armLift:0};
 let state={...target};
 
 // ===== PRESETS =====
 const presets={
   neutral:{eyeOpen:1,eyeScale:1,mouthOpen:0,brow:0,armLift:0},
   happy:{eyeOpen:0.7,eyeScale:0.9,mouthOpen:0.4,brow:0.2,armLift:0.3},
-  surprised:{eyeOpen:1.3,eyeScale:1.2,mouthOpen:1,brow:0.8,armLift:0.9},
-  angry:{eyeOpen:0.6,eyeScale:0.8,mouthOpen:0.2,brow:-0.8,armLift:-0.4}
+  surprised:{eyeOpen:1.4,eyeScale:1.3,mouthOpen:1,brow:1,armLift:1},
+  angry:{eyeOpen:0.5,eyeScale:0.8,mouthOpen:0.25,brow:-1,armLift:-0.5}
 };
 
 function setPreset(name){
   Object.assign(target,presets[name]);
 }
 
-// ===== KEYFRAME =====
-function addKey(){
-  timeline.push({
-    frame,
-    preset:{...target}
-  });
-}
+// ===== JITTER =====
+function jitter(v,amt){ return v+(Math.random()-0.5)*amt; }
 
-function play(){
-  if(timeline.length<2) return;
-  playing=true;
-}
-function stop(){playing=false;}
-
-// ===== LERP =====
-const lerp=(a,b,t)=>a+(b-a)*t;
-
-function applyTimeline(){
-  if(timeline.length<2) return;
-  const a=timeline[0];
-  const b=timeline[timeline.length-1];
-  const t=(frame%60)/60;
-  for(let k in target){
-    target[k]=lerp(a.preset[k],b.preset[k],t);
+// ===== SECONDARY =====
+function follow(){
+  for(let k in state){
+    state[k]+= (target[k]-state[k])*0.2;
   }
-}
-
-// ===== SECONDARY MOTION =====
-function applySecondary(){
-  state.eyeOpen  += (target.eyeOpen  - state.eyeOpen )*0.25;
-  state.eyeScale += (target.eyeScale - state.eyeScale)*0.25;
-
-  state.mouthOpen+= (target.mouthOpen- state.mouthOpen)*0.35;
-  state.brow     += (target.brow     - state.brow     )*0.3;
-
-  state.armLift  += (target.armLift  - state.armLift  )*0.15;
 }
 
 // ===== DRAW =====
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
-
-  // ground
-  ctx.strokeStyle="#333";
-  ctx.beginPath();
-  ctx.moveTo(0,320);ctx.lineTo(360,320);ctx.stroke();
-
   ctx.strokeStyle="#fff";
-  ctx.lineWidth=2;
+  ctx.lineCap="round";
+
+  const wob=Math.sin(t*0.1)*0.5;
+
+  // dynamic line width
+  ctx.lineWidth=2+jitter(0.5,0.6);
 
   // body
-  ctx.beginPath();
-  ctx.moveTo(stick.x,stick.y);
-  ctx.lineTo(stick.x,stick.y+stick.body);
-  ctx.stroke();
+  line(stick.x,stick.y, stick.x+jitter(0,0.4), stick.y+stick.body);
 
   // legs
-  ctx.beginPath();
-  ctx.moveTo(stick.x,stick.y+stick.body);
-  ctx.lineTo(stick.x-15,stick.y+stick.body+stick.leg);
-  ctx.moveTo(stick.x,stick.y+stick.body);
-  ctx.lineTo(stick.x+15,stick.y+stick.body+stick.leg);
-  ctx.stroke();
+  line(stick.x,stick.y+stick.body,
+       stick.x-15+jitter(0,0.6),
+       stick.y+stick.body+stick.leg);
+  line(stick.x,stick.y+stick.body,
+       stick.x+15+jitter(0,0.6),
+       stick.y+stick.body+stick.leg);
 
   // arms
   const shoulderY=stick.y+5;
-  const lift=-state.armLift*25;
-  drawArm(stick.x-2,shoulderY,-1,lift);
-  drawArm(stick.x+2,shoulderY,1,lift);
+  const lift=-state.armLift*25+wob;
+  arm(stick.x-2,shoulderY,-1,lift);
+  arm(stick.x+2,shoulderY,1,lift);
 
   // head
-  ctx.beginPath();
-  ctx.arc(stick.x,stick.y-stick.headR,stick.headR,0,Math.PI*2);
-  ctx.stroke();
+  circle(stick.x,stick.y-stick.headR,stick.headR+jitter(0,0.4));
 
-  drawFace();
+  face();
+
+  t++;
 }
 
-function drawArm(x,y,dir,lift){
+function line(x1,y1,x2,y2){
+  ctx.beginPath();
+  ctx.moveTo(jitter(x1,0.5),jitter(y1,0.5));
+  ctx.lineTo(jitter(x2,0.5),jitter(y2,0.5));
+  ctx.stroke();
+}
+
+function circle(x,y,r){
+  ctx.beginPath();
+  ctx.arc(jitter(x,0.4),jitter(y,0.4),r,0,Math.PI*2);
+  ctx.stroke();
+}
+
+function arm(x,y,dir,lift){
   const ex=x+dir*stick.armU;
   const ey=y+lift;
   const hx=ex+dir*stick.armL;
   const hy=ey+lift*0.6;
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(ex,ey);
-  ctx.lineTo(hx,hy);
-  ctx.stroke();
+  line(x,y,ex,ey);
+  line(ex,ey,hx,hy);
 }
 
-function drawFace(){
+function face(){
   const hx=stick.x;
   const hy=stick.y-stick.headR;
 
   // eyes
   ctx.beginPath();
-  ctx.ellipse(hx-6,hy-3,3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
-  ctx.ellipse(hx+6,hy-3,3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(jitter(hx-6,0.3),jitter(hy-3,0.3),
+    3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(jitter(hx+6,0.3),jitter(hy-3,0.3),
+    3*state.eyeScale,3*state.eyeOpen,0,0,Math.PI*2);
   ctx.stroke();
 
   // brows
-  ctx.beginPath();
-  ctx.moveTo(hx-10,hy-8-state.brow*4);
-  ctx.lineTo(hx-2,hy-6-state.brow*4);
-  ctx.moveTo(hx+2,hy-6-state.brow*4);
-  ctx.lineTo(hx+10,hy-8-state.brow*4);
-  ctx.stroke();
+  line(hx-10,hy-8-state.brow*4, hx-2,hy-6-state.brow*4);
+  line(hx+2,hy-6-state.brow*4, hx+10,hy-8-state.brow*4);
 
   // mouth
   ctx.beginPath();
@@ -195,11 +160,7 @@ function drawFace(){
 
 // ===== LOOP =====
 function loop(){
-  if(playing){
-    frame++;
-    applyTimeline();
-  }
-  applySecondary();
+  follow();
   draw();
   requestAnimationFrame(loop);
 }
