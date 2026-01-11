@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.19 — Scene Transitions</title>
+<title>Stickman v21-A.20 — Story Timeline</title>
 <style>
 body{margin:0;background:#111;display:flex;flex-direction:column;align-items:center}
 canvas{background:#e6f4ff}
@@ -11,7 +11,7 @@ button{margin:6px;padding:8px 14px}
 </head>
 <body>
 
-<button id="play">▶ PLAY AUDIO</button>
+<button id="play">▶ PLAY EPISODE</button>
 <canvas id="c" width="360" height="640"></canvas>
 
 <script>
@@ -38,23 +38,15 @@ const Camera={
       -this.y*this.zoom+sy+320*(1-this.zoom)
     );
   },
-  hit(v){this.shake=v;},
-  zoomHit(z){this.zoom=z;}
+  hit(v){this.shake=v},
+  zoomHit(z){this.zoom=z}
 };
 
 /* ================= TRANSITION ================= */
 const Transition={
-  type:null,time:0,
-  trigger(t){
-    this.type=t;
-    this.time=18;
-    if(t==="zoom") Camera.zoomHit(1.35);
-    if(t==="smash") Camera.hit(18);
-  },
-  update(){
-    if(this.time>0) this.time--;
-    if(this.time===0) this.type=null;
-  }
+  t:0,
+  smash(){this.t=16;Camera.hit(18)},
+  zoom(){Camera.zoomHit(1.4)}
 };
 
 /* ================= SPEECH ================= */
@@ -88,10 +80,12 @@ class Character{
     this.walk+=0.08;
     this.jump*=0.82;
   }
-  beat(isSpeaker){
-    this.jump=isSpeaker?16:10;
+  beat(power){
+    this.jump=power;
   }
-  say(text){this.sayLine={text,time:90};}
+  say(text){
+    this.sayLine={text,time:90};
+  }
   draw(){
     const step=Math.sin(this.walk)*5;
     const j=this.jump;
@@ -135,17 +129,39 @@ const chars=[
   new Character(200,"#4488ff"),
   new Character(240,"#ffaa44")
 ];
-let speaker=0;
 Camera.target=chars[0];
 
-/* ================= DIALOG ================= */
-const lines=[
-  "WHAT just happened?! 😱",
-  "Bu juda telba edi 😂",
-  "No way bro!"
-];
-let lineIndex=0;
-let beatCount=0;
+/* ================= STORY TIMELINE ================= */
+const Story={
+  phase:"hook",
+  beat:0,
+  update(){
+    this.beat++;
+    if(this.phase==="hook" && this.beat>3) this.phase="build";
+    if(this.phase==="build" && this.beat>10) this.phase="punch";
+  },
+  onBeat(){
+    if(this.phase==="hook"){
+      Transition.zoom();
+      Transition.smash();
+      chars.forEach(c=>c.beat(14));
+      chars[0].say("WHAT just happened?! 😱");
+      Camera.target=chars[0];
+    }
+    if(this.phase==="build"){
+      const i=this.beat%chars.length;
+      chars.forEach((c,j)=>c.beat(j===i?14:8));
+      chars[i].say(i%2===0?"That was crazy!":"Bu juda telba edi 😂");
+      Camera.target=chars[i];
+    }
+    if(this.phase==="punch"){
+      Transition.smash();
+      chars.forEach(c=>c.beat(18));
+      chars[2].say("NO WAY 😳");
+      Camera.target=chars[2];
+    }
+  }
+};
 
 /* ================= AUDIO ================= */
 let audioCtx, analyser, data, lastEnergy=0, started=false;
@@ -177,25 +193,13 @@ function loop(){
     energy/=data.length;
 
     if(energy-lastEnergy>18){
-      beatCount++;
-      Camera.hit(12);
-
-      chars.forEach((c,i)=>c.beat(i===speaker));
-      if(lineIndex<lines.length){
-        chars[speaker].say(lines[lineIndex++]);
-        Camera.target=chars[speaker];
-        speaker=(speaker+1)%chars.length;
-      }
-
-      if(beatCount%3===0) Transition.trigger("zoom");
-      if(beatCount%5===0) Transition.trigger("smash");
+      Story.update();
+      Story.onBeat();
     }
     lastEnergy=energy;
   }
 
-  Transition.update();
   Camera.update();
-
   ctx.save();
   Camera.apply();
 
