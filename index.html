@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.8 — Camera System</title>
+<title>Stickman v21-A.9 — Walk & Camera Follow</title>
 <style>
 body{
   margin:0;
@@ -51,18 +51,21 @@ const ctx=c.getContext("2d");
 let t=0;
 
 /* =========================
-   CAMERA SYSTEM (21 A.8)
+   INPUT (21 A.9)
+========================= */
+const Keys={};
+addEventListener("keydown",e=>Keys[e.key]=true);
+addEventListener("keyup",e=>Keys[e.key]=false);
+
+/* =========================
+   CAMERA
 ========================= */
 const Camera={
-  x:0,
-  y:0,
-  zoom:1,
-  target:null,
+  x:0,y:0,zoom:1.1,target:null,
   update(){
     if(this.target){
-      // smooth follow
-      this.x += ((this.target.x - c.width/2) - this.x)*0.08;
-      this.y += ((this.target.y - c.height/2) - this.y)*0.08;
+      this.x+=((this.target.x-c.width/2)-this.x)*0.08;
+      this.y+=((this.target.y-c.height/2)-this.y)*0.08;
     }
   },
   apply(){
@@ -78,24 +81,18 @@ const Camera={
    SCENE
 ========================= */
 const Scene={
-  width:1200,   // virtual world
+  width:1400,
   height:800,
   groundY:500,
   background:"#e6f4ff",
-  objects:[],
   characters:[],
   draw(){
     ctx.save();
     Camera.apply();
 
-    // background
     ctx.fillStyle=this.background;
     ctx.fillRect(0,0,this.width,this.height);
 
-    // background objects
-    this.objects.filter(o=>o.depth<0).forEach(o=>o.draw());
-
-    // ground
     ctx.strokeStyle="#aaa";
     ctx.lineWidth=2;
     ctx.beginPath();
@@ -103,16 +100,12 @@ const Scene={
     ctx.lineTo(this.width,this.groundY);
     ctx.stroke();
 
-    // AUTO Z-SORT
     [...this.characters]
       .sort((a,b)=>a.y-b.y)
       .forEach(c=>{
         c.update();
         c.draw();
       });
-
-    // foreground objects
-    this.objects.filter(o=>o.depth>0).forEach(o=>o.draw());
 
     ctx.restore();
   }
@@ -135,7 +128,7 @@ const presets={
 };
 
 /* =========================
-   CHARACTER
+   CHARACTER (21 A.9)
 ========================= */
 class Character{
   constructor(name,color,shirt,x){
@@ -144,11 +137,26 @@ class Character{
     this.shirt=shirt;
     this.x=x;
     this.y=Scene.groundY-model.body-model.leg;
+    this.vx=0;
+    this.speed=1.8;
+    this.walkPhase=0;
     this.target={...presets.dead};
     this.state={...this.target};
   }
   setEmotion(e){Object.assign(this.target,presets[e]);}
   update(){
+    // movement
+    if(Keys["ArrowLeft"]) this.vx=-this.speed;
+    else if(Keys["ArrowRight"]) this.vx=this.speed;
+    else this.vx*=0.8;
+
+    this.x+=this.vx;
+    this.x=Math.max(20,Math.min(Scene.width-20,this.x));
+
+    // walk cycle
+    this.walkPhase+=Math.abs(this.vx)*0.15;
+
+    // emotion lerp
     for(let k in this.state){
       this.state[k]+= (this.target[k]-this.state[k])*0.18;
     }
@@ -157,64 +165,15 @@ class Character{
 }
 
 /* =========================
-   SCENE OBJECTS
-========================= */
-class Tree{
-  constructor(x,depth=-1){ this.x=x; this.depth=depth; }
-  draw(){
-    ctx.strokeStyle="#6b4a2b";
-    ctx.lineWidth=4;
-    ctx.beginPath();
-    ctx.moveTo(this.x,Scene.groundY);
-    ctx.lineTo(this.x,Scene.groundY-60);
-    ctx.stroke();
-    ctx.strokeStyle="#2e8b57";
-    ctx.beginPath();
-    ctx.arc(this.x,Scene.groundY-75,25,0,Math.PI*2);
-    ctx.stroke();
-  }
-}
-class Fence{
-  constructor(x,depth=1){ this.x=x; this.depth=depth; }
-  draw(){
-    ctx.strokeStyle="#777";
-    ctx.lineWidth=3;
-    for(let i=-20;i<=20;i+=10){
-      ctx.beginPath();
-      ctx.moveTo(this.x+i,Scene.groundY+5);
-      ctx.lineTo(this.x+i,Scene.groundY-25);
-      ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.moveTo(this.x-25,Scene.groundY-20);
-    ctx.lineTo(this.x+25,Scene.groundY-20);
-    ctx.stroke();
-  }
-}
-
-/* =========================
-   ADD OBJECTS
-========================= */
-Scene.objects.push(
-  new Tree(200,-1),
-  new Tree(500,-1),
-  new Tree(800,-1),
-  new Fence(600,1)
-);
-
-/* =========================
    CHARACTERS
 ========================= */
-const hero = new Character("ALI","#ff4444",true,600);
+const hero=new Character("ALI","#ff4444",true,600);
 Scene.characters.push(
   hero,
-  new Character("BEX","#44ff88",false,500),
-  new Character("MAX","#4488ff",true,700)
+  new Character("BEX","#44ff88",false,520),
+  new Character("MAX","#4488ff",true,680)
 );
-
-/* CAMERA FOLLOW HERO */
-Camera.target = hero;
-Camera.zoom = 1.1;
+Camera.target=hero;
 
 /* =========================
    UI
@@ -229,13 +188,13 @@ function setAll(e){
 function jitter(v,a){return v+(Math.random()-0.5)*a}
 function line(x1,y1,x2,y2){
   ctx.beginPath();
-  ctx.moveTo(jitter(x1,0.5),jitter(y1,0.5));
-  ctx.lineTo(jitter(x2,0.5),jitter(y2,0.5));
+  ctx.moveTo(jitter(x1,0.4),jitter(y1,0.4));
+  ctx.lineTo(jitter(x2,0.4),jitter(y2,0.4));
   ctx.stroke();
 }
 function circle(x,y,r){
   ctx.beginPath();
-  ctx.arc(jitter(x,0.4),jitter(y,0.4),r,0,Math.PI*2);
+  ctx.arc(jitter(x,0.3),jitter(y,0.3),r,0,Math.PI*2);
   ctx.stroke();
 }
 function arm(x,y,dir,lift){
@@ -248,25 +207,30 @@ function arm(x,y,dir,lift){
 }
 
 /* =========================
-   DRAW STICKMAN
+   DRAW STICK
 ========================= */
 function drawStick(ch){
   const s=ch.state;
   ctx.strokeStyle=ch.color;
   ctx.lineCap="round";
-  ctx.lineWidth=2+jitter(0.5,0.6);
-  const wob=Math.sin(t*0.12)*1.2;
+  ctx.lineWidth=2+jitter(0.4,0.6);
 
+  const walk=Math.sin(ch.walkPhase)*10;
+  const lift=-s.armLift*25;
+
+  // body
   line(ch.x,ch.y,ch.x,ch.y+model.body);
   if(ch.shirt) line(ch.x-8,ch.y+10,ch.x+8,ch.y+10);
 
-  line(ch.x,ch.y+model.body,ch.x-12,Scene.groundY);
-  line(ch.x,ch.y+model.body,ch.x+12,Scene.groundY);
+  // legs (walk)
+  line(ch.x,ch.y+model.body,ch.x-8,Scene.groundY-walk);
+  line(ch.x,ch.y+model.body,ch.x+8,Scene.groundY+walk);
 
-  const lift=-s.armLift*25+wob;
-  arm(ch.x-2,ch.y+5,-1,lift);
-  arm(ch.x+2,ch.y+5,1,lift);
+  // arms (counter walk)
+  arm(ch.x-2,ch.y+5,-1,lift-walk*0.4);
+  arm(ch.x+2,ch.y+5, 1,lift+walk*0.4);
 
+  // head
   ctx.save();
   ctx.translate(ch.x,ch.y-model.headR);
   ctx.scale(1,1+s.headSquash);
