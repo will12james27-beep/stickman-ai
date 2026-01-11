@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.1 (STABLE)</title>
+<title>Stickman AI — Scene System 21 C.2</title>
 <style>
 html, body {
   margin: 0;
@@ -39,24 +39,40 @@ window.addEventListener("resize", resize);
 // SCENE
 // =========================
 const scene = {
-  width: 3000,
-  height: 1500,
+  width: 4000,
+  height: 2000,
   groundY: 900
 };
 
 // =========================
-// CAMERA (MUHIM FIX)
+// STICKMAN
+// =========================
+const stickman = {
+  x: 500,
+  y: scene.groundY - 120,
+  vx: 1.2,          // sekin yurish (test uchun)
+  head: 18,
+  body: 50,
+  arm: 40,
+  leg: 45
+};
+
+// =========================
+// CAMERA (SMOOTH FOLLOW)
 // =========================
 const camera = {
   x: 0,
   y: 0,
-  zoom: 1
+  zoom: 1,
+  smooth: 0.08     // qancha kichik bo‘lsa — shuncha yumshoq
 };
 
-// Kamera markazini ekranga moslash
 function updateCamera() {
-  camera.x = stickman.x - canvas.width / 2;
-  camera.y = stickman.y - canvas.height / 2;
+  const targetX = stickman.x - canvas.width / 2;
+  const targetY = stickman.y - canvas.height / 2;
+
+  camera.x += (targetX - camera.x) * camera.smooth;
+  camera.y += (targetY - camera.y) * camera.smooth;
 }
 
 function camX(x) {
@@ -65,18 +81,6 @@ function camX(x) {
 function camY(y) {
   return (y - camera.y) * camera.zoom;
 }
-
-// =========================
-// STICKMAN
-// =========================
-const stickman = {
-  x: 500,
-  y: scene.groundY - 120,
-  head: 18,
-  body: 50,
-  arm: 40,
-  leg: 45
-};
 
 // =========================
 // DRAW FUNCTIONS
@@ -134,9 +138,22 @@ function drawStickman(p) {
 }
 
 // =========================
+// UPDATE (TEST WALK)
+// =========================
+function update() {
+  stickman.x += stickman.vx;
+
+  // sahna cheti
+  if (stickman.x > scene.width - 200 || stickman.x < 200) {
+    stickman.vx *= -1;
+  }
+}
+
+// =========================
 // MAIN LOOP
 // =========================
 function loop() {
+  update();
   updateCamera();
   drawBackground();
   drawGround();
