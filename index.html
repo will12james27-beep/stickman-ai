@@ -2,166 +2,99 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.12 — Cutscene + Emotion Sync</title>
+<title>Stickman v21-A.13 — Arms Fix + Shorts Captions</title>
 <style>
 body{
   margin:0;
   background:#111;
-  color:#fff;
-  font-family:sans-serif;
   display:flex;
-  flex-direction:column;
-  align-items:center;
+  justify-content:center;
 }
-canvas{background:#181818;margin-top:10px;}
+canvas{background:#e6f4ff;}
 </style>
 </head>
 <body>
 
-<canvas id="c" width="360" height="540"></canvas>
+<canvas id="c" width="360" height="640"></canvas>
 
 <script>
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
-let t=0;
 
 /* ================= CAMERA ================= */
 const Camera={
-  x:0,y:0,zoom:1,target:null,cutscene:false,
+  x:0,y:0,zoom:1,cutscene:false,target:null,
   update(){
     if(this.target){
-      this.x+=((this.target.x-c.width/2)-this.x)*0.08;
-      this.y+=((this.target.y-c.height/2)-this.y)*0.08;
+      this.x+=((this.target.x-c.width/2)-this.x)*0.1;
+      this.y+=((this.target.y-c.height/2)-this.y)*0.1;
     }
-    this.zoom+=((this.cutscene?1.35:1)-this.zoom)*0.05;
+    this.zoom+=((this.cutscene?1.3:1)-this.zoom)*0.05;
   },
   apply(){
     ctx.setTransform(this.zoom,0,0,this.zoom,-this.x*this.zoom,-this.y*this.zoom);
   }
 };
 
-/* ================= SCENE ================= */
-const Scene={
-  width:1400,
-  groundY:500,
-  characters:[],
-  draw(){
-    ctx.save();
-    Camera.apply();
-
-    ctx.fillStyle="#e6f4ff";
-    ctx.fillRect(0,0,this.width,800);
-
-    ctx.strokeStyle="#aaa";
-    ctx.beginPath();
-    ctx.moveTo(0,this.groundY);
-    ctx.lineTo(this.width,this.groundY);
-    ctx.stroke();
-
-    this.characters.forEach(c=>{
-      c.update();
-      c.draw();
-      c.dialog.draw();
-    });
-
-    ctx.restore();
-  }
-};
-
 /* ================= MODEL ================= */
-const model={headR:14,body:36,leg:30};
+const model={head:14,body:36,leg:30,armU:18,armL:16};
 
 /* ================= EMOTIONS ================= */
-const presets={
-  neutral:{eyeOpen:.6,eyeScale:1,mouthOpen:.2,brow:0,armLift:0,headSquash:0},
-  happy:{eyeOpen:.5,eyeScale:.8,mouthOpen:1,brow:.6,armLift:.6,headSquash:.2},
-  shock:{eyeOpen:1.6,eyeScale:1.4,mouthOpen:1.6,brow:1.2,armLift:1.2,headSquash:-.2}
+const emotions={
+  neutral:{arm:0},
+  happy:{arm:10},
+  shock:{arm:-14}
 };
 
-/* ================= DIALOG ================= */
-class Dialogue{
-  constructor(owner){
-    this.owner=owner;
-    this.script=[];
-    this.i=0;
-    this.timer=0;
-    this.active=false;
-  }
-  start(script){
-    this.script=script;
-    this.i=0;
-    this.timer=0;
-    this.active=true;
-    Camera.cutscene=true;
-    this.applyEmotion();
-  }
-  applyEmotion(){
-    Object.assign(this.owner.target,presets[this.script[this.i].emotion]);
-  }
+/* ================= SUBTITLES ================= */
+const Subtitles={
+  lines:[],
+  i:0,t:0,active:false,
+  start(lines){
+    this.lines=lines;this.i=0;this.t=0;this.active=true;
+  },
   update(){
     if(!this.active) return;
-    this.timer++;
-    if(this.timer>90){
-      this.timer=0;
-      this.i++;
-      if(this.i>=this.script.length){
-        this.active=false;
-        Camera.cutscene=false;
-      }else{
-        this.applyEmotion();
-      }
-    }
-  }
+    this.t++;
+    if(this.t>90){this.t=0;this.i++;if(this.i>=this.lines.length)this.active=false;}
+  },
   draw(){
     if(!this.active) return;
-    const text=this.script[this.i].text;
-    const x=this.owner.x;
-    const y=this.owner.y-60;
-    ctx.font="13px sans-serif";
-    const w=ctx.measureText(text).width+14;
-    ctx.fillStyle="#fff";
-    ctx.strokeStyle="#000";
-    ctx.beginPath();
-    ctx.roundRect(x-w/2,y-18,w,18,6);
-    ctx.fill();ctx.stroke();
+    const txt=this.lines[this.i];
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.font="bold 22px sans-serif";
+    ctx.textAlign="center";
     ctx.fillStyle="#000";
-    ctx.fillText(text,x-w/2+7,y-6);
+    ctx.fillText(txt,180,600);
+    ctx.fillStyle="#fff";
+    ctx.fillText(txt,180,598);
   }
-}
+};
 
 /* ================= CHARACTER ================= */
 class Character{
   constructor(x,color){
     this.x=x;
-    this.y=Scene.groundY-model.body-model.leg;
+    this.y=440;
     this.color=color;
-    this.dir=1;
     this.walk=0;
-    this.dialog=new Dialogue(this);
-    this.target={...presets.neutral};
-    this.state={...this.target};
+    this.emotion="neutral";
   }
   update(){
-    if(!Camera.cutscene){
-      this.x+=this.dir*1.2;
-      if(this.x>720||this.x<480) this.dir*=-1;
-      this.walk+=0.15;
-    }
-    for(let k in this.state){
-      this.state[k]+=(this.target[k]-this.state[k])*0.15;
-    }
-    this.dialog.update();
+    if(!Camera.cutscene) this.walk+=0.12;
   }
   draw(){
     ctx.strokeStyle=this.color;
-    ctx.lineWidth=2;
-    const step=Math.sin(this.walk)*8;
+    ctx.lineWidth=3;
+    const step=Math.sin(this.walk)*6;
 
+    // body
     ctx.beginPath();
     ctx.moveTo(this.x,this.y);
     ctx.lineTo(this.x,this.y+model.body);
     ctx.stroke();
 
+    // legs
     ctx.beginPath();
     ctx.moveTo(this.x,this.y+model.body);
     ctx.lineTo(this.x-8,this.y+model.body+model.leg-step);
@@ -169,6 +102,16 @@ class Character{
     ctx.lineTo(this.x+8,this.y+model.body+model.leg+step);
     ctx.stroke();
 
+    // arms (FIXED)
+    const a=emotions[this.emotion].arm;
+    ctx.beginPath();
+    ctx.moveTo(this.x,this.y+10);
+    ctx.lineTo(this.x-12,this.y+22+a);
+    ctx.moveTo(this.x,this.y+10);
+    ctx.lineTo(this.x+12,this.y+22-a);
+    ctx.stroke();
+
+    // head
     ctx.beginPath();
     ctx.arc(this.x,this.y-14,14,0,Math.PI*2);
     ctx.stroke();
@@ -176,26 +119,42 @@ class Character{
 }
 
 /* ================= SETUP ================= */
-const hero=new Character(560,"#ff4444");
-const npc=new Character(600,"#44ff88");
-Scene.characters.push(hero,npc);
+const hero=new Character(160,"#ff4444");
+const npc=new Character(200,"#44ff88");
 Camera.target=hero;
 
-/* TRIGGER CUTSCENE */
+/* ================= CUTSCENE ================= */
 setTimeout(()=>{
-  hero.dialog.start([
-    {text:"Hey!",emotion:"neutral"},
-    {text:"Did you see that?!",emotion:"shock"},
-    {text:"That was crazy 😂",emotion:"happy"}
+  Camera.cutscene=true;
+  hero.emotion="shock";
+  Subtitles.start([
+    "That was crazy 😱",
+    "Bu juda telba edi 😂"
   ]);
-},1200);
+},1000);
 
 /* ================= LOOP ================= */
 function loop(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,c.width,c.height);
+
   Camera.update();
-  Scene.draw();
+  ctx.save();
+  Camera.apply();
+
+  ctx.strokeStyle="#aaa";
+  ctx.beginPath();
+  ctx.moveTo(0,470);
+  ctx.lineTo(360,470);
+  ctx.stroke();
+
+  hero.update();npc.update();
+  hero.draw();npc.draw();
+
+  ctx.restore();
+  Subtitles.update();
+  Subtitles.draw();
+
   requestAnimationFrame(loop);
 }
 loop();
