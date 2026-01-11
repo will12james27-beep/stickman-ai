@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.6</title>
+<title>Stickman AI — Scene System 21 C.7</title>
 <style>
 html, body {
   margin: 0;
@@ -43,6 +43,13 @@ const scene = {
   height: 2000,
   groundY: 900
 };
+
+// =========================
+// TIME CONTROL
+// =========================
+let timeScale = 1;      // 1 = normal
+let targetTimeScale = 1;
+let freezeFrames = 0;
 
 // =========================
 // STICKMAN
@@ -111,19 +118,17 @@ function updateCamera() {
 }
 
 // =========================
-// CUT SYSTEM
+// CUT
 // =========================
 function cameraCut() {
   camera.cutMode = true;
-  camera.cutCooldown = 6; // frames (qisqa cut)
+  camera.cutCooldown = 6;
 }
 
 function updateCutCooldown() {
   if (camera.cutCooldown > 0) {
     camera.cutCooldown--;
-    if (camera.cutCooldown === 0) {
-      camera.cutMode = false;
-    }
+    if (camera.cutCooldown === 0) camera.cutMode = false;
   }
 }
 
@@ -142,38 +147,25 @@ function updateShake() {
 }
 
 // =========================
-// EMOTION + CUT
+// IMPACT EFFECTS
 // =========================
-function cameraEmotion(type) {
-  switch (type) {
-    case "impact":
-      camera.targetZoom = 1.9;
-      camera.shakePower = 18;
-      cameraCut();
-      zoomRelease(18);
-      break;
+function impactEffect() {
+  // frame freeze
+  freezeFrames = 3;
 
-    case "panic":
-      camera.targetZoom = 0.7;
-      camera.shakePower = 10;
-      cameraCut();
-      zoomRelease(30);
-      break;
+  // slow motion
+  targetTimeScale = 0.25;
 
-    case "rage":
-      camera.targetZoom = 1.5;
-      camera.shakePower = 14;
-      cameraCut();
-      zoomRelease(22);
-      break;
+  // camera
+  camera.targetZoom = 2.1;
+  camera.shakePower = 18;
+  cameraCut();
 
-    case "focus":
-      camera.targetZoom = 2.2;
-      camera.shakePower = 0;
-      cameraCut();
-      zoomRelease(25);
-      break;
-  }
+  // release
+  setTimeout(() => {
+    targetTimeScale = 1;
+    camera.targetZoom = 1;
+  }, 300);
 }
 
 // =========================
@@ -183,45 +175,29 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space" && stickman.onGround) {
     stickman.vy = -16;
     stickman.onGround = false;
-    cameraEmotion("impact");
+    impactEffect();
   }
 
-  if (e.code === "Digit1") cameraEmotion("impact");
-  if (e.code === "Digit2") cameraEmotion("panic");
-  if (e.code === "Digit3") cameraEmotion("rage");
-  if (e.code === "Digit4") cameraEmotion("focus");
+  if (e.code === "Digit1") impactEffect();
 });
 
-canvas.addEventListener("mousedown", () => {
-  cameraEmotion("rage");
-});
+canvas.addEventListener("mousedown", impactEffect);
 
 // =========================
-// ZOOM RESET
+// TIME UPDATE
 // =========================
-let zoomTimer = 0;
-
-function zoomRelease(frames) {
-  zoomTimer = frames;
-}
-
-function updateZoomRelease() {
-  if (zoomTimer > 0) {
-    zoomTimer--;
-    if (zoomTimer === 0) {
-      camera.targetZoom = 1;
-    }
-  }
+function updateTime() {
+  timeScale += (targetTimeScale - timeScale) * 0.15;
 }
 
 // =========================
 // PHYSICS
 // =========================
 function updateStickman() {
-  stickman.x += stickman.vx;
+  stickman.x += stickman.vx * timeScale;
 
-  stickman.vy += 0.8;
-  stickman.y += stickman.vy;
+  stickman.vy += 0.8 * timeScale;
+  stickman.y += stickman.vy * timeScale;
 
   if (stickman.y >= scene.groundY - 120) {
     stickman.y = scene.groundY - 120;
@@ -231,7 +207,7 @@ function updateStickman() {
 
   if (stickman.x < 300 || stickman.x > scene.width - 300) {
     stickman.vx *= -1;
-    cameraEmotion("panic");
+    impactEffect();
   }
 }
 
@@ -260,12 +236,10 @@ function drawStickman(p) {
   const hx = p.x;
   const hy = p.y;
 
-  // head
   ctx.beginPath();
   ctx.arc(camX(hx), camY(hy), p.head * camera.zoom, 0, Math.PI * 2);
   ctx.stroke();
 
-  // body
   ctx.beginPath();
   ctx.moveTo(camX(hx), camY(hy + p.head));
   ctx.lineTo(camX(hx), camY(hy + p.head + p.body));
@@ -273,7 +247,6 @@ function drawStickman(p) {
 
   const by = hy + p.head + p.body;
 
-  // arms
   ctx.beginPath();
   ctx.moveTo(camX(hx), camY(hy + 25));
   ctx.lineTo(camX(hx - p.arm), camY(hy + 40));
@@ -281,7 +254,6 @@ function drawStickman(p) {
   ctx.lineTo(camX(hx + p.arm), camY(hy + 40));
   ctx.stroke();
 
-  // legs
   ctx.beginPath();
   ctx.moveTo(camX(hx), camY(by));
   ctx.lineTo(camX(hx - p.leg), camY(by + p.leg));
@@ -294,9 +266,13 @@ function drawStickman(p) {
 // LOOP
 // =========================
 function loop() {
-  updateStickman();
-  updateZoomRelease();
-  updateCamera();
+  if (freezeFrames > 0) {
+    freezeFrames--;
+  } else {
+    updateTime();
+    updateStickman();
+    updateCamera();
+  }
 
   drawBackground();
   drawGround();
