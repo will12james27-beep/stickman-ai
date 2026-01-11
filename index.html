@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.9</title>
+<title>Stickman AI — Scene System 21 C.10</title>
 <style>
 html, body{
   margin:0;
@@ -43,19 +43,14 @@ const scene = {
 };
 
 // =========================
-// TIME
-// =========================
-let timeScale = 1;
-let targetTimeScale = 1;
-
-// =========================
 // CHARACTERS
 // =========================
-function createStickman(x){
+function createStickman(x, name){
   return {
+    name,
     x,
     y: scene.groundY - 120,
-    vx: 1.5 + Math.random(),
+    vx: 0,
     vy: 0,
     onGround: true,
     head: 18,
@@ -63,14 +58,16 @@ function createStickman(x){
     arm: 40,
     leg: 45,
     speaking: false,
-    speakTimer: 0
+    reacting: false,
+    speakTimer: 0,
+    reactTimer: 0
   };
 }
 
 const characters = [
-  createStickman(700),
-  createStickman(1100),
-  createStickman(1500)
+  createStickman(800, "A"),
+  createStickman(1200, "B"),
+  createStickman(1600, "C")
 ];
 
 let activeSpeaker = characters[0];
@@ -83,10 +80,8 @@ const camera = {
   y: 0,
   zoom: 1,
   targetZoom: 1,
-
-  followSmooth: 0.1,
-  zoomSmooth: 0.15,
-
+  followSmooth: 0.12,
+  zoomSmooth: 0.18,
   shakeX: 0,
   shakeY: 0,
   shakePower: 0
@@ -94,6 +89,29 @@ const camera = {
 
 function camX(x){ return (x - camera.x) * camera.zoom + camera.shakeX; }
 function camY(y){ return (y - camera.y) * camera.zoom + camera.shakeY; }
+
+// =========================
+// CAMERA LOGIC
+// =========================
+function focusOn(character, zoom=1.8, shake=6){
+  activeSpeaker = character;
+  camera.targetZoom = zoom;
+  camera.shakePower = shake;
+
+  setTimeout(()=>{
+    camera.targetZoom = 1;
+  }, 300);
+}
+
+function reactionCut(character){
+  camera.targetZoom = 2.2;
+  camera.shakePower = 12;
+  activeSpeaker = character;
+
+  setTimeout(()=>{
+    camera.targetZoom = 1;
+  }, 200);
+}
 
 // =========================
 // CAMERA UPDATE
@@ -104,15 +122,11 @@ function updateCamera(){
 
   camera.x += (tx - camera.x) * camera.followSmooth;
   camera.y += (ty - camera.y) * camera.followSmooth;
-
   camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomSmooth;
 
   updateShake();
 }
 
-// =========================
-// SHAKE
-// =========================
 function updateShake(){
   if(camera.shakePower>0){
     camera.shakeX = (Math.random()-0.5)*camera.shakePower;
@@ -125,65 +139,66 @@ function updateShake(){
 }
 
 // =========================
-// SPEAKER SYSTEM
+// DIALOG TIMELINE
 // =========================
-function setSpeaker(c){
-  activeSpeaker = c;
-  camera.targetZoom = 1.8;
-  camera.shakePower = 6;
+const dialog = [
+  { speaker: 0, duration: 60 },
+  { reaction: 1, duration: 20 },
+  { speaker: 1, duration: 60 },
+  { reaction: 2, duration: 20 },
+  { speaker: 2, duration: 60 },
+  { reaction: 0, duration: 20 }
+];
 
-  setTimeout(()=>{
-    camera.targetZoom = 1;
-  },250);
+let dialogIndex = 0;
+let dialogTimer = 0;
+
+function startDialogStep(){
+  characters.forEach(c=>{
+    c.speaking=false;
+    c.reacting=false;
+  });
+
+  const step = dialog[dialogIndex];
+
+  if(step.speaker !== undefined){
+    const c = characters[step.speaker];
+    c.speaking = true;
+    c.speakTimer = step.duration;
+    focusOn(c);
+  }
+
+  if(step.reaction !== undefined){
+    const c = characters[step.reaction];
+    c.reacting = true;
+    c.reactTimer = step.duration;
+    reactionCut(c);
+  }
+
+  dialogTimer = step.duration;
 }
 
-function updateSpeaking(c){
-  if(c.speakTimer>0){
-    c.speakTimer--;
-    if(c.speakTimer===0){
-      c.speaking=false;
-    }
+startDialogStep();
+
+function updateDialog(){
+  if(dialogTimer > 0){
+    dialogTimer--;
+  } else {
+    dialogIndex = (dialogIndex + 1) % dialog.length;
+    startDialogStep();
   }
 }
 
 // =========================
-// INPUT (dialog simulation)
-// =========================
-document.addEventListener("keydown", e=>{
-  if(e.code==="Digit1") triggerSpeak(0);
-  if(e.code==="Digit2") triggerSpeak(1);
-  if(e.code==="Digit3") triggerSpeak(2);
-});
-
-function triggerSpeak(index){
-  characters.forEach(c=>c.speaking=false);
-  const c = characters[index];
-  c.speaking = true;
-  c.speakTimer = 40;
-  setSpeaker(c);
-}
-
-// =========================
-// PHYSICS
+// UPDATE CHARACTERS
 // =========================
 function updateCharacters(){
   characters.forEach(c=>{
-    c.x += c.vx * timeScale;
+    if(c.speakTimer>0) c.speakTimer--;
+    if(c.reactTimer>0) c.reactTimer--;
 
-    c.vy += 0.8 * timeScale;
-    c.y += c.vy * timeScale;
-
-    if(c.y >= scene.groundY - 120){
-      c.y = scene.groundY - 120;
-      c.vy = 0;
-      c.onGround = true;
-    }
-
-    if(c.x < 300 || c.x > scene.width-300){
-      c.vx *= -1;
-    }
-
-    updateSpeaking(c);
+    if(c.speakTimer===0) c.speaking=false;
+    if(c.reactTimer===0) c.reacting=false;
   });
 }
 
@@ -205,7 +220,11 @@ function drawGround(){
 }
 
 function drawStickman(p){
-  ctx.strokeStyle = p===activeSpeaker ? "#e91e63" : "#000";
+  let color = "#000";
+  if(p.speaking) color = "#e91e63";
+  if(p.reacting) color = "#2196f3";
+
+  ctx.strokeStyle = color;
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
 
@@ -236,8 +255,9 @@ function drawStickman(p){
   ctx.lineTo(camX(hx+p.leg), camY(by+p.leg));
   ctx.stroke();
 
-  if(p.speaking){
-    ctx.fillStyle="#000";
+  // emotion dot
+  if(p.speaking || p.reacting){
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(camX(hx+22), camY(hy-20), 6, 0, Math.PI*2);
     ctx.fill();
@@ -248,6 +268,7 @@ function drawStickman(p){
 // LOOP
 // =========================
 function loop(){
+  updateDialog();
   updateCharacters();
   updateCamera();
 
