@@ -2,15 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.17 — Beat Dialog Sync</title>
+<title>Stickman v21-A.18 — Multi Character Scene</title>
 <style>
-body{
-  margin:0;
-  background:#111;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-}
+body{margin:0;background:#111;display:flex;flex-direction:column;align-items:center}
 canvas{background:#e6f4ff}
 button{margin:6px;padding:8px 14px}
 </style>
@@ -42,7 +36,7 @@ const Camera={
   hit(v){this.shake=v;}
 };
 
-/* ================= SPEECH BUBBLE ================= */
+/* ================= SPEECH ================= */
 function bubble(x,y,text){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.font="bold 16px sans-serif";
@@ -74,21 +68,21 @@ function bubble(x,y,text){
 class Character{
   constructor(name,x,color){
     this.name=name;
-    this.x=x;this.y=440;
+    this.x=x; this.y=440;
     this.color=color;
-    this.walk=0;
+    this.walk=Math.random()*10;
     this.jump=0;
-    this.sayLine=null;
+    this.speak=null;
   }
   update(){
-    this.walk+=0.1;
-    this.jump*=0.8;
+    this.walk+=0.08;
+    this.jump*=0.82;
   }
-  speak(text){
-    this.sayLine={text,time:80};
+  beat(isSpeaker=false){
+    this.jump=isSpeaker?16:10;
   }
-  beat(){
-    this.jump=12;
+  say(text){
+    this.speak={text,time:90};
   }
   draw(){
     const step=Math.sin(this.walk)*5;
@@ -111,12 +105,12 @@ class Character{
     ctx.lineTo(this.x+8,this.y+70+step-j);
     ctx.stroke();
 
-    // arms
+    // arms (overreaction)
     ctx.beginPath();
     ctx.moveTo(this.x,this.y+10-j);
-    ctx.lineTo(this.x-14,this.y+26);
+    ctx.lineTo(this.x-14,this.y+20-step);
     ctx.moveTo(this.x,this.y+10-j);
-    ctx.lineTo(this.x+14,this.y+26);
+    ctx.lineTo(this.x+14,this.y+20+step);
     ctx.stroke();
 
     // head
@@ -124,32 +118,39 @@ class Character{
     ctx.arc(this.x,this.y-14-j,14,0,Math.PI*2);
     ctx.stroke();
 
-    if(this.sayLine){
-      bubble(this.x,this.y-30-j,this.sayLine.text);
-      this.sayLine.time--;
-      if(this.sayLine.time<=0) this.sayLine=null;
+    if(this.speak){
+      bubble(this.x,this.y-30-j,this.speak.text);
+      this.speak.time--;
+      if(this.speak.time<=0) this.speak=null;
     }
   }
 }
 
-/* ================= DIALOG (BEAT BASED) ================= */
+/* ================= SCENE ================= */
+const Scene={
+  characters:[],
+  speakerIndex:0
+};
+
+/* ================= DIALOG ================= */
 const Dialog={
   lines:[
-    {who:"A",text:"That was CRAZY 😱"},
-    {who:"B",text:"Ha, juda telba edi 😂"},
-    {who:"A",text:"I can't believe that!"}
+    "That was INSANE 😱",
+    "Bu juda telba edi 😂",
+    "Everyone saw that?!"
   ],
   i:0,
   next(){
     if(this.i>=this.lines.length) return;
-    const l=this.lines[this.i++];
-    const ch=l.who==="A"?hero:npc;
-    ch.speak(l.text);
-    Camera.target=ch;
+    Scene.speakerIndex=this.i%Scene.characters.length;
+    const speaker=Scene.characters[Scene.speakerIndex];
+    speaker.say(this.lines[this.i]);
+    Camera.target=speaker;
+    this.i++;
   }
 };
 
-/* ================= AUDIO / BEAT ================= */
+/* ================= AUDIO ================= */
 let audioCtx, analyser, data, lastEnergy=0, started=false;
 
 async function startAudio(){
@@ -168,9 +169,13 @@ async function startAudio(){
 }
 
 /* ================= SETUP ================= */
-const hero=new Character("A",160,"#ff4444");
-const npc =new Character("B",200,"#44ff88");
-Camera.target=hero;
+Scene.characters=[
+  new Character("A",120,"#ff4444"),
+  new Character("B",160,"#44ff88"),
+  new Character("C",200,"#4488ff"),
+  new Character("D",240,"#ffaa44")
+];
+Camera.target=Scene.characters[0];
 
 /* ================= LOOP ================= */
 function loop(){
@@ -184,9 +189,11 @@ function loop(){
     energy/=data.length;
 
     if(energy-lastEnergy>18){
-      Camera.hit(10);
-      hero.beat(); npc.beat();
-      Dialog.next(); // 👈 dialog BEATDA
+      Camera.hit(12);
+      Scene.characters.forEach((c,i)=>{
+        c.beat(i===Scene.speakerIndex);
+      });
+      Dialog.next();
     }
     lastEnergy=energy;
   }
@@ -201,8 +208,10 @@ function loop(){
   ctx.lineTo(360,470);
   ctx.stroke();
 
-  hero.update(); npc.update();
-  hero.draw(); npc.draw();
+  Scene.characters.forEach(c=>{
+    c.update();
+    c.draw();
+  });
 
   ctx.restore();
   requestAnimationFrame(loop);
