@@ -297,6 +297,74 @@ showSubtitle = function(text,shake,color){
 
 console.log("✅ 21 B.3 Dominance & Hierarchy loaded");
 </script>
+<script>
+// ================= 21 B.4 — CONFLICT ESCALATION RULES =================
+
+// Konflikt holati
+const conflictState = {
+  active: false,
+  level: 0 // 0..1
+};
+
+// Escalation hisoblash
+function updateConflict(){
+  let maxDominance = 0;
+  let avgTension = 0;
+
+  chars.forEach(c=>{
+    if(!c.psych) return;
+    maxDominance = Math.max(maxDominance, c.psych.dominance || 0);
+    avgTension += c.psych.tension || 0;
+  });
+
+  avgTension /= chars.length;
+
+  // Asosiy formula
+  conflictState.level = Math.min(
+    1,
+    maxDominance * 0.6 + avgTension * 0.4
+  );
+
+  conflictState.active = conflictState.level > 0.6;
+}
+
+// Kamera reaksiyasi
+function applyConflictCamera(){
+  if(!conflictState.active) return;
+
+  camera.shake = Math.max(
+    camera.shake,
+    conflictState.level * 10
+  );
+
+  camera.targetZoom = Math.max(
+    camera.targetZoom,
+    1.4 + conflictState.level * 0.4
+  );
+}
+
+// Vizual signal (emoji)
+function showConflictEmoji(){
+  if(!conflictState.active) return;
+
+  chars.forEach(c=>{
+    if(c.psych && c.psych.tension > 0.8 && !c.emoji){
+      spawnEmoji(c,"💥");
+    }
+  });
+}
+
+// LOOP ga ulanamiz (xavfsiz hook)
+const _oldLoop = loop;
+loop = function(){
+  updateConflict();
+  applyConflictCamera();
+  showConflictEmoji();
+  _oldLoop();
+};
+
+console.log("🔥 21 B.4 Conflict Escalation Rules loaded");
+</script>
 
 </body>
 </html>
