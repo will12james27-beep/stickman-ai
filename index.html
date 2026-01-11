@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.1.0 – Jump to Run</title>
+<title>Stickman AI v8.2.0 – Timeline Combo</title>
 <style>
   body{
     margin:0;
@@ -22,7 +22,7 @@
 <body>
 
 <canvas id="c" width="600" height="600"></canvas>
-<input id="slider" type="range" min="0" max="2000" value="0">
+<input id="slider" type="range" min="0" max="3000" value="0">
 
 <script>
 const canvas = document.getElementById("c");
@@ -51,12 +51,6 @@ const stickman = {
 };
 
 /* =====================
-   TIMING
-===================== */
-const JUMP_DURATION = 1000;
-const RUN_DURATION  = 1000;
-
-/* =====================
    EASING
 ===================== */
 function easeInOut(t){
@@ -72,9 +66,9 @@ function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
 function drawStickman(s){
   ctx.save();
   ctx.translate(s.x,s.y);
-  ctx.lineWidth = 6;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "#000";
+  ctx.lineWidth=6;
+  ctx.lineCap="round";
+  ctx.strokeStyle="#000";
 
   // body
   ctx.beginPath();
@@ -110,41 +104,45 @@ function drawLimb(x,y,len,ang){
 }
 
 /* =====================
+   WALK
+===================== */
+function walk(localTime){
+  let t = (localTime/800)*Math.PI*2;
+  let s = Math.sin(t);
+
+  stickman.y = stickman.groundY - Math.abs(s)*6;
+  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + s*25;
+  stickman.pose.rightLeg = stickman.basePose.rightLeg - s*25;
+  stickman.pose.leftArm  = stickman.basePose.leftArm  - s*20;
+  stickman.pose.rightArm = stickman.basePose.rightArm + s*20;
+}
+
+/* =====================
    JUMP
 ===================== */
-function applyJump(time){
-  let t = clamp(time / JUMP_DURATION, 0, 1);
-
-  let crouchEnd = 0.25;
-  let takeoffEnd = 0.4;
-  let apex = 0.65;
+function jump(localTime){
+  let t = clamp(localTime/1000,0,1);
 
   let y = stickman.groundY;
-  let arm = 0, leg = 0;
+  let arm=0, leg=0;
 
-  if (t < crouchEnd){
-    let k = easeInOut(t / crouchEnd);
-    y = stickman.groundY + k * 12;
-    arm = -20 * k;
-    leg =  20 * k;
-  } else if (t < takeoffEnd){
-    let k = easeInOut((t - crouchEnd)/(takeoffEnd - crouchEnd));
-    y = stickman.groundY - k * 40;
-    arm = 30 * k;
-    leg = -25 * k;
-  } else if (t < apex){
-    let k = easeInOut((t - takeoffEnd)/(apex - takeoffEnd));
-    y = stickman.groundY - 40 - k * 60;
-    arm = 30;
-    leg = -25;
-  } else {
-    let k = easeInOut((t - apex)/(1 - apex));
-    y = stickman.groundY - (1 - k) * 60;
-    arm = 30 * (1 - k);
-    leg = -25 * (1 - k);
+  if(t<0.3){
+    let k=easeInOut(t/0.3);
+    y+=k*12; arm=-20*k; leg=20*k;
+  }else if(t<0.5){
+    let k=easeInOut((t-0.3)/0.2);
+    y-=k*40; arm=30*k; leg=-25*k;
+  }else if(t<0.7){
+    let k=easeInOut((t-0.5)/0.2);
+    y=stickman.groundY-40-k*60;
+    arm=30; leg=-25;
+  }else{
+    let k=easeInOut((t-0.7)/0.3);
+    y=stickman.groundY-(1-k)*60;
+    arm=30*(1-k); leg=-25*(1-k);
   }
 
-  stickman.y = y;
+  stickman.y=y;
   stickman.pose.leftArm  = stickman.basePose.leftArm  + arm;
   stickman.pose.rightArm = stickman.basePose.rightArm - arm;
   stickman.pose.leftLeg  = stickman.basePose.leftLeg  + leg;
@@ -154,27 +152,35 @@ function applyJump(time){
 /* =====================
    RUN
 ===================== */
-function applyRun(time){
-  let t = (time / RUN_DURATION) * Math.PI * 2;
-  let swing = Math.sin(t);
+function run(localTime){
+  let t=(localTime/600)*Math.PI*2;
+  let s=Math.sin(t);
 
-  stickman.y = stickman.groundY - Math.abs(swing) * 14;
-
-  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + swing * 45;
-  stickman.pose.rightLeg = stickman.basePose.rightLeg - swing * 45;
-
-  stickman.pose.leftArm  = stickman.basePose.leftArm  - swing * 35;
-  stickman.pose.rightArm = stickman.basePose.rightArm + swing * 35;
+  stickman.y = stickman.groundY - Math.abs(s)*14;
+  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + s*45;
+  stickman.pose.rightLeg = stickman.basePose.rightLeg - s*45;
+  stickman.pose.leftArm  = stickman.basePose.leftArm  - s*35;
+  stickman.pose.rightArm = stickman.basePose.rightArm + s*35;
 }
 
 /* =====================
-   COMBO CONTROLLER
+   TIMELINE
 ===================== */
-function updateCombo(time){
-  if (time < JUMP_DURATION){
-    applyJump(time);
-  } else {
-    applyRun(time - JUMP_DURATION);
+const timeline = [
+  { start: 0,    end: 800,  action: walk },
+  { start: 800,  end: 1800, action: jump },
+  { start: 1800, end: 3000, action: run  }
+];
+
+/* =====================
+   CONTROLLER
+===================== */
+function updateTimeline(time){
+  for(let seg of timeline){
+    if(time>=seg.start && time<seg.end){
+      seg.action(time-seg.start);
+      break;
+    }
   }
 }
 
@@ -185,7 +191,7 @@ function render(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  updateCombo(Number(slider.value));
+  updateTimeline(Number(slider.value));
   drawStickman(stickman);
 
   requestAnimationFrame(render);
