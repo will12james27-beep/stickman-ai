@@ -2,15 +2,28 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v10.4.0</title>
+<title>Stickman AI v10.5.0 — Timeline</title>
 <style>
-  body { margin:0; background:#0e0e0e; overflow:hidden; }
+  body { margin:0; background:#0e0e0e; color:#aaa; font-family:monospace; }
+  #ui {
+    position:fixed; bottom:0; left:0; right:0;
+    background:#111; padding:6px;
+    display:flex; align-items:center; gap:10px;
+  }
   canvas { display:block; margin:auto; background:#1a1a1a; }
+  input[type=range] { flex:1; }
 </style>
 </head>
 <body>
 
 <canvas id="c"></canvas>
+
+<div id="ui">
+  <button id="play">⏸</button>
+  <span>Timeline</span>
+  <input id="timeline" type="range" min="0" max="1000" value="0">
+  <span id="frame">0</span>
+</div>
 
 <script>
 // ================= SETUP =================
@@ -21,13 +34,22 @@ canvas.width=700; canvas.height=450;
 const GROUND_Y=330;
 let time=0;
 let speed=1.0;
+let playing=true;
 
-// =============== INPUT ==================
-window.addEventListener("keydown",e=>{
-  if(e.key==="ArrowUp")speed+=0.1;
-  if(e.key==="ArrowDown")speed-=0.1;
-  speed=Math.max(0.3,Math.min(2.2,speed));
-});
+// UI
+const playBtn=document.getElementById("play");
+const slider=document.getElementById("timeline");
+const frameTxt=document.getElementById("frame");
+
+playBtn.onclick=()=>{
+  playing=!playing;
+  playBtn.textContent=playing?"⏸":"▶";
+};
+
+slider.oninput=()=>{
+  time=slider.value/50;
+  frameTxt.textContent=slider.value;
+};
 
 // =============== UTILS ==================
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -59,11 +81,9 @@ function solveIK(hx,hy,fx,fy){
 
 // =============== WALK ===================
 function updateWalk(){
-  time+=0.045*speed;
-
   const phase=Math.sin(time);
-  const lift=Math.max(0,Math.sin(time+Math.PI/2))*(18+10*speed);
-  const stepLen=32*speed;
+  const lift=Math.max(0,Math.sin(time+Math.PI/2))*22;
+  const stepLen=32;
 
   const L=sk.legs.L, R=sk.legs.R;
 
@@ -79,22 +99,20 @@ function updateWalk(){
     R.foot.y=GROUND_Y-lift;
   }
 
-  const targetHipY=(L.foot.y+R.foot.y)/2-(65-10*speed);
+  const targetHipY=(L.foot.y+R.foot.y)/2-65;
   sk.hip.y=lerp(sk.hip.y,targetHipY,0.15);
-  sk.hip.x+=0.35*speed;
+  sk.hip.x+=0.35;
 
   sk.spine.x=lerp(sk.spine.x,sk.hip.x,0.25);
-  sk.spine.y=lerp(sk.spine.y,sk.hip.y-(50-10*speed),0.25);
+  sk.spine.y=lerp(sk.spine.y,sk.hip.y-50,0.25);
 
-  // ===== HEAD SECONDARY MOTION =====
-  const bounce=Math.abs(phase)*0.15*speed;
+  const bounce=Math.abs(phase)*0.15;
   sk.head.scaleY=lerp(sk.head.scaleY,1-bounce,0.2);
   sk.head.x=sk.spine.x;
   sk.head.y=lerp(sk.head.y,sk.spine.y-35+phase*4,0.25);
 
-  // ARMS
-  sk.arms.L.a=-phase*(0.8+0.4*speed);
-  sk.arms.R.a= phase*(0.8+0.4*speed);
+  sk.arms.L.a=-phase*0.8;
+  sk.arms.R.a= phase*0.8;
 }
 
 // =============== DRAW ===================
@@ -138,7 +156,6 @@ function draw(){
   ctx.lineTo(sk.spine.x,sk.spine.y);
   ctx.stroke();
 
-  // head squash
   ctx.save();
   ctx.translate(sk.head.x,sk.head.y);
   ctx.scale(1,sk.head.scaleY);
@@ -149,14 +166,19 @@ function draw(){
 
   drawArm("L",-1); drawArm("R",1);
   drawLeg("L",-1); drawLeg("R",1);
-
-  ctx.fillStyle="#aaa";
-  ctx.font="14px monospace";
-  ctx.fillText("Speed: "+speed.toFixed(2),10,20);
 }
 
 // =============== LOOP ===================
-function loop(){updateWalk();draw();requestAnimationFrame(loop);}
+function loop(){
+  if(playing){
+    time+=0.045;
+    slider.value=Math.floor(time*50);
+    frameTxt.textContent=slider.value;
+  }
+  updateWalk();
+  draw();
+  requestAnimationFrame(loop);
+}
 loop();
 </script>
 
