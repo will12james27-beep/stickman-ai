@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.7.0 – Keyframe Dots</title>
+<title>Stickman AI v8.8.0 – Keyframe Easing</title>
 <style>
   body{
     margin:0;
@@ -23,7 +23,7 @@
   }
   .dot{
     position:absolute;top:18px;
-    width:8px;height:8px;
+    width:10px;height:10px;
     background:#ff5252;border-radius:50%;
     transform:translateX(-50%);
   }
@@ -37,7 +37,10 @@
 
 <div id="timeline"></div>
 <input id="time" type="range" min="0" max="2000" value="0">
-<div class="ui">Qo‘l-oyoqni bur → <b>K</b> bos → keyframe (timeline’da nuqta chiqadi)</div>
+<div class="ui">
+  Qo‘l-oyoqni bur → <b>K</b> bos = keyframe  
+  <br>Har keyframe: <b>easeInOut</b>
+</div>
 
 <script>
 const canvas=document.getElementById("c");
@@ -62,7 +65,15 @@ let active=null;
 /* =====================
    KEYFRAMES
 ===================== */
-const keyframes=[]; // {t, pose}
+// t, pose, easing
+const keyframes=[];
+
+/* =====================
+   EASING
+===================== */
+function easeInOut(t){
+  return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+}
 
 /* =====================
    HELPERS
@@ -88,7 +99,7 @@ function applyPose(p){
 }
 
 /* =====================
-   TIMELINE / DOTS
+   TIMELINE DOTS
 ===================== */
 function rebuildDots(){
   timelineEl.innerHTML="";
@@ -101,7 +112,7 @@ function rebuildDots(){
 }
 
 /* =====================
-   INTERPOLATION
+   INTERPOLATION (WITH EASING)
 ===================== */
 function applyTimeline(t){
   if(keyframes.length===0) return;
@@ -111,13 +122,17 @@ function applyTimeline(t){
   let a=keyframes[0], b=keyframes[keyframes.length-1];
   for(let i=0;i<keyframes.length-1;i++){
     if(t>=keyframes[i].t && t<=keyframes[i+1].t){
-      a=keyframes[i]; b=keyframes[i+1]; break;
+      a=keyframes[i];
+      b=keyframes[i+1];
+      break;
     }
   }
   if(t<=a.t) return applyPose(a.pose);
   if(t>=b.t) return applyPose(b.pose);
 
-  const k=(t-a.t)/(b.t-a.t);
+  let k=(t-a.t)/(b.t-a.t);
+  k=a.easing(k); // 🔥 easing applied
+
   applyPose({
     la:lerp(a.pose.la,b.pose.la,k),
     ra:lerp(a.pose.ra,b.pose.ra,k),
@@ -159,7 +174,9 @@ canvas.onmousedown=e=>{
   const mx=e.clientX-r.left,my=e.clientY-r.top;
   for(let k in stickman.joints){
     const j=stickman.joints[k];
-    if(dist(mx,my,stickman.x+j.x,stickman.y+j.y)<15){ active=j; break; }
+    if(dist(mx,my,stickman.x+j.x,stickman.y+j.y)<15){
+      active=j; break;
+    }
   }
 };
 canvas.onmousemove=e=>{
@@ -175,7 +192,11 @@ window.onmouseup=()=>active=null;
 ===================== */
 window.onkeydown=e=>{
   if(e.key.toLowerCase()==="k"){
-    keyframes.push({t:+slider.value,pose:copyPose()});
+    keyframes.push({
+      t:+slider.value,
+      pose:copyPose(),
+      easing:easeInOut
+    });
     rebuildDots();
   }
 };
