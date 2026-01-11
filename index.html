@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v19-B — Overreact Emotions</title>
+<title>Stickman v20-A — Multi Character System</title>
 <style>
 body{
   margin:0;
@@ -17,16 +17,15 @@ canvas{background:#181818;margin-top:10px;}
 .ui{
   margin:10px;
   display:grid;
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(5,1fr);
   gap:6px;
 }
 button{
-  padding:8px;
+  padding:6px;
   background:#222;
   color:#fff;
   border:1px solid #444;
   cursor:pointer;
-  font-size:14px;
 }
 button:hover{background:#333}
 </style>
@@ -36,11 +35,11 @@ button:hover{background:#333}
 <canvas id="c" width="360" height="540"></canvas>
 
 <div class="ui">
-  <button onclick="setPreset('dead')">😐 DEAD</button>
-  <button onclick="setPreset('softHappy')">🙂 soft</button>
-  <button onclick="setPreset('ultraHappy')">😆 ULTRA</button>
-  <button onclick="setPreset('shock')">😱 SHOCK</button>
-  <button onclick="setPreset('rage')">🤬 RAGE</button>
+  <button onclick="setAll('dead')">😐</button>
+  <button onclick="setAll('softHappy')">🙂</button>
+  <button onclick="setAll('ultraHappy')">😆</button>
+  <button onclick="setAll('shock')">😱</button>
+  <button onclick="setAll('rage')">🤬</button>
 </div>
 
 <script>
@@ -49,114 +48,64 @@ const ctx=c.getContext("2d");
 
 let t=0;
 
-// ===== STICK =====
-const stick={
-  x:180,y:260,
-  headR:16,
-  body:40,
-  leg:35,
-  armU:22,
-  armL:20
+// ===== SHARED STICK MODEL =====
+const model={
+  headR:14,
+  body:36,
+  leg:30,
+  armU:20,
+  armL:18
 };
 
-// ===== STATE =====
-let target={eyeOpen:1,eyeScale:1,mouthOpen:0,brow:0,armLift:0,headSquash:0};
-let state={...target};
-
-// ===== OVERREACT PRESETS =====
+// ===== EMOTIONS =====
 const presets={
-  dead:{
-    eyeOpen:0.25,eyeScale:1.1,
-    mouthOpen:0,
-    brow:-0.1,
-    armLift:-0.2,
-    headSquash:-0.1
-  },
-  softHappy:{
-    eyeOpen:0.7,eyeScale:0.9,
-    mouthOpen:0.4,
-    brow:0.2,
-    armLift:0.3,
-    headSquash:0.1
-  },
-  ultraHappy:{
-    eyeOpen:0.4,eyeScale:0.7,
-    mouthOpen:1.4,
-    brow:0.8,
-    armLift:1.2,
-    headSquash:0.35
-  },
-  shock:{
-    eyeOpen:1.8,eyeScale:1.5,
-    mouthOpen:1.8,
-    brow:1.2,
-    armLift:1.6,
-    headSquash:-0.3
-  },
-  rage:{
-    eyeOpen:0.35,eyeScale:0.8,
-    mouthOpen:0.5,
-    brow:-1.6,
-    armLift:-1,
-    headSquash:0.25
-  }
+  dead:{eyeOpen:0.25,eyeScale:1.1,mouthOpen:0,brow:-0.1,armLift:-0.2,headSquash:-0.1},
+  softHappy:{eyeOpen:0.7,eyeScale:0.9,mouthOpen:0.4,brow:0.2,armLift:0.3,headSquash:0.1},
+  ultraHappy:{eyeOpen:0.4,eyeScale:0.7,mouthOpen:1.4,brow:0.8,armLift:1.2,headSquash:0.35},
+  shock:{eyeOpen:1.8,eyeScale:1.5,mouthOpen:1.8,brow:1.2,armLift:1.6,headSquash:-0.3},
+  rage:{eyeOpen:0.35,eyeScale:0.8,mouthOpen:0.5,brow:-1.6,armLift:-1,headSquash:0.25}
 };
 
-function setPreset(name){
-  Object.assign(target,presets[name]);
-}
-
-// ===== UTILS =====
-function jitter(v,a){return v+(Math.random()-0.5)*a}
-
-// ===== FOLLOW (secondary motion) =====
-function follow(){
-  for(let k in state){
-    state[k]+= (target[k]-state[k])*0.18;
+// ===== CHARACTER CLASS =====
+class Character{
+  constructor(x,y){
+    this.x=x;
+    this.y=y;
+    this.target={...presets.dead};
+    this.state={...this.target};
+  }
+  setEmotion(name){
+    Object.assign(this.target,presets[name]);
+  }
+  update(){
+    for(let k in this.state){
+      this.state[k]+= (this.target[k]-this.state[k])*0.18;
+    }
+  }
+  draw(){
+    drawStick(this.x,this.y,this.state);
   }
 }
 
-// ===== DRAW =====
-function draw(){
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle="#fff";
-  ctx.lineCap="round";
-  ctx.lineWidth=2+jitter(0.6,0.6);
+// ===== CREATE CHARACTERS =====
+const chars=[
+  new Character(100,260),
+  new Character(180,260),
+  new Character(260,260)
+];
 
-  const wob=Math.sin(t*0.12)*1.2;
-
-  // body
-  line(stick.x,stick.y,
-       stick.x+jitter(0,0.5),
-       stick.y+stick.body);
-
-  // legs
-  line(stick.x,stick.y+stick.body,
-       stick.x-15,stick.y+stick.body+stick.leg);
-  line(stick.x,stick.y+stick.body,
-       stick.x+15,stick.y+stick.body+stick.leg);
-
-  // arms
-  const lift=-state.armLift*28+wob;
-  arm(stick.x-2,stick.y+5,-1,lift);
-  arm(stick.x+2,stick.y+5, 1,lift);
-
-  // head (squash & stretch)
-  const hs=1+state.headSquash;
-  ctx.save();
-  ctx.translate(stick.x,stick.y-stick.headR);
-  ctx.scale(1,hs);
-  circle(0,0,stick.headR);
-  ctx.restore();
-
-  face();
-  t++;
+// ===== UI =====
+function setAll(name){
+  chars.forEach(c=>c.setEmotion(name));
 }
+
+// ===== DRAW HELPERS =====
+function jitter(v,a){return v+(Math.random()-0.5)*a}
 
 function line(x1,y1,x2,y2){
   ctx.beginPath();
-  ctx.moveTo(jitter(x1,0.6),jitter(y1,0.6));
-  ctx.lineTo(jitter(x2,0.6),jitter(y2,0.6));
+  ctx.moveTo(jitter(x1,0.5),jitter(y1,0.5));
+  ctx.lineTo(jitter(x2,0.5),jitter(y2,0.5));
   ctx.stroke();
 }
 
@@ -167,42 +116,62 @@ function circle(x,y,r){
 }
 
 function arm(x,y,dir,lift){
-  const ex=x+dir*stick.armU;
+  const ex=x+dir*model.armU;
   const ey=y+lift;
-  const hx=ex+dir*stick.armL;
+  const hx=ex+dir*model.armL;
   const hy=ey+lift*0.7;
   line(x,y,ex,ey);
   line(ex,ey,hx,hy);
 }
 
-function face(){
-  const hx=stick.x;
-  const hy=stick.y-stick.headR;
+function drawStick(x,y,s){
+  ctx.strokeStyle="#fff";
+  ctx.lineCap="round";
+  ctx.lineWidth=2+jitter(0.5,0.6);
 
-  // eyes
+  const wob=Math.sin(t*0.12)*1.2;
+
+  // body
+  line(x,y, x,y+model.body);
+
+  // legs
+  line(x,y+model.body, x-12,y+model.body+model.leg);
+  line(x,y+model.body, x+12,y+model.body+model.leg);
+
+  // arms
+  const lift=-s.armLift*25+wob;
+  arm(x-2,y+5,-1,lift);
+  arm(x+2,y+5, 1,lift);
+
+  // head
+  ctx.save();
+  ctx.translate(x,y-model.headR);
+  ctx.scale(1,1+s.headSquash);
+  circle(0,0,model.headR);
+  ctx.restore();
+
+  // face
+  const hx=x;
+  const hy=y-model.headR;
+
   ctx.beginPath();
-  ctx.ellipse(hx-6,hy-3,
-    3*state.eyeScale,
-    3*state.eyeOpen,0,0,Math.PI*2);
-  ctx.ellipse(hx+6,hy-3,
-    3*state.eyeScale,
-    3*state.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(hx-5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
+  ctx.ellipse(hx+5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
   ctx.stroke();
 
-  // brows
-  line(hx-12,hy-8-state.brow*5, hx-2,hy-6-state.brow*5);
-  line(hx+2,hy-6-state.brow*5, hx+12,hy-8-state.brow*5);
+  line(hx-10,hy-7-s.brow*5, hx-2,hy-5-s.brow*5);
+  line(hx+2,hy-5-s.brow*5, hx+10,hy-7-s.brow*5);
 
-  // mouth (big for viral)
   ctx.beginPath();
-  ctx.arc(hx,hy+7,6,0,Math.PI*Math.min(state.mouthOpen,1.9));
+  ctx.arc(hx,hy+6,5,0,Math.PI*Math.min(s.mouthOpen,1.8));
   ctx.stroke();
 }
 
 // ===== LOOP =====
 function loop(){
-  follow();
-  draw();
+  ctx.clearRect(0,0,c.width,c.height);
+  chars.forEach(c=>{c.update();c.draw();});
+  t++;
   requestAnimationFrame(loop);
 }
 loop();
