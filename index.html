@@ -2,15 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.13</title>
+<title>Stickman AI — Scene System 21 C.14</title>
 <style>
 html,body{
-  margin:0;
-  padding:0;
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#000;
+  margin:0;padding:0;
+  width:100%;height:100%;
+  overflow:hidden;background:#000;
 }
 canvas{display:block;}
 </style>
@@ -20,184 +17,137 @@ canvas{display:block;}
 <canvas id="canvas"></canvas>
 
 <script>
-// =========================
-// CANVAS
-// =========================
+// ================= CANVAS =================
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
-
 function resize(){
   canvas.width=window.innerWidth;
   canvas.height=window.innerHeight;
 }
-resize();
-window.addEventListener("resize",resize);
+resize(); window.addEventListener("resize",resize);
 
-// =========================
-// SCENE
-// =========================
-const scene={width:6000,height:2000,groundY:900};
+// ================= SCENE =================
+const scene={width:6000,groundY:900};
 
-// =========================
-// CHARACTERS
-// =========================
-function createChar(x,name){
-  return{
-    name,x,
-    y:scene.groundY-120,
-    head:18,body:50,arm:40,leg:45,
-    speaking:false,emoji:null
-  };
+// ================= CHAR =================
+function char(x,color){
+  return{ x,y:scene.groundY-120,color,head:18,body:50,arm:40,leg:45,emoji:null };
 }
+const chars=[char(800,"#e91e63"),char(1400,"#000")];
+let focus=chars[0];
 
-const chars=[
-  createChar(800,"A"),
-  createChar(1200,"B"),
-  createChar(1600,"C")
-];
-let focusChar=chars[0];
-
-// =========================
-// CAMERA
-// =========================
+// ================= CAMERA =================
 const camera={
-  x:0,y:0,
-  zoom:1,targetZoom:1,
-  follow:0.12,zoomSmooth:0.18,
-  shake:0,shakeX:0,shakeY:0
+  x:0,y:0,zoom:1,targetZoom:1,
+  smooth:0.12,zoomSmooth:0.18,
+  shake:0,freeze:0
 };
-
-function camX(x){return(x-camera.x)*camera.zoom+camera.shakeX;}
-function camY(y){return(y-camera.y)*camera.zoom+camera.shakeY;}
+function camX(x){return(x-camera.x)*camera.zoom;}
+function camY(y){return(y-camera.y)*camera.zoom;}
 
 function updateCamera(){
-  const tx=focusChar.x-canvas.width/(2*camera.zoom);
-  const ty=focusChar.y-canvas.height/(2*camera.zoom);
-  camera.x+=(tx-camera.x)*camera.follow;
-  camera.y+=(ty-camera.y)*camera.follow;
+  if(camera.freeze>0){camera.freeze--;return;}
+  const tx=focus.x-canvas.width/(2*camera.zoom);
+  camera.x+=(tx-camera.x)*camera.smooth;
   camera.zoom+=(camera.targetZoom-camera.zoom)*camera.zoomSmooth;
-
-  if(camera.shake>0){
-    camera.shakeX=(Math.random()-0.5)*camera.shake;
-    camera.shakeY=(Math.random()-0.5)*camera.shake;
-    camera.shake*=0.85;
-  }else{
-    camera.shakeX=0;camera.shakeY=0;
-  }
+  if(camera.shake>0)camera.shake*=0.85;
 }
 
-// =========================
-// EMOJI
-// =========================
-function emoji(c,s){
-  c.emoji={s,life:35,scale:0.2,y:0};
+// ================= EMOJI =================
+function spawnEmoji(c,s){
+  c.emoji={s,life:40,scale:0.3,y:0};
 }
-
 function updateEmoji(c){
   if(!c.emoji)return;
-  c.emoji.life--;
-  c.emoji.scale+=0.08;
-  c.emoji.y+=1.5;
+  c.emoji.life--; c.emoji.scale+=0.05; c.emoji.y+=1;
   if(c.emoji.life<=0)c.emoji=null;
 }
 
-// =========================
-// KARAOKE SUBTITLE
-// =========================
+// ================= SUBTITLE (FIXED) =================
 const subtitle={
-  words:[],
-  index:0,
-  timer:0,
-  visible:false
+  words:[],index:0,timer:0,active:false,punch:false
 };
 
-function startSubtitle(text,wordFrames=10){
+function startSubtitle(text){
   subtitle.words=text.split(" ");
   subtitle.index=0;
-  subtitle.timer=wordFrames;
-  subtitle.visible=true;
+  subtitle.timer=10;
+  subtitle.active=true;
+  subtitle.punch=false;
 }
 
 function updateSubtitle(){
-  if(!subtitle.visible)return;
+  if(!subtitle.active)return;
   subtitle.timer--;
   if(subtitle.timer<=0){
     subtitle.index++;
     subtitle.timer=10;
+
+    // punchline
+    if(subtitle.index===subtitle.words.length-1){
+      subtitle.punch=true;
+      camera.targetZoom=2.3;
+      camera.freeze=18;
+      camera.shake=8;
+    }
+
     if(subtitle.index>=subtitle.words.length){
-      subtitle.visible=false;
+      subtitle.active=false;
+      camera.targetZoom=1;
     }
   }
 }
 
 function drawSubtitle(){
-  if(!subtitle.visible)return;
+  if(!subtitle.active)return;
 
   ctx.fillStyle="#000";
-  ctx.fillRect(0,canvas.height-140,canvas.width,140);
+  ctx.fillRect(0,canvas.height-150,canvas.width,150);
 
   let x=canvas.width/2;
-  let y=canvas.height-60;
-
+  let y=canvas.height-70;
   ctx.textAlign="center";
   ctx.font="bold 36px Arial";
 
-  let full="";
+  let offset=0;
   subtitle.words.forEach((w,i)=>{
-    full+= (i<=subtitle.index ? w+" " : "");
+    let scale=1,color="#aaa";
+    if(i===subtitle.index){
+      scale=subtitle.punch?1.8:1.4;
+      color=subtitle.punch?"#ff1744":"#ffeb3b";
+    }
+    ctx.save();
+    ctx.translate(x+offset,y);
+    ctx.scale(scale,scale);
+    ctx.fillStyle=color;
+    ctx.fillText(w,0,0);
+    ctx.restore();
+    offset+=ctx.measureText(w+" ").width;
   });
-
-  // already spoken
-  ctx.fillStyle="#bbb";
-  ctx.fillText(full,x,y);
-
-  // active word
-  if(subtitle.index<subtitle.words.length){
-    ctx.fillStyle="#ffeb3b";
-    ctx.fillText(subtitle.words[subtitle.index],x,y);
-  }
 }
 
-// =========================
-// DIALOG
-// =========================
+// ================= DIALOG =================
 const dialog=[
- {c:0,t:"WHY DID YOU DO THAT",e:"😡"},
- {c:1,t:"WAIT WHAT IS HAPPENING",e:"😱"},
- {c:1,t:"THIS IS ACTUALLY CRAZY",e:"😂"},
- {c:2,t:"RELAX I HAVE A PLAN",e:"😎"},
- {c:0,t:"MY BRAIN IS MELTING",e:"🤯"}
+ {c:0,t:"MY BRAIN IS MELTING",e:"🤯"},
+ {c:1,t:"THIS MAKES NO SENSE",e:"😱"}
 ];
-
-let step=0;
-let delay=0;
+let step=0,delay=0;
 
 function nextDialog(){
-  chars.forEach(c=>c.speaking=false);
   const d=dialog[step];
-  const c=chars[d.c];
-  c.speaking=true;
-  focusChar=c;
-  camera.targetZoom=1.8;
-  camera.shake=6;
-  emoji(c,d.e);
+  focus=chars[d.c];
+  spawnEmoji(focus,d.e);
   startSubtitle(d.t);
-  delay=d.t.split(" ").length*10+20;
+  delay=d.t.split(" ").length*12+30;
 }
-
 nextDialog();
 
 function updateDialog(){
   if(delay>0)delay--;
-  else{
-    step=(step+1)%dialog.length;
-    nextDialog();
-  }
+  else{step=(step+1)%dialog.length;nextDialog();}
 }
 
-// =========================
-// DRAW
-// =========================
+// ================= DRAW =================
 function drawBG(){
   ctx.fillStyle="#fff";
   ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -205,50 +155,40 @@ function drawBG(){
 function drawGround(){
   ctx.strokeStyle="#aaa";
   ctx.beginPath();
-  ctx.moveTo(camX(0),camY(scene.groundY));
-  ctx.lineTo(camX(scene.width),camY(scene.groundY));
+  ctx.moveTo(camX(0),scene.groundY);
+  ctx.lineTo(camX(scene.width),scene.groundY);
   ctx.stroke();
 }
-function drawChar(p){
-  ctx.strokeStyle=p.speaking?"#e91e63":"#000";
+function drawChar(c){
+  ctx.strokeStyle=c.color;
   ctx.lineWidth=4;
-  const hx=p.x,hy=p.y;
-  ctx.beginPath();
-  ctx.arc(camX(hx),camY(hy),p.head*camera.zoom,0,Math.PI*2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(camX(hx),camY(hy+p.head));
-  ctx.lineTo(camX(hx),camY(hy+p.head+p.body));
-  ctx.stroke();
-  const by=hy+p.head+p.body;
-  ctx.beginPath();
-  ctx.moveTo(camX(hx),camY(by));
-  ctx.lineTo(camX(hx-p.leg),camY(by+p.leg));
-  ctx.moveTo(camX(hx),camY(by));
-  ctx.lineTo(camX(hx+p.leg),camY(by+p.leg));
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(camX(hx),camY(hy+25));
-  ctx.lineTo(camX(hx-p.arm),camY(hy+40));
-  ctx.moveTo(camX(hx),camY(hy+25));
-  ctx.lineTo(camX(hx+p.arm),camY(hy+40));
-  ctx.stroke();
+  const hx=c.x,hy=c.y;
+  ctx.beginPath();ctx.arc(camX(hx),hy,c.head*camera.zoom,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(camX(hx),hy+c.head);
+  ctx.lineTo(camX(hx),hy+c.head+c.body);ctx.stroke();
+  const by=hy+c.head+c.body;
+  ctx.beginPath();ctx.moveTo(camX(hx),by);
+  ctx.lineTo(camX(hx-c.leg),by+c.leg);
+  ctx.moveTo(camX(hx),by);
+  ctx.lineTo(camX(hx+c.leg),by+c.leg);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(camX(hx),hy+25);
+  ctx.lineTo(camX(hx-c.arm),hy+40);
+  ctx.moveTo(camX(hx),hy+25);
+  ctx.lineTo(camX(hx+c.arm),hy+40);ctx.stroke();
 
-  if(p.emoji){
-    ctx.font=`${40*p.emoji.scale}px serif`;
+  if(c.emoji){
+    ctx.font=`${40*c.emoji.scale}px serif`;
     ctx.textAlign="center";
-    ctx.fillText(p.emoji.s,camX(hx),camY(hy-40-p.emoji.y));
-    updateEmoji(p);
+    ctx.fillText(c.emoji.s,camX(hx),hy-40-c.emoji.y);
+    updateEmoji(c);
   }
 }
 
-// =========================
-// LOOP
-// =========================
+// ================= LOOP =================
 function loop(){
   updateDialog();
-  updateCamera();
   updateSubtitle();
+  updateCamera();
 
   drawBG();
   drawGround();
