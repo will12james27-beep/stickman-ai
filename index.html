@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.10</title>
+<title>Stickman AI — Scene System 21 C.11</title>
 <style>
 html, body{
   margin:0;
@@ -50,17 +50,15 @@ function createStickman(x, name){
     name,
     x,
     y: scene.groundY - 120,
-    vx: 0,
-    vy: 0,
-    onGround: true,
     head: 18,
     body: 50,
     arm: 40,
     leg: 45,
-    speaking: false,
-    reacting: false,
-    speakTimer: 0,
-    reactTimer: 0
+    speaking:false,
+    reacting:false,
+    speakTimer:0,
+    reactTimer:0,
+    emoji:null
   };
 }
 
@@ -70,122 +68,125 @@ const characters = [
   createStickman(1600, "C")
 ];
 
-let activeSpeaker = characters[0];
+let activeFocus = characters[0];
 
 // =========================
 // CAMERA
 // =========================
 const camera = {
-  x: 0,
-  y: 0,
-  zoom: 1,
-  targetZoom: 1,
-  followSmooth: 0.12,
-  zoomSmooth: 0.18,
-  shakeX: 0,
-  shakeY: 0,
-  shakePower: 0
+  x:0, y:0,
+  zoom:1, targetZoom:1,
+  followSmooth:0.12,
+  zoomSmooth:0.18,
+  shakeX:0, shakeY:0, shakePower:0
 };
 
-function camX(x){ return (x - camera.x) * camera.zoom + camera.shakeX; }
-function camY(y){ return (y - camera.y) * camera.zoom + camera.shakeY; }
-
-// =========================
-// CAMERA LOGIC
-// =========================
-function focusOn(character, zoom=1.8, shake=6){
-  activeSpeaker = character;
-  camera.targetZoom = zoom;
-  camera.shakePower = shake;
-
-  setTimeout(()=>{
-    camera.targetZoom = 1;
-  }, 300);
-}
-
-function reactionCut(character){
-  camera.targetZoom = 2.2;
-  camera.shakePower = 12;
-  activeSpeaker = character;
-
-  setTimeout(()=>{
-    camera.targetZoom = 1;
-  }, 200);
-}
+function camX(x){ return (x-camera.x)*camera.zoom + camera.shakeX; }
+function camY(y){ return (y-camera.y)*camera.zoom + camera.shakeY; }
 
 // =========================
 // CAMERA UPDATE
 // =========================
 function updateCamera(){
-  const tx = activeSpeaker.x - canvas.width/(2*camera.zoom);
-  const ty = activeSpeaker.y - canvas.height/(2*camera.zoom);
+  const tx = activeFocus.x - canvas.width/(2*camera.zoom);
+  const ty = activeFocus.y - canvas.height/(2*camera.zoom);
 
-  camera.x += (tx - camera.x) * camera.followSmooth;
-  camera.y += (ty - camera.y) * camera.followSmooth;
-  camera.zoom += (camera.targetZoom - camera.zoom) * camera.zoomSmooth;
+  camera.x += (tx-camera.x)*camera.followSmooth;
+  camera.y += (ty-camera.y)*camera.followSmooth;
+  camera.zoom += (camera.targetZoom-camera.zoom)*camera.zoomSmooth;
 
   updateShake();
 }
 
 function updateShake(){
   if(camera.shakePower>0){
-    camera.shakeX = (Math.random()-0.5)*camera.shakePower;
-    camera.shakeY = (Math.random()-0.5)*camera.shakePower;
-    camera.shakePower *= 0.85;
+    camera.shakeX=(Math.random()-0.5)*camera.shakePower;
+    camera.shakeY=(Math.random()-0.5)*camera.shakePower;
+    camera.shakePower*=0.85;
   } else {
-    camera.shakeX = 0;
-    camera.shakeY = 0;
+    camera.shakeX=0; camera.shakeY=0;
   }
+}
+
+// =========================
+// EMOJI SYSTEM
+// =========================
+function spawnEmoji(character, symbol){
+  character.emoji = {
+    symbol,
+    life:30,
+    scale:0.2,
+    yOffset:0
+  };
+}
+
+function updateEmoji(c){
+  if(!c.emoji) return;
+  c.emoji.life--;
+  c.emoji.scale += 0.08;
+  c.emoji.yOffset += 1.5;
+
+  if(c.emoji.life<=0) c.emoji=null;
+}
+
+// =========================
+// CAMERA FOCUS
+// =========================
+function focus(character, zoom=1.8){
+  activeFocus = character;
+  camera.targetZoom = zoom;
+  camera.shakePower = 6;
+  setTimeout(()=>camera.targetZoom=1, 300);
 }
 
 // =========================
 // DIALOG TIMELINE
 // =========================
 const dialog = [
-  { speaker: 0, duration: 60 },
-  { reaction: 1, duration: 20 },
-  { speaker: 1, duration: 60 },
-  { reaction: 2, duration: 20 },
-  { speaker: 2, duration: 60 },
-  { reaction: 0, duration: 20 }
+  { speaker:0, emoji:"😡", duration:50 },
+  { reaction:1, emoji:"😱", duration:25 },
+  { speaker:1, emoji:"😂", duration:50 },
+  { reaction:2, emoji:"😲", duration:25 },
+  { speaker:2, emoji:"😎", duration:50 },
+  { reaction:0, emoji:"🤯", duration:25 }
 ];
 
-let dialogIndex = 0;
-let dialogTimer = 0;
+let dialogIndex=0;
+let dialogTimer=0;
 
-function startDialogStep(){
+function startStep(){
   characters.forEach(c=>{
     c.speaking=false;
     c.reacting=false;
   });
 
-  const step = dialog[dialogIndex];
+  const step=dialog[dialogIndex];
 
-  if(step.speaker !== undefined){
-    const c = characters[step.speaker];
-    c.speaking = true;
-    c.speakTimer = step.duration;
-    focusOn(c);
+  if(step.speaker!==undefined){
+    const c=characters[step.speaker];
+    c.speaking=true;
+    c.speakTimer=step.duration;
+    spawnEmoji(c, step.emoji);
+    focus(c);
   }
 
-  if(step.reaction !== undefined){
-    const c = characters[step.reaction];
-    c.reacting = true;
-    c.reactTimer = step.duration;
-    reactionCut(c);
+  if(step.reaction!==undefined){
+    const c=characters[step.reaction];
+    c.reacting=true;
+    c.reactTimer=step.duration;
+    spawnEmoji(c, step.emoji);
+    focus(c,2.1);
   }
 
-  dialogTimer = step.duration;
+  dialogTimer=step.duration;
 }
-
-startDialogStep();
+startStep();
 
 function updateDialog(){
-  if(dialogTimer > 0){
-    dialogTimer--;
-  } else {
-    dialogIndex = (dialogIndex + 1) % dialog.length;
-    startDialogStep();
+  if(dialogTimer>0) dialogTimer--;
+  else{
+    dialogIndex=(dialogIndex+1)%dialog.length;
+    startStep();
   }
 }
 
@@ -196,9 +197,9 @@ function updateCharacters(){
   characters.forEach(c=>{
     if(c.speakTimer>0) c.speakTimer--;
     if(c.reactTimer>0) c.reactTimer--;
-
     if(c.speakTimer===0) c.speaking=false;
     if(c.reactTimer===0) c.reacting=false;
+    updateEmoji(c);
   });
 }
 
@@ -214,53 +215,56 @@ function drawGround(){
   ctx.strokeStyle="#aaa";
   ctx.lineWidth=2;
   ctx.beginPath();
-  ctx.moveTo(camX(0), camY(scene.groundY));
-  ctx.lineTo(camX(scene.width), camY(scene.groundY));
+  ctx.moveTo(camX(0),camY(scene.groundY));
+  ctx.lineTo(camX(scene.width),camY(scene.groundY));
   ctx.stroke();
 }
 
 function drawStickman(p){
-  let color = "#000";
-  if(p.speaking) color = "#e91e63";
-  if(p.reacting) color = "#2196f3";
+  let color="#000";
+  if(p.speaking) color="#e91e63";
+  if(p.reacting) color="#2196f3";
 
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 4;
-  ctx.lineCap = "round";
+  ctx.strokeStyle=color;
+  ctx.lineWidth=4;
+  ctx.lineCap="round";
 
   const hx=p.x, hy=p.y;
 
   ctx.beginPath();
-  ctx.arc(camX(hx), camY(hy), p.head*camera.zoom, 0, Math.PI*2);
+  ctx.arc(camX(hx),camY(hy),p.head*camera.zoom,0,Math.PI*2);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(hy+p.head));
-  ctx.lineTo(camX(hx), camY(hy+p.head+p.body));
+  ctx.moveTo(camX(hx),camY(hy+p.head));
+  ctx.lineTo(camX(hx),camY(hy+p.head+p.body));
   ctx.stroke();
 
   const by=hy+p.head+p.body;
 
   ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(hy+25));
-  ctx.lineTo(camX(hx-p.arm), camY(hy+40));
-  ctx.moveTo(camX(hx), camY(hy+25));
-  ctx.lineTo(camX(hx+p.arm), camY(hy+40));
+  ctx.moveTo(camX(hx),camY(by));
+  ctx.lineTo(camX(hx-p.leg),camY(by+p.leg));
+  ctx.moveTo(camX(hx),camY(by));
+  ctx.lineTo(camX(hx+p.leg),camY(by+p.leg));
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(camX(hx), camY(by));
-  ctx.lineTo(camX(hx-p.leg), camY(by+p.leg));
-  ctx.moveTo(camX(hx), camY(by));
-  ctx.lineTo(camX(hx+p.leg), camY(by+p.leg));
+  ctx.moveTo(camX(hx),camY(hy+25));
+  ctx.lineTo(camX(hx-p.arm),camY(hy+40));
+  ctx.moveTo(camX(hx),camY(hy+25));
+  ctx.lineTo(camX(hx+p.arm),camY(hy+40));
   ctx.stroke();
 
-  // emotion dot
-  if(p.speaking || p.reacting){
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(camX(hx+22), camY(hy-20), 6, 0, Math.PI*2);
-    ctx.fill();
+  // emoji
+  if(p.emoji){
+    ctx.font = `${40*p.emoji.scale}px serif`;
+    ctx.textAlign="center";
+    ctx.fillText(
+      p.emoji.symbol,
+      camX(hx),
+      camY(hy-40-p.emoji.yOffset)
+    );
   }
 }
 
