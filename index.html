@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>21 C.24 Emotion Transition & Blend</title>
+<title>21 C.25 Emotion + Camera Sync</title>
 <style>
   body{margin:0;background:#111;}
   canvas{display:block;margin:auto;background:#fff;}
@@ -21,25 +21,43 @@ const ctx = canvas.getContext("2d");
 ========================= */
 
 const Emotion = {
-  NEUTRAL: "neutral",
-  ANGRY: "angry",
-  CONFUSED: "confused",
-  SHOCKED: "shocked"
+  NEUTRAL:"neutral",
+  CONFUSED:"confused",
+  SHOCKED:"shocked",
+  ANGRY:"angry"
 };
 
 const faceMap = {
   neutral:  { eye:1,   brow:0,   mouth:0 },
-  angry:    { eye:0.6, brow:-20, mouth:-4 },
-  confused: { eye:0.85,brow:15,  mouth:3 },
-  shocked:  { eye:1.4, brow:0,   mouth:10 }
+  confused: { eye:0.85,brow:14,  mouth:3 },
+  shocked:  { eye:1.4, brow:0,   mouth:10 },
+  angry:    { eye:0.6, brow:-20, mouth:-4 }
+};
+
+/* =========================
+   CAMERA MAP (NEW)
+========================= */
+
+const cameraMap = {
+  neutral:  { zoom:1,   shake:0 },
+  confused: { zoom:1.05,shake:0.3 },
+  shocked:  { zoom:1.25,shake:1.2 },
+  angry:    { zoom:1.15,shake:0.8 }
 };
 
 /* =========================
    BLEND STATE
 ========================= */
 
-let current = { eye:1, brow:0, mouth:0 };
-let target  = { ...current };
+let currentFace = { eye:1, brow:0, mouth:0 };
+let targetFace  = { ...currentFace };
+
+let camera = {
+  zoom:1,
+  targetZoom:1,
+  shake:0,
+  targetShake:0
+};
 
 /* =========================
    HELPERS
@@ -48,7 +66,9 @@ let target  = { ...current };
 function lerp(a,b,t){ return a+(b-a)*t; }
 
 function setEmotion(e){
-  target = { ...faceMap[e] };
+  targetFace = { ...faceMap[e] };
+  camera.targetZoom  = cameraMap[e].zoom;
+  camera.targetShake = cameraMap[e].shake;
 }
 
 /* =========================
@@ -84,11 +104,11 @@ function drawMouth(x,y,open){
 }
 
 function drawFace(x,y){
-  drawEye(x-10,y,current.eye);
-  drawEye(x+10,y,current.eye);
-  drawBrow(x-10,y-10,current.brow);
-  drawBrow(x+10,y-10,current.brow);
-  drawMouth(x,y+12,current.mouth);
+  drawEye(x-10,y,currentFace.eye);
+  drawEye(x+10,y,currentFace.eye);
+  drawBrow(x-10,y-10,currentFace.brow);
+  drawBrow(x+10,y-10,currentFace.brow);
+  drawMouth(x,y+12,currentFace.mouth);
 }
 
 /* =========================
@@ -134,8 +154,8 @@ function drawCharacter(){
 ========================= */
 
 setTimeout(()=>setEmotion(Emotion.CONFUSED),1000);
-setTimeout(()=>setEmotion(Emotion.SHOCKED),2500);
-setTimeout(()=>setEmotion(Emotion.ANGRY),4200);
+setTimeout(()=>setEmotion(Emotion.SHOCKED),2600);
+setTimeout(()=>setEmotion(Emotion.ANGRY),4300);
 setTimeout(()=>setEmotion(Emotion.NEUTRAL),6500);
 
 /* =========================
@@ -145,12 +165,30 @@ setTimeout(()=>setEmotion(Emotion.NEUTRAL),6500);
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // smooth blend
-  current.eye   = lerp(current.eye,   target.eye,   0.08);
-  current.brow  = lerp(current.brow,  target.brow,  0.08);
-  current.mouth = lerp(current.mouth, target.mouth, 0.08);
+  // smooth face
+  currentFace.eye   = lerp(currentFace.eye,   targetFace.eye,   0.08);
+  currentFace.brow  = lerp(currentFace.brow,  targetFace.brow,  0.08);
+  currentFace.mouth = lerp(currentFace.mouth, targetFace.mouth, 0.08);
+
+  // smooth camera
+  camera.zoom  = lerp(camera.zoom,  camera.targetZoom,  0.06);
+  camera.shake = lerp(camera.shake, camera.targetShake, 0.1);
+
+  // apply camera
+  ctx.save();
+  const sx = (Math.random()-0.5)*camera.shake*10;
+  const sy = (Math.random()-0.5)*camera.shake*10;
+
+  ctx.translate(
+    canvas.width/2 + sx,
+    canvas.height/2 + sy
+  );
+  ctx.scale(camera.zoom,camera.zoom);
+  ctx.translate(-canvas.width/2,-canvas.height/2);
 
   drawCharacter();
+  ctx.restore();
+
   requestAnimationFrame(loop);
 }
 
