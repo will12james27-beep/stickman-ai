@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v8.3.0 – Timeline Editor</title>
+<title>Stickman AI v8.4.0 – Drag & Resize Timeline</title>
 <style>
   body{
     margin:0;
@@ -15,99 +15,81 @@
     justify-content:center;
     height:100vh;
   }
-  canvas{
-    background:#fff;
-    margin-bottom:10px;
-  }
+  canvas{background:#fff;margin-bottom:10px;}
   #timeline{
-    width:600px;
-    height:60px;
-    background:#222;
-    position:relative;
-    border-radius:6px;
-    overflow:hidden;
-    margin-bottom:8px;
+    width:600px;height:70px;
+    background:#222;border-radius:6px;
+    position:relative;margin-bottom:8px;
   }
   .block{
-    position:absolute;
-    top:10px;
-    height:40px;
+    position:absolute;top:15px;height:40px;
     border-radius:4px;
-    text-align:center;
-    line-height:40px;
-    font-size:12px;
-    color:#000;
-    font-weight:bold;
+    cursor:grab;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;font-weight:bold;color:#000;
   }
-  .walk{ background:#4caf50; }
-  .jump{ background:#ff9800; }
-  .run { background:#03a9f4; }
-
-  input{ width:600px; }
+  .handle{
+    position:absolute;right:0;top:0;
+    width:10px;height:100%;
+    cursor:ew-resize;
+    background:rgba(0,0,0,0.2);
+  }
+  .walk{background:#4caf50;}
+  .jump{background:#ff9800;}
+  .run{background:#03a9f4;}
+  input{width:600px;}
 </style>
 </head>
 <body>
 
 <canvas id="c" width="600" height="600"></canvas>
 
-<div id="timeline">
-  <div class="block walk" style="left:0;width:160px;">WALK</div>
-  <div class="block jump" style="left:160px;width:200px;">JUMP</div>
-  <div class="block run"  style="left:360px;width:240px;">RUN</div>
-</div>
-
+<div id="timeline"></div>
 <input id="slider" type="range" min="0" max="3000" value="0">
 
 <script>
 const canvas=document.getElementById("c");
 const ctx=canvas.getContext("2d");
+const timelineEl=document.getElementById("timeline");
 const slider=document.getElementById("slider");
 
 /* =====================
    STATE
 ===================== */
 const stickman={
-  x:300,
-  groundY:340,
-  y:340,
-  basePose:{leftArm:-15,rightArm:15,leftLeg:10,rightLeg:-10},
-  pose:{leftArm:0,rightArm:0,leftLeg:0,rightLeg:0}
+  x:300,groundY:340,y:340,
+  base:{la:-15,ra:15,ll:10,rl:-10},
+  pose:{la:0,ra:0,ll:0,rl:0}
 };
 
 /* =====================
    HELPERS
 ===================== */
-function ease(t){return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
-function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 
 /* =====================
    DRAW
 ===================== */
-function drawStickman(s){
-  ctx.save();
-  ctx.translate(s.x,s.y);
-  ctx.lineWidth=6;
-  ctx.lineCap="round";
-  ctx.strokeStyle="#000";
-
-  ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(0,60);ctx.stroke();
-  ctx.beginPath();ctx.arc(0,-70,22,0,Math.PI*2);ctx.stroke();
-
-  drawLimb(0,-20,55,s.pose.leftArm);
-  drawLimb(0,-20,55,s.pose.rightArm);
-  drawLimb(0,60,65,s.pose.leftLeg);
-  drawLimb(0,60,65,s.pose.rightLeg);
-
+function limb(x,y,l,a){
+  ctx.save();ctx.translate(x,y);ctx.rotate(a*Math.PI/180);
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,l);ctx.stroke();
   ctx.restore();
 }
-function drawLimb(x,y,l,a){
+function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,600,600);
   ctx.save();
-  ctx.translate(x,y);
-  ctx.rotate(a*Math.PI/180);
-  ctx.beginPath();
-  ctx.moveTo(0,0);
-  ctx.lineTo(0,l);
-  ctx.stroke();
+  ctx.translate(stickman.x,stickman.y);
+  ctx.lineWidth=6;ctx.lineCap="round";ctx.strokeStyle="#000";
+  ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(0,60);ctx.stroke();
+  ctx.beginPath();ctx.arc(0,-70,22,0,Math.PI*2);ctx.stroke();
+  limb(0,-20,55,stickman.pose.la);
+  limb(0,-20,55,stickman.pose.ra);
+  limb(0,60,65,stickman.pose.ll);
+  limb(0,60,65,stickman.pose.rl);
   ctx.restore();
 }
 
@@ -117,68 +99,111 @@ function drawLimb(x,y,l,a){
 function walk(t){
   let s=Math.sin((t/800)*Math.PI*2);
   stickman.y=stickman.groundY-Math.abs(s)*6;
-  stickman.pose.leftLeg=stickman.basePose.leftLeg+s*25;
-  stickman.pose.rightLeg=stickman.basePose.rightLeg-s*25;
-  stickman.pose.leftArm=stickman.basePose.leftArm-s*20;
-  stickman.pose.rightArm=stickman.basePose.rightArm+s*20;
+  stickman.pose.ll=stickman.base.ll+s*25;
+  stickman.pose.rl=stickman.base.rl-s*25;
+  stickman.pose.la=stickman.base.la-s*20;
+  stickman.pose.ra=stickman.base.ra+s*20;
 }
-
 function jump(t){
-  let p=clamp(t/1000,0,1);
-  let y=stickman.groundY,arm=0,leg=0;
-
-  if(p<0.3){let k=ease(p/0.3);y+=k*12;arm=-20*k;leg=20*k;}
-  else if(p<0.5){let k=ease((p-0.3)/0.2);y-=k*40;arm=30*k;leg=-25*k;}
-  else if(p<0.7){let k=ease((p-0.5)/0.2);y=stickman.groundY-40-k*60;arm=30;leg=-25;}
-  else{let k=ease((p-0.7)/0.3);y=stickman.groundY-(1-k)*60;arm=30*(1-k);leg=-25*(1-k);}
-
+  let p=clamp(t/1000,0,1),y=stickman.groundY,a=0,l=0;
+  if(p<.3){let k=ease(p/.3);y+=k*12;a=-20*k;l=20*k;}
+  else if(p<.5){let k=ease((p-.3)/.2);y-=k*40;a=30*k;l=-25*k;}
+  else if(p<.7){let k=ease((p-.5)/.2);y=stickman.groundY-40-k*60;a=30;l=-25;}
+  else{let k=ease((p-.7)/.3);y=stickman.groundY-(1-k)*60;a=30*(1-k);l=-25*(1-k);}
   stickman.y=y;
-  stickman.pose.leftArm=stickman.basePose.leftArm+arm;
-  stickman.pose.rightArm=stickman.basePose.rightArm-arm;
-  stickman.pose.leftLeg=stickman.basePose.leftLeg+leg;
-  stickman.pose.rightLeg=stickman.basePose.rightLeg-leg;
+  stickman.pose.la=stickman.base.la+a;
+  stickman.pose.ra=stickman.base.ra-a;
+  stickman.pose.ll=stickman.base.ll+l;
+  stickman.pose.rl=stickman.base.rl-l;
 }
-
 function run(t){
   let s=Math.sin((t/600)*Math.PI*2);
   stickman.y=stickman.groundY-Math.abs(s)*14;
-  stickman.pose.leftLeg=stickman.basePose.leftLeg+s*45;
-  stickman.pose.rightLeg=stickman.basePose.rightLeg-s*45;
-  stickman.pose.leftArm=stickman.basePose.leftArm-s*35;
-  stickman.pose.rightArm=stickman.basePose.rightArm+s*35;
+  stickman.pose.ll=stickman.base.ll+s*45;
+  stickman.pose.rl=stickman.base.rl-s*45;
+  stickman.pose.la=stickman.base.la-s*35;
+  stickman.pose.ra=stickman.base.ra+s*35;
 }
 
 /* =====================
-   TIMELINE
+   TIMELINE DATA
 ===================== */
-const timeline=[
-  {start:0,end:800,action:walk},
-  {start:800,end:1800,action:jump},
-  {start:1800,end:3000,action:run}
+let blocks=[
+  {id:1,type:"walk",start:0,dur:800,act:walk},
+  {id:2,type:"jump",start:800,dur:1000,act:jump},
+  {id:3,type:"run", start:1800,dur:1200,act:run}
 ];
+const PX=600/3000;
 
-function updateTimeline(time){
-  for(let s of timeline){
-    if(time>=s.start && time<s.end){
-      s.action(time-s.start);
-      break;
+/* =====================
+   UI BUILD
+===================== */
+function rebuild(){
+  timelineEl.innerHTML="";
+  blocks.forEach(b=>{
+    const el=document.createElement("div");
+    el.className=`block ${b.type}`;
+    el.style.left=b.start*PX+"px";
+    el.style.width=b.dur*PX+"px";
+    el.textContent=b.type.toUpperCase();
+
+    const h=document.createElement("div");
+    h.className="handle";
+    el.appendChild(h);
+
+    dragLogic(el,b);
+    resizeLogic(h,b,el);
+
+    timelineEl.appendChild(el);
+  });
+}
+rebuild();
+
+/* =====================
+   DRAG / RESIZE
+===================== */
+function dragLogic(el,b){
+  let sx,sl;
+  el.onmousedown=e=>{
+    if(e.target.classList.contains("handle"))return;
+    sx=e.clientX;sl=b.start;
+    document.onmousemove=m=>{
+      b.start=clamp(sl+(m.clientX-sx)/PX,0,3000-b.dur);
+      el.style.left=b.start*PX+"px";
+    };
+    document.onmouseup=()=>document.onmousemove=null;
+  };
+}
+function resizeLogic(h,b,el){
+  let sx,sw;
+  h.onmousedown=e=>{
+    e.stopPropagation();
+    sx=e.clientX;sw=b.dur;
+    document.onmousemove=m=>{
+      b.dur=clamp(sw+(m.clientX-sx)/PX,200,3000-b.start);
+      el.style.width=b.dur*PX+"px";
+    };
+    document.onmouseup=()=>document.onmousemove=null;
+  };
+}
+
+/* =====================
+   TIMELINE PLAY
+===================== */
+function update(time){
+  for(let b of blocks){
+    if(time>=b.start && time<b.start+b.dur){
+      b.act(time-b.start);
+      return;
     }
   }
 }
-
-/* =====================
-   RENDER
-===================== */
-function render(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  updateTimeline(Number(slider.value));
-  drawStickman(stickman);
-
-  requestAnimationFrame(render);
+function loop(){
+  update(+slider.value);
+  draw();
+  requestAnimationFrame(loop);
 }
-render();
+loop();
 </script>
 
 </body>
