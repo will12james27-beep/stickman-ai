@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v9.1.0 – Timeline Playback</title>
+<title>Stickman AI v9.2.0 – Auto Walk Demo</title>
 <style>
 body{
   margin:0;
@@ -52,9 +52,7 @@ button{
   <input id="time" type="range" min="0" max="2000" value="0">
   <button id="play">▶ Play</button>
   <button id="pause">⏸ Pause</button>
-  <label>
-    <input type="checkbox" id="loop" checked> Loop
-  </label>
+  <label><input type="checkbox" id="loop" checked> Loop</label>
 </div>
 
 <script>
@@ -62,7 +60,6 @@ const canvas=document.getElementById("c");
 const ctx=canvas.getContext("2d");
 const slider=document.getElementById("time");
 const timelineEl=document.getElementById("timeline");
-
 const playBtn=document.getElementById("play");
 const pauseBtn=document.getElementById("pause");
 const loopChk=document.getElementById("loop");
@@ -75,8 +72,8 @@ const stickman={
   joints:{
     la:{x:0,y:-20,ang:-20,len:55},
     ra:{x:0,y:-20,ang:20,len:55},
-    ll:{x:0,y:60,ang:15,len:65},
-    rl:{x:0,y:60,ang:-15,len:65}
+    ll:{x:0,y:60,ang:10,len:65},
+    rl:{x:0,y:60,ang:-10,len:65}
   }
 };
 
@@ -88,11 +85,13 @@ const Easings={
 const keyframes=[];
 let playing=false;
 let lastTime=0;
+let demoTime=0;
 
 /* =====================
    HELPERS
 ===================== */
 const lerp=(a,b,t)=>a+(b-a)*t;
+
 function copyPose(){
   return {
     la:stickman.joints.la.ang,
@@ -109,6 +108,17 @@ function applyPose(p){
 }
 
 /* =====================
+   DEMO WALK (NO KEYFRAMES)
+===================== */
+function demoWalk(t){
+  const s=Math.sin(t*0.005);
+  stickman.joints.ll.ang= 25*s;
+  stickman.joints.rl.ang=-25*s;
+  stickman.joints.la.ang=-20*s;
+  stickman.joints.ra.ang= 20*s;
+}
+
+/* =====================
    TIMELINE
 ===================== */
 function rebuildDots(){
@@ -122,17 +132,17 @@ function rebuildDots(){
 }
 
 function applyTimeline(t){
-  if(keyframes.length===0) return;
-  keyframes.sort((a,b)=>a.t-b.t);
+  if(keyframes.length<2) return false;
 
+  keyframes.sort((a,b)=>a.t-b.t);
   let a=keyframes[0], b=keyframes[keyframes.length-1];
   for(let i=0;i<keyframes.length-1;i++){
     if(t>=keyframes[i].t && t<=keyframes[i+1].t){
       a=keyframes[i]; b=keyframes[i+1]; break;
     }
   }
-  if(t<=a.t) return applyPose(a.pose);
-  if(t>=b.t) return applyPose(b.pose);
+  if(t<=a.t) return applyPose(a.pose),true;
+  if(t>=b.t) return applyPose(b.pose),true;
 
   let k=(t-a.t)/(b.t-a.t);
   k=a.easing(k);
@@ -143,6 +153,7 @@ function applyTimeline(t){
     ll:lerp(a.pose.ll,b.pose.ll,k),
     rl:lerp(a.pose.rl,b.pose.rl,k)
   });
+  return true;
 }
 
 /* =====================
@@ -172,7 +183,7 @@ function draw(){
 }
 
 /* =====================
-   PLAYBACK
+   CONTROLS
 ===================== */
 playBtn.onclick=()=>{ playing=true; };
 pauseBtn.onclick=()=>{ playing=false; };
@@ -197,14 +208,22 @@ function loop(ts){
   lastTime=ts;
 
   if(playing){
-    slider.value=+slider.value+dt;
-    if(slider.value>=2000){
-      if(loopChk.checked) slider.value=0;
-      else { slider.value=2000; playing=false; }
+    if(keyframes.length>=2){
+      slider.value=+slider.value+dt;
+      if(slider.value>=2000){
+        if(loopChk.checked) slider.value=0;
+        else { slider.value=2000; playing=false; }
+      }
+    }else{
+      demoTime+=dt;
+      demoWalk(demoTime);
     }
   }
 
-  applyTimeline(+slider.value);
+  if(!applyTimeline(+slider.value) && keyframes.length<2 && !playing){
+    demoWalk(demoTime);
+  }
+
   draw();
   requestAnimationFrame(loop);
 }
