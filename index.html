@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v7.8.0</title>
+<title>Stickman AI v7.8.1 FIX</title>
 <style>
   body {
     margin: 0;
@@ -15,13 +15,8 @@
     color: #fff;
     font-family: sans-serif;
   }
-  canvas {
-    background: #fff;
-    margin-bottom: 10px;
-  }
-  input[type=range] {
-    width: 600px;
-  }
+  canvas { background:#fff; }
+  input { width:600px; margin-top:10px; }
 </style>
 </head>
 <body>
@@ -34,13 +29,19 @@ const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 const slider = document.getElementById("slider");
 
-/* =======================
-   STATE
-======================= */
+/* =====================
+   BASE STATE
+===================== */
 const stickman = {
   x: 300,
   baseY: 320,
   y: 320,
+  basePose: {
+    leftArm: -15,
+    rightArm: 15,
+    leftLeg: 10,
+    rightLeg: -10
+  },
   pose: {
     leftArm: 0,
     rightArm: 0,
@@ -49,24 +50,19 @@ const stickman = {
   }
 };
 
-/* =======================
-   TIMELINE
-======================= */
 const DURATION = 1000;
 
-/* =======================
+/* =====================
    EASING
-======================= */
-function easeInOut(t) {
-  return t < 0.5
-    ? 2 * t * t
-    : 1 - Math.pow(-2 * t + 2, 2) / 2;
+===================== */
+function easeInOut(t){
+  return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
 }
 
-/* =======================
+/* =====================
    DRAW
-======================= */
-function drawStickman(s) {
+===================== */
+function drawStickman(s){
   ctx.save();
   ctx.translate(s.x, s.y);
   ctx.lineWidth = 6;
@@ -75,90 +71,62 @@ function drawStickman(s) {
 
   // body
   ctx.beginPath();
-  ctx.moveTo(0, -40);
-  ctx.lineTo(0, 60);
+  ctx.moveTo(0,-40);
+  ctx.lineTo(0,60);
   ctx.stroke();
 
   // head
   ctx.beginPath();
-  ctx.arc(0, -70, 22, 0, Math.PI * 2);
+  ctx.arc(0,-70,22,0,Math.PI*2);
   ctx.stroke();
 
   // arms
-  drawLimb(0, -20, 55, s.pose.leftArm);
-  drawLimb(0, -20, 55, s.pose.rightArm);
+  drawLimb(0,-20,55,s.pose.leftArm);
+  drawLimb(0,-20,55,s.pose.rightArm);
 
   // legs
-  drawLeg(0, 60, 65, s.pose.leftLeg);
-  drawLeg(0, 60, 65, s.pose.rightLeg);
+  drawLimb(0,60,65,s.pose.leftLeg);
+  drawLimb(0,60,65,s.pose.rightLeg);
 
   ctx.restore();
 }
 
-function drawLimb(x, y, length, angle) {
+function drawLimb(x,y,len,ang){
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle * Math.PI / 180);
+  ctx.translate(x,y);
+  ctx.rotate(ang*Math.PI/180);
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(0, length);
+  ctx.moveTo(0,0);
+  ctx.lineTo(0,len);
   ctx.stroke();
   ctx.restore();
 }
 
-function drawLeg(x, y, length, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle * Math.PI / 180);
-
-  const upper = length * 0.55;
-  const lower = length * 0.45;
-  const knee = Math.max(0, angle) * 0.6;
-
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(0, upper);
-  ctx.stroke();
-
-  ctx.translate(0, upper);
-  ctx.rotate(knee * Math.PI / 180);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(0, lower);
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-/* =======================
-   WALK LOGIC (FOOT LOCK)
-======================= */
-function applyWalk(time) {
-  let phase = (time / DURATION) * Math.PI * 2;
+/* =====================
+   WALK + BASE POSE
+===================== */
+function applyWalk(time){
+  let phase = (time/DURATION)*Math.PI*2;
   let raw = Math.sin(phase);
-  let eased = easeInOut((raw + 1) / 2) * 2 - 1;
+  let eased = easeInOut((raw+1)/2)*2-1;
 
-  // legs
-  stickman.pose.leftLeg  = eased * 30;
-  stickman.pose.rightLeg = -eased * 30;
+  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + eased*25;
+  stickman.pose.rightLeg = stickman.basePose.rightLeg - eased*25;
 
-  // arms (opposite)
-  stickman.pose.leftArm  = -eased * 24;
-  stickman.pose.rightArm =  eased * 24;
+  stickman.pose.leftArm  = stickman.basePose.leftArm  - eased*20;
+  stickman.pose.rightArm = stickman.basePose.rightArm + eased*20;
 
-  // body bounce (foot lock feel)
-  stickman.y = stickman.baseY - Math.abs(eased) * 8;
+  stickman.y = stickman.baseY - Math.abs(eased)*8;
 }
 
-/* =======================
+/* =====================
    RENDER
-======================= */
-function render() {
+===================== */
+function render(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  const t = Number(slider.value);
-  applyWalk(t);
+  applyWalk(Number(slider.value));
   drawStickman(stickman);
 
   requestAnimationFrame(render);
