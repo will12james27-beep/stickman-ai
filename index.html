@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>21 C.33 Scene Entry Exit</title>
+<title>21 B.1 Character Psychology Core</title>
 <style>
 body{margin:0;background:#111;}
 canvas{display:block;margin:auto;background:#fff;}
@@ -13,75 +13,152 @@ canvas{display:block;margin:auto;background:#fff;}
 <canvas id="c" width="720" height="480"></canvas>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
-function lerp(a,b,t){return a+(b-a)*t}
+/* =========================
+   PERSONALITY ENGINE
+========================= */
 
-/* ======================
-   CHAR
-====================== */
-function Char(x){
- return{ x,y:260,active:false }
+const Personality = {
+  CALM: "calm",
+  HOT: "hot",
+  CHAOTIC: "chaotic",
+  LOGICAL: "logical"
+};
+
+/* =========================
+   CHARACTER PROFILE
+========================= */
+
+function CharacterProfile(cfg){
+  return {
+    id: cfg.id,
+    name: cfg.name,
+    personality: cfg.personality,
+
+    // emotional bias (0..1)
+    bias: {
+      anger: cfg.bias.anger,
+      panic: cfg.bias.panic,
+      humor: cfg.bias.humor
+    },
+
+    // scene behavior
+    interruptChance: cfg.interruptChance,
+    silenceTolerance: cfg.silenceTolerance,
+    cameraPriority: cfg.cameraPriority,
+
+    // runtime state
+    mood: "neutral",
+    tension: 0
+  };
 }
-const chars=[
- new Char(180),
- new Char(360),
- new Char(540)
+
+/* =========================
+   MAIN CHARACTERS (4 ta)
+========================= */
+
+const characters = [
+  CharacterProfile({
+    id:0,
+    name:"Red",
+    personality:Personality.HOT,
+    bias:{ anger:0.8, panic:0.2, humor:0.3 },
+    interruptChance:0.7,
+    silenceTolerance:0.2,
+    cameraPriority:1.2
+  }),
+
+  CharacterProfile({
+    id:1,
+    name:"Blue",
+    personality:Personality.LOGICAL,
+    bias:{ anger:0.3, panic:0.1, humor:0.1 },
+    interruptChance:0.2,
+    silenceTolerance:0.8,
+    cameraPriority:1.0
+  }),
+
+  CharacterProfile({
+    id:2,
+    name:"Green",
+    personality:Personality.CALM,
+    bias:{ anger:0.2, panic:0.1, humor:0.4 },
+    interruptChance:0.1,
+    silenceTolerance:0.9,
+    cameraPriority:0.9
+  }),
+
+  CharacterProfile({
+    id:3,
+    name:"Yellow",
+    personality:Personality.CHAOTIC,
+    bias:{ anger:0.4, panic:0.6, humor:0.8 },
+    interruptChance:0.9,
+    silenceTolerance:0.05,
+    cameraPriority:1.1
+  })
 ];
 
-/* ======================
-   CAMERA
-====================== */
-const cam={x:0,zoom:1};
+/* =========================
+   PSYCHOLOGY LOGIC
+========================= */
 
-/* ======================
-   SCENE SCRIPT
-====================== */
-let t=0;
-const script=[
- {t:20,type:"enter",c:0},
- {t:40,type:"enter",c:1},
- {t:60,type:"enter",c:2},
- {t:140,type:"exit", c:1}
-];
+function reactToEvent(char, eventPower){
+  char.tension += eventPower;
 
-/* ======================
-   LOOP
-====================== */
-function loop(){
- ctx.clearRect(0,0,c.width,c.height);
- t++;
-
- script.forEach(s=>{
-  if(s.t===t){
-   if(s.type==="enter") chars[s.c].active=true;
-   if(s.type==="exit")  chars[s.c].active=false;
+  if(char.tension > 1){
+    if(char.bias.anger > 0.6) char.mood="angry";
+    else if(char.bias.panic > 0.5) char.mood="shocked";
+    else char.mood="confused";
+    char.tension = 0;
   }
- });
+}
 
- const active=chars.filter(c=>c.active);
- if(active.length){
-  const min=Math.min(...active.map(c=>c.x));
-  const max=Math.max(...active.map(c=>c.x));
-  cam.x=lerp(cam.x,(min+max)/2-c.width/2,0.08);
-  cam.zoom=lerp(cam.zoom,1-0.05*(active.length-1),0.05);
- }
+/* =========================
+   DEMO SCENE
+========================= */
 
- ctx.save();
- ctx.translate(-cam.x,0);
- ctx.scale(cam.zoom,cam.zoom);
+let t=0;
+const demoEvents=[
+  {t:60, power:0.6},
+  {t:140, power:0.8},
+  {t:220, power:1.0}
+];
 
- chars.forEach(c=>{
-  if(!c.active) return;
-  ctx.beginPath();
-  ctx.arc(c.x,c.y-40,28,0,6.3);ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(c.x,c.y-10);
-  ctx.lineTo(c.x,c.y+90);ctx.stroke();
- });
+/* =========================
+   DRAW
+========================= */
 
- ctx.restore();
- requestAnimationFrame(loop);
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.font="16px Arial";
+  ctx.textAlign="center";
+
+  characters.forEach((c,i)=>{
+    ctx.fillStyle="#000";
+    ctx.fillText(c.name,150+i*130,120);
+    ctx.fillText("Mood: "+c.mood,150+i*130,150);
+    ctx.fillText("Tension: "+c.tension.toFixed(2),150+i*130,180);
+  });
+}
+
+/* =========================
+   LOOP
+========================= */
+
+function loop(){
+  t++;
+
+  demoEvents.forEach(e=>{
+    if(e.t===t){
+      characters.forEach(c=>reactToEvent(c,e.power));
+    }
+  });
+
+  draw();
+  requestAnimationFrame(loop);
 }
 loop();
 </script>
