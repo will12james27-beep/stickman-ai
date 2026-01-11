@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v14-A – Timeline Keyframe Editor</title>
+<title>Stickman v15-A – Keyframe Editor</title>
 <style>
  html,body{margin:0;background:#111;color:#fff;font-family:sans-serif}
  canvas{display:block;margin:auto;background:#1a1a1a}
@@ -16,7 +16,7 @@
   border:1px solid #444;
   padding:6px 10px;cursor:pointer
  }
- input[type=range]{width:220px}
+ input[type=range]{width:200px}
 </style>
 </head>
 <body>
@@ -25,9 +25,10 @@
 
 <div id="ui">
  <button onclick="addKey()">➕ KEY</button>
+ <button onclick="delKey()">🗑 DEL</button>
  <button onclick="play()">▶ PLAY</button>
  <button onclick="stop()">■ STOP</button>
- <input id="slider" type="range" min="0" max="100" value="0">
+ <input id="slider" type="range" min="0" max="120" value="0">
 </div>
 
 <script>
@@ -48,6 +49,7 @@ let targets={
 };
 
 let keyframes=[]; // {t, pose}
+let selectedKey=-1;
 let playing=false;
 let time=0;
 
@@ -70,8 +72,8 @@ function ik2(bx,by,tx,ty,l1,l2,flip){
 function line(x1,y1,x2,y2){
  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
 }
-function dot(x,y){
- ctx.fillStyle="#f55";
+function dot(x,y,color="#f55"){
+ ctx.fillStyle=color;
  ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();
 }
 
@@ -82,17 +84,33 @@ function drawLimb(base,tar,flip,handle=true){
  if(handle) dot(p.tx,p.ty);
 }
 
-// ---------- TIMELINE ----------
+// ---------- KEYFRAME OPS ----------
 function addKey(){
- keyframes.push({
-  t:parseInt(slider.value),
-  pose:JSON.parse(JSON.stringify(targets))
- });
- keyframes.sort((a,b)=>a.t-b.t);
+ const t=parseInt(slider.value);
+ const idx=keyframes.findIndex(k=>k.t===t);
+ if(idx>=0){
+  keyframes[idx].pose=JSON.parse(JSON.stringify(targets));
+  selectedKey=idx;
+ }else{
+  keyframes.push({t,pose:JSON.parse(JSON.stringify(targets))});
+  keyframes.sort((a,b)=>a.t-b.t);
+  selectedKey=keyframes.findIndex(k=>k.t===t);
+ }
+}
+
+function delKey(){
+ if(selectedKey<0) return;
+ keyframes.splice(selectedKey,1);
+ selectedKey=-1;
+}
+
+function getKeyAtTime(t){
+ return keyframes.findIndex(k=>k.t===t);
 }
 
 function interpolatePose(t){
  if(keyframes.length===0) return;
+
  let a=keyframes[0],b=keyframes[keyframes.length-1];
  for(let i=0;i<keyframes.length-1;i++){
   if(t>=keyframes[i].t && t<=keyframes[i+1].t){
@@ -120,11 +138,16 @@ function update(){
  ctx.strokeStyle="#444";
  line(0,groundY,c.width,groundY);
 
+ const keyIdx=getKeyAtTime(parseInt(slider.value));
+ selectedKey=keyIdx;
+
  if(playing){
   interpolatePose(time);
   slider.value=time;
   time++;
   if(time>slider.max) playing=false;
+ }else{
+  interpolatePose(parseInt(slider.value));
  }
 
  ctx.strokeStyle="#fff";
@@ -145,6 +168,12 @@ function update(){
  // arms
  drawLimb({x:hip.x,y:hip.y-15},targets.armL,true);
  drawLimb({x:hip.x,y:hip.y-15},targets.armR,false);
+
+ // timeline key indicators
+ keyframes.forEach(k=>{
+  const x=50+(k.t/slider.max)*(c.width-100);
+  dot(x,groundY+25, k===keyframes[selectedKey]?"#0f0":"#888");
+ });
 
  requestAnimationFrame(update);
 }
