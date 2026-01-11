@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v7.9.0 – Run Cycle</title>
+<title>Stickman AI v8.0.0 – Jump & Landing</title>
 <style>
   body{
     margin:0;
@@ -34,13 +34,13 @@ const slider = document.getElementById("slider");
 ===================== */
 const stickman = {
   x: 300,
-  baseY: 320,
-  y: 320,
+  groundY: 340,
+  y: 340,
   basePose: {
-    leftArm: -20,
-    rightArm: 20,
-    leftLeg: 15,
-    rightLeg: -15
+    leftArm: -15,
+    rightArm: 15,
+    leftLeg: 10,
+    rightLeg: -10
   },
   pose: {
     leftArm: 0,
@@ -58,6 +58,7 @@ const DURATION = 1000;
 function easeInOut(t){
   return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
 }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
 
 /* =====================
    DRAW
@@ -103,23 +104,55 @@ function drawLimb(x,y,len,ang){
 }
 
 /* =====================
-   RUN LOGIC
+   JUMP LOGIC
 ===================== */
-function applyRun(time){
-  let phase=(time/DURATION)*Math.PI*2;
-  let raw=Math.sin(phase);
-  let eased=easeInOut((raw+1)/2)*2-1;
+function applyJump(time){
+  // normalize 0..1
+  let t = clamp(time / DURATION, 0, 1);
 
-  // legs – kattaroq amplituda
-  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + eased*45;
-  stickman.pose.rightLeg = stickman.basePose.rightLeg - eased*45;
+  // phases
+  let crouchEnd = 0.2;
+  let takeoffEnd = 0.35;
+  let apex = 0.6;
+  let landEnd = 1.0;
 
-  // arms – kuchliroq
-  stickman.pose.leftArm  = stickman.basePose.leftArm  - eased*35;
-  stickman.pose.rightArm = stickman.basePose.rightArm + eased*35;
+  // defaults
+  let y = stickman.groundY;
+  let arm = 0, leg = 0;
 
-  // body bounce (run)
-  stickman.y = stickman.baseY - Math.abs(eased)*14;
+  if (t < crouchEnd){
+    // crouch
+    let k = easeInOut(t / crouchEnd);
+    y = stickman.groundY + k * 12;
+    arm = -20 * k;
+    leg =  20 * k;
+  } else if (t < takeoffEnd){
+    // takeoff
+    let k = easeInOut((t - crouchEnd)/(takeoffEnd - crouchEnd));
+    y = stickman.groundY - k * 40;
+    arm = 30 * k;
+    leg = -25 * k;
+  } else if (t < apex){
+    // up
+    let k = easeInOut((t - takeoffEnd)/(apex - takeoffEnd));
+    y = stickman.groundY - 40 - k * 60;
+    arm = 30;
+    leg = -25;
+  } else {
+    // fall + landing
+    let k = easeInOut((t - apex)/(landEnd - apex));
+    y = stickman.groundY - (1 - k) * 60;
+    arm = 30 * (1 - k);
+    leg = -25 * (1 - k);
+  }
+
+  stickman.y = y;
+
+  // apply pose (symmetric)
+  stickman.pose.leftArm  = stickman.basePose.leftArm  + arm;
+  stickman.pose.rightArm = stickman.basePose.rightArm - arm;
+  stickman.pose.leftLeg  = stickman.basePose.leftLeg  + leg;
+  stickman.pose.rightLeg = stickman.basePose.rightLeg - leg;
 }
 
 /* =====================
@@ -129,7 +162,7 @@ function render(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  applyRun(Number(slider.value));
+  applyJump(Number(slider.value));
   drawStickman(stickman);
 
   requestAnimationFrame(render);
