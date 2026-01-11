@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>21 C.28 Subtitle + Bubble Priority</title>
+<title>21 C.29 Scene Auto Layout</title>
 <style>
   body{margin:0;background:#111;}
   canvas{display:block;margin:auto;background:#fff;}
@@ -51,7 +51,8 @@ function createChar(x){
     face:{eye:1,brow:0,mouth:0},
     target:{eye:1,brow:0,mouth:0},
     emotion:Emotion.NEUTRAL,
-    bubble:null
+    bubble:null,
+    bubbleOffset:{x:0,y:0}
   };
 }
 
@@ -73,24 +74,21 @@ const camera={
 };
 
 /* =========================
-   SUBTITLE SYSTEM (NEW)
+   SUBTITLE
 ========================= */
 
-const subtitle={
-  text:"",
-  life:0
-};
+const subtitle={text:"",life:0};
 
-function showSubtitle(text,duration=120){
+function showSubtitle(text,d=120){
   subtitle.text=text;
-  subtitle.life=duration;
+  subtitle.life=d;
 }
 
 function drawSubtitle(){
   if(subtitle.life<=0) return;
   subtitle.life--;
 
-  ctx.fillStyle="rgba(0,0,0,0.7)";
+  ctx.fillStyle="rgba(0,0,0,0.75)";
   ctx.fillRect(0,canvas.height-90,canvas.width,90);
 
   ctx.fillStyle="#fff";
@@ -110,12 +108,12 @@ function setEmotion(c,e){
   c.target={...faceMap[e]};
 }
 
-function speak(c,text,duration=120){
-  c.bubble={text,life:duration};
+function speak(c,text,d=120){
+  c.bubble={text,life:d};
 }
 
 /* =========================
-   DRAW FACE
+   FACE DRAW
 ========================= */
 
 function drawEye(x,y,o){
@@ -152,6 +150,50 @@ function drawFace(x,y,f){
 }
 
 /* =========================
+   AUTO LAYOUT (NEW)
+========================= */
+
+function resolveBubbleLayout(){
+  const boxes=[];
+
+  chars.forEach(c=>{
+    if(!c.bubble) return;
+
+    ctx.font="16px Arial";
+    const w=ctx.measureText(c.bubble.text).width+20;
+    const h=32;
+
+    let bx=c.x-w/2;
+    let by=c.y-110;
+
+    // screen top clamp
+    if(by<20) by=20;
+
+    // collision resolve
+    boxes.forEach(b=>{
+      if(
+        bx<w+b.x &&
+        bx+w>b.x &&
+        by<h+b.y &&
+        by+h>b.y
+      ){
+        by=b.y-h-8;
+      }
+    });
+
+    // subtitle safe zone
+    if(by+h>canvas.height-100){
+      by=canvas.height-140-h;
+    }
+
+    c.bubbleOffset.x=bx-c.x+w/2;
+    c.bubbleOffset.y=by-(c.y-110);
+
+    boxes.push({x:bx,y:by,w,h});
+  });
+}
+
+/* =========================
    DRAW BUBBLE
 ========================= */
 
@@ -167,8 +209,8 @@ function drawBubble(c){
   const ox=(Math.random()-0.5)*style.shake;
   const oy=(Math.random()-0.5)*style.shake;
 
-  const x=c.x-w/2+ox;
-  const y=c.y-110+oy;
+  const x=c.x-w/2+c.bubbleOffset.x+ox;
+  const y=c.y-110+c.bubbleOffset.y+oy;
 
   ctx.fillStyle=style.bg;
   ctx.strokeStyle=style.border;
@@ -179,7 +221,7 @@ function drawBubble(c){
   ctx.fill(); ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(c.x-5,y+h);
+  ctx.moveTo(c.x,y+h);
   ctx.lineTo(c.x,y+h+8);
   ctx.lineTo(c.x+5,y+h);
   ctx.stroke();
@@ -232,32 +274,30 @@ function drawChar(c){
    TIMELINE
 ========================= */
 
-setTimeout(()=>{
-  showSubtitle("Something feels wrong...");
-},500);
+setTimeout(()=>showSubtitle("Tension rises..."),500);
 
 setTimeout(()=>{
   setEmotion(chars[0],Emotion.CONFUSED);
-  speak(chars[0],"Huh?");
-},1400);
+  speak(chars[0],"Wait...");
+},1300);
 
 setTimeout(()=>{
   setEmotion(chars[1],Emotion.SHOCKED);
-  speak(chars[1],"WHAT IS THAT?!");
+  speak(chars[1],"WHAT?!?!");
   camera.targetZoom=1.25;
   camera.targetShake=1.2;
-},2600);
+},2400);
 
 setTimeout(()=>{
   setEmotion(chars[2],Emotion.ANGRY);
-  speak(chars[2],"STOP!!!");
-},3800);
+  speak(chars[2],"ENOUGH!");
+},3600);
 
 setTimeout(()=>{
   chars.forEach(c=>setEmotion(c,Emotion.NEUTRAL));
   camera.targetZoom=1;
   camera.targetShake=0;
-  showSubtitle("Everyone freezes...");
+  showSubtitle("Silence.");
 },5200);
 
 /* =========================
@@ -277,6 +317,8 @@ function loop(){
     c.face.mouth=lerp(c.face.mouth,c.target.mouth,0.08);
   });
 
+  resolveBubbleLayout();
+
   ctx.save();
   const sx=(Math.random()-0.5)*camera.shake*10;
   const sy=(Math.random()-0.5)*camera.shake*10;
@@ -286,9 +328,7 @@ function loop(){
   chars.forEach(drawChar);
   ctx.restore();
 
-  // PRIORITY RULE:
-  // subtitle faqat HECH QAYSIDA bubble bo‘lmasa
-  const anyBubble = chars.some(c=>c.bubble);
+  const anyBubble=chars.some(c=>c.bubble);
   if(!anyBubble) drawSubtitle();
 
   requestAnimationFrame(loop);
