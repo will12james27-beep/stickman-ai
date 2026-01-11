@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI — Scene System 21 C.17</title>
+<title>Stickman AI — Scene System 21 C.18</title>
 <style>
 html,body{
   margin:0;padding:0;
@@ -27,7 +27,7 @@ function resize(){
 resize(); window.addEventListener("resize",resize);
 
 // ================= SCENE =================
-const scene={width:5000,groundY:900};
+const scene={width:6000,groundY:900};
 
 // ================= CHAR =================
 function createChar(x,color){
@@ -37,21 +37,22 @@ function createChar(x,color){
     color,
     head:18,body:50,arm:40,leg:45,
     bob:0,react:0,
-    emoji:null
+    emoji:null,
+    talk:0
   };
 }
 
 const chars=[
-  createChar(800,"#e91e63"),
-  createChar(1300,"#000"),
-  createChar(1800,"#2196f3"),
-  createChar(2300,"#4caf50")
+  createChar(900,"#e91e63"),
+  createChar(1400,"#000"),
+  createChar(1900,"#2196f3"),
+  createChar(2400,"#4caf50")
 ];
 
 // ================= CAMERA =================
 const camera={
   x:0,y:0,zoom:1,targetZoom:1,
-  smooth:0.15,zoomSmooth:0.2,
+  smooth:0.12,zoomSmooth:0.15,
   shake:0
 };
 let focusChar=chars[0];
@@ -71,122 +72,124 @@ function spawnEmoji(c,s){
 function updateEmoji(c){
   if(!c.emoji)return;
   c.emoji.life--;
-  c.emoji.scale+=0.03;
-  c.emoji.y+=1;
+  c.emoji.scale+=0.04;
+  c.emoji.y+=1.2;
   if(c.emoji.life<=0)c.emoji=null;
 }
 
 // ================= SUBTITLE =================
 const subtitle={
-  words:[],index:0,timer:0,active:false
+  text:"",
+  life:0,
+  shake:0,
+  color:"#ffeb3b"
 };
 
-function startSubtitle(text){
-  subtitle.words=text.split(" ");
-  subtitle.index=0;
-  subtitle.timer=12;
-  subtitle.active=true;
-}
-
-function updateSubtitle(){
-  if(!subtitle.active)return;
-  subtitle.timer--;
-  if(subtitle.timer<=0){
-    subtitle.index++;
-    subtitle.timer=12;
-    if(subtitle.index>=subtitle.words.length){
-      subtitle.active=false;
-    }
-  }
+function showSubtitle(text,shake=4,color="#ffeb3b"){
+  subtitle.text=text;
+  subtitle.life=80;
+  subtitle.shake=shake;
+  subtitle.color=color;
 }
 
 function drawSubtitle(){
-  if(!subtitle.active)return;
+  if(subtitle.life<=0)return;
+  subtitle.life--;
+
   ctx.fillStyle="#000";
-  ctx.fillRect(0,canvas.height-140,canvas.width,140);
+  ctx.fillRect(0,canvas.height-150,canvas.width,150);
 
+  ctx.font="bold 36px Arial";
   ctx.textAlign="center";
-  ctx.font="bold 34px Arial";
-  let x=canvas.width/2,y=canvas.height-70,off=-140;
 
-  subtitle.words.forEach((w,i)=>{
-    let s=1,c="#aaa";
-    if(i===subtitle.index){
-      s=1.5;c="#ffeb3b";
-    }
-    ctx.save();
-    ctx.translate(x+off,y);
-    ctx.scale(s,s);
-    ctx.fillStyle=c;
-    ctx.fillText(w,0,0);
-    ctx.restore();
-    off+=ctx.measureText(w+" ").width;
-  });
+  const ox=(Math.random()-0.5)*subtitle.shake;
+  const oy=(Math.random()-0.5)*subtitle.shake;
+
+  ctx.fillStyle=subtitle.color;
+  ctx.fillText(
+    subtitle.text,
+    canvas.width/2+ox,
+    canvas.height-80+oy
+  );
 }
 
-// ================= REACTION CHAIN =================
+// ================= INTERRUPT CHAIN =================
 const chain=[
   {
     speaker:0,
-    text:"THIS IS IMPOSSIBLE",
-    reactions:[
-      {c:1,e:"😳"},
-      {c:2,e:"🤨"},
-      {c:3,e:"😐"}
+    text:"THIS MAKES NO SENSE",
+    color:"#ff5252",
+    interrupts:[
+      {t:25,c:1,text:"WAIT WAIT",e:"✋"},
+      {t:40,c:2,text:"BRO LISTEN",e:"😤"}
     ]
   },
   {
     speaker:2,
-    text:"NO IT ACTUALLY WORKS",
-    reactions:[
-      {c:0,e:"😡"},
-      {c:1,e:"😱"},
-      {c:3,e:"😮"}
+    text:"I ALREADY EXPLAINED IT",
+    color:"#03a9f4",
+    interrupts:[
+      {t:30,c:3,text:"NO YOU DID NOT",e:"🤬"},
+      {t:55,c:0,text:"STOP LYING",e:"🔥"}
     ]
   },
   {
     speaker:1,
-    text:"WAIT WHAT",
-    reactions:[
-      {c:0,e:"😎"},
-      {c:2,e:"🔥"},
-      {c:3,e:"😂"}
+    text:"EVERYONE CALM DOWN",
+    color:"#4caf50",
+    interrupts:[
+      {t:20,c:2,text:"NO",e:"💥"}
     ]
   }
 ];
 
 let chainIndex=0;
-let chainTimer=0;
+let timer=0;
+let activeInterrupts=[];
 
 function startChain(){
   const s=chain[chainIndex];
   focusChar=chars[s.speaker];
   camera.targetZoom=1.6;
-  startSubtitle(s.text);
+  camera.shake=6;
+
+  chars.forEach(c=>c.talk=0);
+  focusChar.talk=1;
+
+  showSubtitle(s.text,3,s.color);
   spawnEmoji(focusChar,"💬");
-  focusChar.react=1;
 
-  s.reactions.forEach((r,i)=>{
-    setTimeout(()=>{
-      spawnEmoji(chars[r.c],r.e);
-      chars[r.c].react=1;
-      camera.shake=6;
-    },200+i*140);
-  });
-
-  chainTimer=s.text.split(" ").length*15+50;
+  activeInterrupts=s.interrupts.map(i=>({...i,done:false}));
+  timer=0;
 }
 
 startChain();
 
 function updateChain(){
+  timer++;
+
   chars.forEach(c=>{
-    c.react+=(0-c.react)*0.15;
+    c.react+=(0-c.react)*0.2;
     c.bob+=(0-c.bob)*0.2;
+    c.talk+=(0-c.talk)*0.2;
   });
 
-  if(chainTimer>0)chainTimer--;
-  else{
+  const s=chain[chainIndex];
+
+  activeInterrupts.forEach(i=>{
+    if(!i.done && timer>i.t){
+      i.done=true;
+      focusChar=chars[i.c];
+      camera.targetZoom=1.8;
+      camera.shake=8;
+
+      chars[i.c].talk=1;
+      spawnEmoji(chars[i.c],i.e);
+      showSubtitle(i.text,6,"#ffeb3b");
+    }
+  });
+
+  if(timer>120){
     chainIndex=(chainIndex+1)%chain.length;
     startChain();
   }
@@ -211,7 +214,7 @@ function drawChar(c){
   ctx.lineWidth=4;
 
   const hx=c.x;
-  const hy=c.y+c.bob-c.react*8;
+  const hy=c.y - c.talk*10;
 
   ctx.beginPath();
   ctx.arc(camX(hx),hy,c.head*camera.zoom,0,Math.PI*2);
@@ -238,9 +241,9 @@ function drawChar(c){
   ctx.stroke();
 
   if(c.emoji){
-    ctx.font=`${42*c.emoji.scale}px serif`;
+    ctx.font=`${44*c.emoji.scale}px serif`;
     ctx.textAlign="center";
-    ctx.fillText(c.emoji.s,camX(hx),hy-40-c.emoji.y);
+    ctx.fillText(c.emoji.s,camX(hx),hy-45-c.emoji.y);
     updateEmoji(c);
   }
 }
@@ -249,20 +252,11 @@ function drawChar(c){
 function loop(){
   updateCamera();
   updateChain();
-  updateSubtitle();
 
   drawBG();
   drawGround();
   chars.forEach(drawChar);
   drawSubtitle();
-
-  if(camera.shake>0){
-    ctx.translate(
-      (Math.random()-0.5)*camera.shake,
-      (Math.random()-0.5)*camera.shake
-    );
-    camera.shake*=0.7;
-  }
 
   requestAnimationFrame(loop);
 }
