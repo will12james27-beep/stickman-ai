@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman v21-A.5 — Scene Objects</title>
+<title>Stickman v21-A.6 — Foreground Objects</title>
 <style>
 body{
   margin:0;
@@ -51,7 +51,7 @@ const ctx=c.getContext("2d");
 let t=0;
 
 /* =========================
-   SCENE SYSTEM
+   SCENE
 ========================= */
 const Scene={
   width:c.width,
@@ -65,7 +65,7 @@ const Scene={
     ctx.fillStyle=this.background;
     ctx.fillRect(0,0,this.width,this.height);
 
-    // background objects (depth < 0)
+    // BACKGROUND objects (depth < 0)
     this.objects.filter(o=>o.depth<0).forEach(o=>o.draw());
 
     // ground
@@ -75,19 +75,22 @@ const Scene={
     ctx.moveTo(0,this.groundY);
     ctx.lineTo(this.width,this.groundY);
     ctx.stroke();
+
+    // CHARACTERS
+    this.characters.forEach(c=>{
+      c.update();
+      c.draw();
+    });
+
+    // FOREGROUND objects (depth > 0)
+    this.objects.filter(o=>o.depth>0).forEach(o=>o.draw());
   }
 };
 
 /* =========================
    MODEL
 ========================= */
-const model={
-  headR:14,
-  body:36,
-  leg:30,
-  armU:20,
-  armL:18
-};
+const model={ headR:14, body:36, leg:30, armU:20, armL:18 };
 
 /* =========================
    EMOTIONS
@@ -119,17 +122,14 @@ class Character{
       this.state[k]+= (this.target[k]-this.state[k])*0.18;
     }
   }
-  draw(){drawStick(this);}
+  draw(){ drawStick(this); }
 }
 
 /* =========================
    SCENE OBJECTS
 ========================= */
 class Tree{
-  constructor(x,depth=-1){
-    this.x=x;
-    this.depth=depth;
-  }
+  constructor(x,depth=-1){ this.x=x; this.depth=depth; }
   draw(){
     ctx.strokeStyle="#6b4a2b";
     ctx.lineWidth=4;
@@ -137,7 +137,6 @@ class Tree{
     ctx.moveTo(this.x,Scene.groundY);
     ctx.lineTo(this.x,Scene.groundY-60);
     ctx.stroke();
-
     ctx.strokeStyle="#2e8b57";
     ctx.beginPath();
     ctx.arc(this.x,Scene.groundY-75,25,0,Math.PI*2);
@@ -146,10 +145,7 @@ class Tree{
 }
 
 class House{
-  constructor(x,depth=-2){
-    this.x=x;
-    this.depth=depth;
-  }
+  constructor(x,depth=-2){ this.x=x; this.depth=depth; }
   draw(){
     ctx.strokeStyle="#555";
     ctx.lineWidth=2;
@@ -162,13 +158,33 @@ class House{
   }
 }
 
+// FOREGROUND: panjara (character ustidan yopadi)
+class Fence{
+  constructor(x,depth=1){ this.x=x; this.depth=depth; }
+  draw(){
+    ctx.strokeStyle="#777";
+    ctx.lineWidth=3;
+    for(let i=-20;i<=20;i+=10){
+      ctx.beginPath();
+      ctx.moveTo(this.x+i,Scene.groundY+5);
+      ctx.lineTo(this.x+i,Scene.groundY-25);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(this.x-25,Scene.groundY-20);
+    ctx.lineTo(this.x+25,Scene.groundY-20);
+    ctx.stroke();
+  }
+}
+
 /* =========================
-   ADD OBJECTS TO SCENE
+   ADD OBJECTS
 ========================= */
 Scene.objects.push(
   new House(60,-2),
   new Tree(140,-1),
-  new Tree(300,-1)
+  new Tree(300,-1),
+  new Fence(180,1) // foreground
 );
 
 /* =========================
@@ -237,8 +253,7 @@ function drawStick(ch){
   circle(0,0,model.headR);
   ctx.restore();
 
-  const hx=ch.x;
-  const hy=ch.y-model.headR;
+  const hx=ch.x, hy=ch.y-model.headR;
   ctx.beginPath();
   ctx.ellipse(hx-5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
   ctx.ellipse(hx+5,hy-2,3*s.eyeScale,3*s.eyeOpen,0,0,Math.PI*2);
@@ -256,11 +271,8 @@ function drawStick(ch){
    LOOP
 ========================= */
 function loop(){
+  ctx.clearRect(0,0,c.width,c.height);
   Scene.draw();
-  Scene.characters.forEach(c=>{
-    c.update();
-    c.draw();
-  });
   t++;
   requestAnimationFrame(loop);
 }
