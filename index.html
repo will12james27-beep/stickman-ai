@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Stickman AI v10.2.0</title>
+<title>Stickman AI v10.3.0</title>
 <style>
   body { margin:0; background:#0e0e0e; overflow:hidden; }
   canvas { display:block; margin:auto; background:#1a1a1a; }
@@ -21,6 +21,14 @@ canvas.height = 450;
 
 const GROUND_Y = 330;
 let time = 0;
+let speed = 1.0; // ⭐ speed controller
+
+// =================== INPUT ===================
+window.addEventListener("keydown", e=>{
+  if(e.key === "ArrowUp")   speed += 0.1;
+  if(e.key === "ArrowDown") speed -= 0.1;
+  speed = Math.max(0.3, Math.min(2.2, speed));
+});
 
 // =================== UTILS ===================
 const lerp = (a,b,t)=>a+(b-a)*t;
@@ -28,18 +36,13 @@ const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 
 // =================== SKELETON ===================
 const skeleton = {
-  hip:   { x: 350, y: 240 },
-  spine: { x: 350, y: 190 },
-  head:  { x: 350, y: 155 },
-
-  arms: {
-    L: { angle:0 },
-    R: { angle:0 }
-  },
-
-  legs: {
-    L: { foot:{x:330,y:GROUND_Y,lock:true} },
-    R: { foot:{x:370,y:GROUND_Y,lock:false} }
+  hip:{x:350,y:240},
+  spine:{x:350,y:190},
+  head:{x:350,y:155},
+  arms:{L:{a:0},R:{a:0}},
+  legs:{
+    L:{foot:{x:330,y:GROUND_Y,lock:true}},
+    R:{foot:{x:370,y:GROUND_Y,lock:false}}
   }
 };
 
@@ -47,91 +50,78 @@ const LEG_A = 45;
 const LEG_B = 45;
 const ARM_LEN = 40;
 
-// =================== IK SOLVER ===================
+// =================== IK ===================
 function solveIK(hx,hy,fx,fy){
-  let dx = fx-hx, dy = fy-hy;
-  let d = Math.hypot(dx,dy);
-  d = clamp(d, 1, LEG_A+LEG_B-0.001);
-
-  let a = Math.acos((LEG_A**2 + d**2 - LEG_B**2)/(2*LEG_A*d));
-  let b = Math.atan2(dy,dx);
-
-  return {
-    x: hx + Math.cos(b+a)*LEG_A,
-    y: hy + Math.sin(b+a)*LEG_A
-  };
+  let dx=fx-hx, dy=fy-hy;
+  let d=Math.hypot(dx,dy);
+  d=clamp(d,1,LEG_A+LEG_B-0.001);
+  let a=Math.acos((LEG_A**2+d**2-LEG_B**2)/(2*LEG_A*d));
+  let b=Math.atan2(dy,dx);
+  return {x:hx+Math.cos(b+a)*LEG_A,y:hy+Math.sin(b+a)*LEG_A};
 }
 
-// =================== WALK CONTROLLER ===================
+// =================== WALK ===================
 function updateWalk(){
-  time += 0.045;
+  time += 0.045 * speed;
 
   const phase = Math.sin(time);
-  const lift  = Math.max(0, Math.sin(time+Math.PI/2)) * 22;
+  const stepLen = 32 * speed;
+  const lift = Math.max(0,Math.sin(time+Math.PI/2)) * (18+10*speed);
 
-  const L = skeleton.legs.L;
-  const R = skeleton.legs.R;
+  const L=skeleton.legs.L;
+  const R=skeleton.legs.R;
 
-  if(phase > 0){
-    L.foot.lock = true;
-    R.foot.lock = false;
-  }else{
-    L.foot.lock = false;
-    R.foot.lock = true;
-  }
+  if(phase>0){L.foot.lock=true;R.foot.lock=false;}
+  else{L.foot.lock=false;R.foot.lock=true;}
 
   if(!L.foot.lock){
-    L.foot.x = skeleton.hip.x - 22 + phase*32;
-    L.foot.y = GROUND_Y - lift;
+    L.foot.x=skeleton.hip.x-22+phase*stepLen;
+    L.foot.y=GROUND_Y-lift;
   }
-
   if(!R.foot.lock){
-    R.foot.x = skeleton.hip.x + 22 - phase*32;
-    R.foot.y = GROUND_Y - lift;
+    R.foot.x=skeleton.hip.x+22-phase*stepLen;
+    R.foot.y=GROUND_Y-lift;
   }
 
   // HIP
-  const targetHipY = (L.foot.y + R.foot.y)/2 - 65;
-  skeleton.hip.y = lerp(skeleton.hip.y, targetHipY, 0.15);
-  skeleton.hip.x += 0.35;
+  const targetHipY=(L.foot.y+R.foot.y)/2-(65-10*speed);
+  skeleton.hip.y=lerp(skeleton.hip.y,targetHipY,0.15);
+  skeleton.hip.x+=0.35*speed;
 
   // SPINE
-  skeleton.spine.x = lerp(skeleton.spine.x, skeleton.hip.x, 0.25);
-  skeleton.spine.y = lerp(skeleton.spine.y, skeleton.hip.y-50, 0.25);
+  skeleton.spine.x=lerp(skeleton.spine.x,skeleton.hip.x,0.25);
+  skeleton.spine.y=lerp(skeleton.spine.y,skeleton.hip.y-(50-10*speed),0.25);
 
-  skeleton.head.x = skeleton.spine.x;
-  skeleton.head.y = skeleton.spine.y - 35;
+  skeleton.head.x=skeleton.spine.x;
+  skeleton.head.y=skeleton.spine.y-35;
 
-  // ===== ARMS COUNTER-SWING =====
-  skeleton.arms.L.angle = -phase * 0.8;
-  skeleton.arms.R.angle =  phase * 0.8;
+  // ARMS
+  skeleton.arms.L.a=-phase*(0.8+0.4*speed);
+  skeleton.arms.R.a= phase*(0.8+0.4*speed);
 }
 
-// =================== RENDER ===================
+// =================== DRAW ===================
 function drawLeg(side,dir){
-  const hipX = skeleton.hip.x + dir*10;
-  const hipY = skeleton.hip.y;
-  const foot = skeleton.legs[side].foot;
-  const knee = solveIK(hipX,hipY,foot.x,foot.y);
-
+  const hipX=skeleton.hip.x+dir*10;
+  const hipY=skeleton.hip.y;
+  const f=skeleton.legs[side].foot;
+  const k=solveIK(hipX,hipY,f.x,f.y);
   ctx.beginPath();
   ctx.moveTo(hipX,hipY);
-  ctx.lineTo(knee.x,knee.y);
-  ctx.lineTo(foot.x,foot.y);
+  ctx.lineTo(k.x,k.y);
+  ctx.lineTo(f.x,f.y);
   ctx.stroke();
 }
 
 function drawArm(side,dir){
-  const shoulderX = skeleton.spine.x + dir*15;
-  const shoulderY = skeleton.spine.y + 10;
-  const a = skeleton.arms[side].angle;
-
-  const handX = shoulderX + Math.cos(a+Math.PI/2) * ARM_LEN;
-  const handY = shoulderY + Math.sin(a+Math.PI/2) * ARM_LEN;
-
+  const sx=skeleton.spine.x+dir*15;
+  const sy=skeleton.spine.y+10;
+  const a=skeleton.arms[side].a;
+  const hx=sx+Math.cos(a+Math.PI/2)*ARM_LEN;
+  const hy=sy+Math.sin(a+Math.PI/2)*ARM_LEN;
   ctx.beginPath();
-  ctx.moveTo(shoulderX, shoulderY);
-  ctx.lineTo(handX, handY);
+  ctx.moveTo(sx,sy);
+  ctx.lineTo(hx,hy);
   ctx.stroke();
 }
 
@@ -147,24 +137,22 @@ function draw(){
   ctx.strokeStyle="#fff";
   ctx.lineWidth=3;
 
-  // spine
   ctx.beginPath();
   ctx.moveTo(skeleton.hip.x,skeleton.hip.y);
   ctx.lineTo(skeleton.spine.x,skeleton.spine.y);
   ctx.stroke();
 
-  // head
   ctx.beginPath();
   ctx.arc(skeleton.head.x,skeleton.head.y,12,0,Math.PI*2);
   ctx.stroke();
 
-  // arms
-  drawArm("L",-1);
-  drawArm("R", 1);
+  drawArm("L",-1); drawArm("R",1);
+  drawLeg("L",-1); drawLeg("R",1);
 
-  // legs
-  drawLeg("L",-1);
-  drawLeg("R", 1);
+  // UI
+  ctx.fillStyle="#aaa";
+  ctx.font="14px monospace";
+  ctx.fillText("Speed: "+speed.toFixed(2)+"  (↑ / ↓)",10,20);
 }
 
 // =================== LOOP ===================
