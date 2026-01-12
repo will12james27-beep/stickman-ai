@@ -8292,6 +8292,113 @@ window.OpenAIProvider = {
   console.log("✅ OpenAI provider registered");
 })();
 </script>
+<script>
+/* =====================================================
+   31 A.2 — OPENAI API KEY UI + STORAGE
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 31 A.2.1 LOAD SAVED KEY ---------- */
+(function loadSavedOpenAIKey(){
+  try {
+    const saved = localStorage.getItem("OPENAI_API_KEY");
+    if (saved) {
+      window.RealAIConfig.apiKey = saved;
+      console.log("🔑 OpenAI API key loaded from storage");
+    }
+  } catch (e) {
+    console.warn("Key load failed", e);
+  }
+})();
+
+/* ---------- 31 A.2.2 API KEY UI ---------- */
+(function injectAPIKeyUI(){
+  if (document.getElementById("apiKeyPanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "apiKeyPanel";
+  panel.style.cssText = `
+    position: fixed;
+    top: 48px;
+    left: 0;
+    right: 240px;
+    background: #111;
+    border-bottom: 2px solid #333;
+    z-index: 10001;
+    padding: 8px 10px;
+    font-family: Arial, sans-serif;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  `;
+
+  panel.innerHTML = `
+    <span style="color:#aaa;font-size:12px;">OpenAI API Key:</span>
+    <input id="openaiKeyInput"
+      type="password"
+      placeholder="sk-..."
+      style="
+        flex:1;
+        background:#000;
+        color:#0f0;
+        border:1px solid #333;
+        padding:6px 8px;
+        font-size:12px;
+        border-radius:4px;
+      "
+    />
+    <button id="saveOpenAIKeyBtn">Save</button>
+    <button id="clearOpenAIKeyBtn">Clear</button>
+  `;
+
+  document.body.appendChild(panel);
+
+  const input = document.getElementById("openaiKeyInput");
+  if (window.RealAIConfig.apiKey) {
+    input.value = "********";
+  }
+
+  document.getElementById("saveOpenAIKeyBtn").onclick = function(){
+    const val = input.value.trim();
+    if (!val || val === "********") {
+      alert("Enter a real API key");
+      return;
+    }
+
+    try {
+      localStorage.setItem("OPENAI_API_KEY", val);
+      window.RealAIConfig.apiKey = val;
+      alert("✅ API key saved");
+    } catch (e) {
+      alert("❌ Failed to save key");
+    }
+  };
+
+  document.getElementById("clearOpenAIKeyBtn").onclick = function(){
+    localStorage.removeItem("OPENAI_API_KEY");
+    window.RealAIConfig.apiKey = null;
+    input.value = "";
+    alert("API key removed");
+  };
+})();
+
+/* ---------- 31 A.2.3 PROVIDER HEALTH CHECK ---------- */
+window.checkAIConnection = async function(){
+  if (!window.RealAIConfig.apiKey) {
+    console.warn("No API key set");
+    return false;
+  }
+
+  try {
+    await OpenAIProvider.generate("Test connection");
+    console.log("✅ OpenAI connection OK");
+    return true;
+  } catch (e) {
+    console.error("❌ OpenAI connection failed", e);
+    return false;
+  }
+};
+</script>
 
 </body>
 </html>
