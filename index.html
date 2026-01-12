@@ -3121,6 +3121,56 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("📝 22 A.5 Caption Timing Engine ACTIVE");
 })();
 </script>
+<script>
+// ================= 22 A.6 — CAPTION RENDER LAYER =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__captionRender22A6) return;
+  window.__captionRender22A6 = true;
+
+  // create caption DOM once
+  const el = document.createElement("div");
+  el.style.position = "fixed";
+  el.style.left = "50%";
+  el.style.bottom = "14%";
+  el.style.transform = "translateX(-50%) scale(0.9)";
+  el.style.padding = "6px 14px";
+  el.style.fontSize = "22px";
+  el.style.fontWeight = "800";
+  el.style.fontFamily = "Arial, sans-serif";
+  el.style.color = "#fff";
+  el.style.textAlign = "center";
+  el.style.whiteSpace = "nowrap";
+  el.style.pointerEvents = "none";
+  el.style.opacity = "0";
+  el.style.textShadow = "0 2px 0 #000, 0 4px 8px rgba(0,0,0,0.6)";
+  el.style.zIndex = "9999";
+
+  document.body.appendChild(el);
+
+  function renderLoop(){
+    if(window.getActiveCaption){
+      const cap = getActiveCaption();
+
+      el.textContent = cap.text || "";
+
+      // smooth alpha
+      el.style.opacity = cap.alpha.toFixed(2);
+
+      // scale pop
+      const scale = 0.9 + cap.alpha * 0.1;
+      el.style.transform = `translateX(-50%) scale(${scale})`;
+    }
+
+    requestAnimationFrame(renderLoop);
+  }
+
+  requestAnimationFrame(renderLoop);
+
+  console.log("🎨 22 A.6 Caption Render Layer ACTIVE");
+})();
+</script>
 
 </body>
 </html>
