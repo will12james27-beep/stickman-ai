@@ -2769,6 +2769,49 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("⚡ 21 E.9 Pattern Break ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 E.10 — FINAL SHORTS POLISH LAYER =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__finalPolish21E10) return;
+  window.__finalPolish21E10 = true;
+
+  function lerp(a,b,t){ return a + (b - a) * t; }
+
+  function polishCamera(){
+    if(!window.camera || !camera.intel) return;
+
+    camera.intel.zoom = lerp(camera.intel.zoom, camera.intel.targetZoom || 1, 0.04);
+    camera.intel.shake *= 0.88;
+  }
+
+  function polishTempo(){
+    if(!window.sceneTempo) return;
+
+    sceneTempo.speed = lerp(sceneTempo.speed, 1, 0.03);
+    sceneTempo.intensity = lerp(sceneTempo.intensity, 1, 0.025);
+  }
+
+  function polishEmotion(){
+    if(window.getEmotionBoost && window.setEmotionBoost){
+      const e = getEmotionBoost();
+      setEmotionBoost(lerp(e, Math.min(1.1, e), 0.02));
+    }
+  }
+
+  function polishLoop(){
+    polishCamera();
+    polishTempo();
+    polishEmotion();
+    requestAnimationFrame(polishLoop);
+  }
+
+  requestAnimationFrame(polishLoop);
+
+  console.log("✨ 21 E.10 Final Shorts Polish ACTIVE");
+})();
+</script>
 
 </body>
 </html>
