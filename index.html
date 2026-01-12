@@ -4235,6 +4235,46 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+/* 
+22 C.8
+Camera ↔ Scene Reference Anchor
+SAFE MODE — append-only
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  // Global scene anchor (markaziy nuqta)
+  if (!window.SceneAnchor) {
+    window.SceneAnchor = {
+      x: 0,
+      y: 0,
+      z: 0,
+      active: true
+    };
+    console.log("🧷 22 C.8 SceneAnchor initialized");
+  }
+
+  const cam = window.Camera;
+
+  // Kamera sahnaga ulanmagan bo‘lsa — ulang
+  if (!cam.anchor) {
+    cam.anchor = window.SceneAnchor;
+    console.log("🎥 22 C.8 Camera anchored to SceneAnchor");
+  }
+
+  // Kamera update jarayonida anchor’ni hisobga olish
+  const _camUpdate = cam.update;
+  cam.update = function (dt) {
+    if (this.anchor && this.anchor.active) {
+      this.x += (this.anchor.x - (this.x || 0)) * 0.02;
+      this.y += (this.anchor.y - (this.y || 0)) * 0.02;
+    }
+
+    if (_camUpdate) _camUpdate.call(this, dt);
+  };
+
+})();
 
 </body>
 </html>
