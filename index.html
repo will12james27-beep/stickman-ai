@@ -8653,6 +8653,51 @@ window.Projects = {
   }
 };
 </script>
+<script>
+/* ============================
+   31 C.4 — LOGIN-READY ARCH
+   SAFE MODE — append-only
+============================ */
+
+window.AuthManager = {
+  provider: "anonymous",
+  userId: null,
+
+  init() {
+    if (window.Auth && Auth.userId) {
+      this.userId = Auth.userId;
+      this.provider = "anonymous";
+      console.log("🔐 AuthManager ready (anonymous)");
+    }
+  },
+
+  getIdentity() {
+    return {
+      provider: this.provider,
+      userId: this.userId
+    };
+  },
+
+  // future-safe placeholders
+  linkAccount(providerName, externalId) {
+    console.log(
+      `🔗 Link account requested: ${providerName}`,
+      externalId
+    );
+    // future: merge anonymous data → logged-in account
+  },
+
+  switchUser(newUserId, provider = "anonymous") {
+    console.log("🔄 Switch user:", newUserId, provider);
+    this.userId = newUserId;
+    this.provider = provider;
+    // future: reload UserStore with new identity
+  }
+};
+
+// auto-init
+AuthManager.init();
+</script>
 
 </body>
 </html>
