@@ -9683,6 +9683,18 @@ window.normalizePointer = function(el, handler) {
   el.addEventListener("touchmove", e => handler(getPos(e)));
 };
 </script>
+<script>
+/* ============================
+   36 D — MOBILE UI COMFORT
+============================ */
+
+(function(){
+  if (window.innerWidth < 768) {
+    document.body.style.fontSize = "16px";
+    document.body.style.touchAction = "manipulation";
+  }
+})();
+</script>
 
 </body>
 </html>
