@@ -9341,6 +9341,15 @@ window.CTAVariants = [
   "Follow to see what happens next!"
 ];
 </script>
+<script>
+/* ============================
+   33 C — CTA PICKER
+============================ */
+
+window.pickRandomCTA = function() {
+  return CTAVariants[Math.floor(Math.random() * CTAVariants.length)];
+};
+</script>
 
 </body>
 </html>
