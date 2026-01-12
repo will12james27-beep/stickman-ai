@@ -2520,6 +2520,79 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🌟 21 E.5 Character Spotlight ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 E.6 — CAMERA INTELLIGENCE SYSTEM =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__cameraIntel21E6) return;
+  window.__cameraIntel21E6 = true;
+
+  if(!window.camera) window.camera = {};
+
+  // Base camera state
+  camera.intel = {
+    zoom: camera.zoom || 1,
+    targetZoom: 1,
+    shake: 0,
+    mood: "neutral"
+  };
+
+  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+
+  function detectCameraMood(){
+    if(window.getEmotionBoost){
+      const e = getEmotionBoost();
+      if(e > 0.7) return "intense";
+      if(e > 0.35) return "active";
+    }
+    return "calm";
+  }
+
+  function updateZoom(){
+    const mood = camera.intel.mood;
+
+    if(mood === "intense") camera.intel.targetZoom = 1.15;
+    else if(mood === "active") camera.intel.targetZoom = 1.08;
+    else camera.intel.targetZoom = 1.0;
+
+    camera.intel.targetZoom = clamp(camera.intel.targetZoom, 0.95, 1.18);
+    camera.intel.zoom += (camera.intel.targetZoom - camera.intel.zoom) * 0.06;
+
+    camera.zoom = camera.intel.zoom;
+  }
+
+  function updateShake(){
+    if(camera.intel.mood === "intense"){
+      camera.intel.shake = Math.min(1, camera.intel.shake + 0.03);
+    } else {
+      camera.intel.shake *= 0.9;
+    }
+  }
+
+  function applyShake(){
+    if(!camera.intel.shake) return;
+
+    const s = camera.intel.shake;
+    camera.x += (Math.random()-0.5) * s * 2;
+    camera.y += (Math.random()-0.5) * s * 2;
+  }
+
+  function cameraIntelLoop(){
+    camera.intel.mood = detectCameraMood();
+
+    updateZoom();
+    updateShake();
+    applyShake();
+
+    requestAnimationFrame(cameraIntelLoop);
+  }
+
+  requestAnimationFrame(cameraIntelLoop);
+
+  console.log("🎥 21 E.6 Camera Intelligence ACTIVE");
+})();
+</script>
 
 </body>
 </html>
