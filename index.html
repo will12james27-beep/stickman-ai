@@ -2018,6 +2018,55 @@ loop = function(){
 
 console.log("🌪️ 21 B.29 Scene Stress Field active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.30 — CAMERA STRESS RESPONSE =================
+// SAFE MODE: append-only
+
+if(!window.cameraStress){
+  window.cameraStress = {
+    shake: 0,
+    zoom: 1,
+    driftX: 0,
+    driftY: 0
+  };
+}
+
+// camera base (safe default)
+if(!window.camera){
+  window.camera = { x:0, y:0, zoom:1 };
+}
+
+function updateCameraStress(){
+  const p = sceneStress ? sceneStress.power : 0;
+
+  // stress → camera effects
+  cameraStress.shake = Math.min(1, p * 2);
+  cameraStress.zoom  = 1 + p * 0.15;
+
+  cameraStress.driftX += (Math.random()-0.5) * cameraStress.shake;
+  cameraStress.driftY += (Math.random()-0.5) * cameraStress.shake;
+
+  // damping
+  cameraStress.driftX *= 0.85;
+  cameraStress.driftY *= 0.85;
+}
+
+function applyCameraStress(){
+  camera.x += cameraStress.driftX;
+  camera.y += cameraStress.driftY;
+  camera.zoom += (cameraStress.zoom - camera.zoom) * 0.1;
+}
+
+// safe loop extension
+const _loop21B30 = loop;
+loop = function(){
+  updateCameraStress();
+  applyCameraStress();
+  _loop21B30();
+};
+
+console.log("🎥 21 B.30 Camera Stress Response active (SAFE MODE)");
+</script>
 
 </body>
 </html>
