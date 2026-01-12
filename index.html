@@ -2142,6 +2142,81 @@ loop = function(){
 
 console.log("👀 21 B.31 Object Attention System active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.32 — SCENE LAYER PRIORITY =================
+// SAFE MODE: append-only
+
+if(!window.sceneLayers){
+  window.sceneLayers = {
+    background: [],
+    mid: [],
+    foreground: []
+  };
+}
+
+// layer assignment (bir marta yoki runtime chaqiriladi)
+function assignSceneLayer(entity, layer){
+  if(!entity) return;
+
+  entity._layer = layer || "mid";
+
+  // eski layerlardan tozalash
+  Object.values(sceneLayers).forEach(arr=>{
+    const i = arr.indexOf(entity);
+    if(i !== -1) arr.splice(i,1);
+  });
+
+  if(sceneLayers[entity._layer]){
+    sceneLayers[entity._layer].push(entity);
+  }
+}
+
+// render order helper
+function getLayerRenderOrder(){
+  return [
+    ...sceneLayers.background,
+    ...sceneLayers.mid,
+    ...sceneLayers.foreground
+  ];
+}
+
+// attention + layer priority
+function boostForegroundAttention(){
+  if(!window.attentionSystem || !attentionSystem.target) return;
+
+  const t = attentionSystem.target;
+
+  if(t._layer === "foreground"){
+    attentionSystem.strength = Math.min(
+      1,
+      attentionSystem.strength + 0.15
+    );
+  }
+}
+
+// camera depth reaction
+function applyLayerCameraDepth(){
+  if(!window.camera) return;
+
+  if(attentionSystem?.target?._layer === "foreground"){
+    camera.targetZoom = Math.max(camera.targetZoom || 1, 1.25);
+  }
+
+  if(attentionSystem?.target?._layer === "background"){
+    camera.targetZoom *= 0.98;
+  }
+}
+
+// SAFE LOOP EXTENSION
+const _loop21B32 = loop;
+loop = function(){
+  boostForegroundAttention();
+  applyLayerCameraDepth();
+  _loop21B32();
+};
+
+console.log("🧩 21 B.32 Scene Layer Priority active (SAFE MODE)");
+</script>
 
 </body>
 </html>
