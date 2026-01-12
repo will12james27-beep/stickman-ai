@@ -4537,6 +4537,93 @@ SAFE MODE — FULL SCRIPT
   console.log("🔒 22 C.12 Camera system FINALIZED");
 })();
 </script>
+<script>
+/*
+23 A.1
+Shorts Shot System — Core
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+
+  // 1️⃣ Global ShortsShotSystem
+  if (!window.Shots) {
+    window.Shots = {
+      list: [],
+      currentIndex: -1,
+      current: null,
+      playing: false,
+      startTime: 0
+    };
+    console.log("🎬 23 A.1 Shots system initialized");
+  }
+
+  const Shots = window.Shots;
+
+  // 2️⃣ Shot yaratish helper
+  if (!Shots.create) {
+    Shots.create = function (config) {
+      const shot = {
+        id: config.id || ("shot_" + this.list.length),
+        type: config.type || "beat",   // intro | beat | outro
+        duration: config.duration || 1000, // ms
+        onEnter: config.onEnter || null,
+        onUpdate: config.onUpdate || null,
+        onExit: config.onExit || null
+      };
+      this.list.push(shot);
+      return shot;
+    };
+  }
+
+  // 3️⃣ Shot’ni ishga tushirish
+  if (!Shots.play) {
+    Shots.play = function (index = 0) {
+      if (!this.list[index]) return;
+
+      this.currentIndex = index;
+      this.current = this.list[index];
+      this.startTime = performance.now();
+      this.playing = true;
+
+      if (this.current.onEnter) this.current.onEnter();
+      console.log("▶️ Shot started:", this.current.id);
+    };
+  }
+
+  // 4️⃣ Shot’ni yangilash (engine loop ichidan chaqiriladi)
+  if (!Shots.update) {
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const now = performance.now();
+      const elapsed = now - this.startTime;
+
+      if (this.current.onUpdate) {
+        this.current.onUpdate(elapsed);
+      }
+
+      if (elapsed >= this.current.duration) {
+        if (this.current.onExit) this.current.onExit();
+        this.play(this.currentIndex + 1);
+      }
+    };
+  }
+
+  // 5️⃣ Shot tizimi statusi
+  if (!Shots.getStatus) {
+    Shots.getStatus = function () {
+      return {
+        totalShots: this.list.length,
+        currentIndex: this.currentIndex,
+        currentId: this.current ? this.current.id : null,
+        playing: this.playing
+      };
+    };
+  }
+
+})();
+</script>
 
 </body>
 </html>
