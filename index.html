@@ -1379,6 +1379,69 @@ if(!window._21B18Demo){
 
 console.log("🧠 21 B.18 Entity Emotion Mapping loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.19 — ENVIRONMENT EMOTION LAYER =================
+// SAFE MODE: append-only
+
+// Global environment entity
+if(!window.environment){
+  window.environment = {
+    entityType: "environment",
+    name: "SceneEnvironment"
+  };
+  entities.push(environment);
+  initEntityEmotion(environment);
+}
+
+// Environment presets
+const environmentPresets = {
+  calm:    { state:"calm",    intensity:0.3 },
+  tense:   { state:"tense",   intensity:0.6 },
+  danger:  { state:"danger",  intensity:0.8 },
+  chaos:   { state:"chaos",   intensity:1.0 }
+};
+
+// Set environment emotion
+function setEnvironmentMood(type){
+  const preset = environmentPresets[type];
+  if(!preset) return;
+
+  setEntityEmotion(environment, preset.state, preset.intensity);
+}
+
+// Environment influences characters (soft)
+function applyEnvironmentInfluence(){
+  if(!environment.emotion) return;
+
+  const envIntensity = environment.emotion.intensity || 0;
+
+  entities.forEach(e=>{
+    if(e === environment) return;
+    if(!e.emotion) return;
+
+    // yengil ta'sir
+    e.emotion.intensity = Math.max(
+      e.emotion.intensity,
+      envIntensity * 0.5
+    );
+  });
+}
+
+// LOOP ga SAFE ulanish
+const _loop21B19 = loop;
+loop = function(){
+  applyEnvironmentInfluence();
+  _loop21B19();
+};
+
+// DEMO (faqat tekshiruv uchun)
+if(!window._21B19Demo){
+  window._21B19Demo = true;
+  setTimeout(()=>setEnvironmentMood("tense"), 1500);
+}
+
+console.log("🌍 21 B.19 Environment Emotion Layer loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
