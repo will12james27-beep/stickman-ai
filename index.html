@@ -8399,6 +8399,94 @@ window.checkAIConnection = async function(){
   }
 };
 </script>
+<script>
+/* =====================================================
+   31 B — FFMPEG.WASM REAL MP4 EXPORT
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 31 B.1 FFMPEG LOADER ---------- */
+window.FFmpegRuntime = {
+  loaded: false,
+  ffmpeg: null
+};
+
+async function loadFFmpeg(){
+  if (FFmpegRuntime.loaded) return FFmpegRuntime.ffmpeg;
+
+  if (!window.FFmpeg) {
+    alert("FFmpeg.wasm library not found. Add it before using export.");
+    throw new Error("FFmpeg not available");
+  }
+
+  const { createFFmpeg } = FFmpeg;
+  const ffmpeg = createFFmpeg({ log: true });
+
+  await ffmpeg.load();
+
+  FFmpegRuntime.ffmpeg = ffmpeg;
+  FFmpegRuntime.loaded = true;
+
+  console.log("🎥 FFmpeg.wasm loaded");
+  return ffmpeg;
+}
+
+/* ---------- 31 B.2 FRAME → MP4 ---------- */
+window.renderMP4WithFFmpeg = async function(){
+  if (!window.SceneStack || !SceneStack.length) return;
+
+  const renderer = Renderers.canvas;
+  const renderResult = await renderer.render(SceneStack);
+
+  if (renderResult.type !== "frames") {
+    alert("Unsupported render type");
+    return;
+  }
+
+  const ffmpeg = await loadFFmpeg();
+
+  // Write frames to FS
+  for (let i = 0; i < renderResult.frames.length; i++) {
+    const data = renderResult.frames[i].split(",")[1];
+    ffmpeg.FS(
+      "writeFile",
+      `frame_${String(i).padStart(5, "0")}.png`,
+      Uint8Array.from(atob(data), c => c.charCodeAt(0))
+    );
+  }
+
+  // Encode MP4
+  await ffmpeg.run(
+    "-framerate", String(renderResult.fps),
+    "-i", "frame_%05d.png",
+    "-c:v", "libx264",
+    "-pix_fmt", "yuv420p",
+    "output.mp4"
+  );
+
+  const mp4Data = ffmpeg.FS("readFile", "output.mp4");
+  const mp4Blob = new Blob([mp4Data.buffer], { type: "video/mp4" });
+
+  const url = URL.createObjectURL(mp4Blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "shorts.mp4";
+  a.click();
+
+  URL.revokeObjectURL(url);
+
+  alert("🎉 REAL MP4 tayyor!");
+};
+
+/* ---------- 31 B.3 EXPORT BUTTON UPGRADE ---------- */
+(function hookFFmpegExport(){
+  const btn = document.getElementById("exportMockBtn");
+  if (!btn) return;
+
+  btn.textContent = "⬇ Export MP4 (REAL)";
+  btn.onclick = renderMP4WithFFmpeg;
+})();
+</script>
 
 </body>
 </html>
