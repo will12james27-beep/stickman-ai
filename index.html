@@ -4110,6 +4110,56 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 C.6 – CAMERA BOUNDS CLAMP     -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 C.6
+  Kamera scene (world) chegarasidan chiqib
+  ketmasligi uchun clamp tizimi.
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  // Agar world bounds oldin yaratilgan bo‘lsa (22 B.4)
+  // shu qiymatlarni ishlatamiz
+  cam.bounds = window.__SCENE_WORLD__ || {
+    x: 0,
+    y: 0,
+    w: 1000,
+    h: 600
+  };
+
+  function clampCameraToBounds() {
+    const b = cam.bounds;
+
+    const viewHalfW = (canvas.width / cam.zoom) / 2;
+    const viewHalfH = (canvas.height / cam.zoom) / 2;
+
+    const minX = b.x + viewHalfW;
+    const maxX = b.x + b.w - viewHalfW;
+    const minY = b.y + viewHalfH;
+    const maxY = b.y + b.h - viewHalfH;
+
+    cam.x = Math.max(minX, Math.min(maxX, cam.x));
+    cam.y = Math.max(minY, Math.min(maxY, cam.y));
+  }
+
+  // Clamp → render’dan oldin
+  const _raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return _raf(function (time) {
+      clampCameraToBounds();
+      cb(time);
+    });
+  };
+})();
+</script>
 
 </body>
 </html>
