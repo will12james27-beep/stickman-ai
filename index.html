@@ -7291,6 +7291,83 @@ window.loadProject = function () {
   document.body.appendChild(bar);
 })();
 </script>
+<script>
+/* =====================================================
+   28 B — AUTO-SAVE + CHANGE DETECTION
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 28 B.1 CHANGE HASH ---------- */
+window.__lastProjectHash = null;
+
+window.computeProjectHash = function () {
+  if (!window.SceneStack) return null;
+  try {
+    return JSON.stringify({
+      scenes: SceneStack,
+      active:
+        window.TimelineState
+          ? TimelineState.activeSceneIndex
+          : 0
+    });
+  } catch (e) {
+    return null;
+  }
+};
+
+/* ---------- 28 B.2 AUTO SAVE TRIGGER ---------- */
+window.autoSaveIfChanged = function () {
+  const hash = computeProjectHash();
+  if (!hash) return;
+
+  if (hash !== __lastProjectHash) {
+    __lastProjectHash = hash;
+    saveProject && saveProject();
+  }
+};
+
+/* ---------- 28 B.3 HOOK: SCENE UPDATE ---------- */
+(function hookAutoSaveSceneEdit(){
+  if (!window.updateActiveScene) return;
+
+  const originalUpdate = window.updateActiveScene;
+
+  window.updateActiveScene = function () {
+    originalUpdate.apply(this, arguments);
+    autoSaveIfChanged();
+  };
+})();
+
+/* ---------- 28 B.4 HOOK: REORDER ---------- */
+(function hookAutoSaveReorder(){
+  if (!window.applySceneReorder) return;
+
+  const originalReorder = window.applySceneReorder;
+
+  window.applySceneReorder = function () {
+    originalReorder.apply(this, arguments);
+    autoSaveIfChanged();
+  };
+})();
+
+/* ---------- 28 B.5 HOOK: SELECTION ---------- */
+(function hookAutoSaveSelection(){
+  if (!window.setActiveTimelineScene) return;
+
+  const originalSelect = window.setActiveTimelineScene;
+
+  window.setActiveTimelineScene = function () {
+    originalSelect.apply(this, arguments);
+    autoSaveIfChanged();
+  };
+})();
+
+/* ---------- 28 B.6 INITIAL HASH ---------- */
+setTimeout(function(){
+  __lastProjectHash = computeProjectHash();
+}, 800);
+</script>
 
 </body>
 </html>
