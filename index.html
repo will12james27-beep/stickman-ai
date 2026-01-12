@@ -5711,6 +5711,93 @@ window.getEpisodeAnalytics = function () {
   return JSON.parse(JSON.stringify(EpisodeAnalytics));
 };
 </script>
+<script>
+/* =====================================================
+   23 B.7 — EPISODE SCORING & AUTO-DECISION CORE
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 23 B.7.1 SCORING CONFIG ---------- */
+window.EpisodeScoringConfig = {
+  weights: {
+    hookSeen: 2,
+    midpointReached: 2,
+    cliffhangerSeen: 3,
+    ctaShown: 2,
+    completed: 3
+  },
+  thresholds: {
+    strong: 8,
+    medium: 5,
+    weak: 0
+  }
+};
+
+/* ---------- 23 B.7.2 SCORE CALCULATION ---------- */
+window.calculateEpisodeScore = function () {
+  if (!window.EpisodeAnalytics) return 0;
+
+  let score = 0;
+  const w = EpisodeScoringConfig.weights;
+  const a = EpisodeAnalytics;
+
+  if (a.hookSeen) score += w.hookSeen;
+  if (a.midpointReached) score += w.midpointReached;
+  if (a.cliffhangerSeen) score += w.cliffhangerSeen;
+  if (a.ctaShown) score += w.ctaShown;
+  if (a.completed) score += w.completed;
+
+  return score;
+};
+
+/* ---------- 23 B.7.3 DECISION ENGINE ---------- */
+window.getEpisodeDecision = function () {
+  const score = calculateEpisodeScore();
+  const t = EpisodeScoringConfig.thresholds;
+
+  if (score >= t.strong) {
+    return {
+      level: "strong",
+      action: "continue_same_format",
+      nextEpisodeBoost: true
+    };
+  }
+
+  if (score >= t.medium) {
+    return {
+      level: "medium",
+      action: "continue_with_stronger_hook",
+      nextEpisodeBoost: false
+    };
+  }
+
+  return {
+    level: "weak",
+    action: "change_hook_or_pacing",
+    nextEpisodeBoost: false
+  };
+};
+
+/* ---------- 23 B.7.4 AUTO-ATTACH TO EPISODE META ---------- */
+(function attachDecisionToMeta() {
+  if (!window.EpisodeMeta) return;
+
+  EpisodeMeta.getScore = calculateEpisodeScore;
+  EpisodeMeta.getDecision = getEpisodeDecision;
+})();
+
+/* ---------- 23 B.7.5 SAFE DEBUG ---------- */
+window.getEpisodeScoreReport = function () {
+  return {
+    score: calculateEpisodeScore(),
+    decision: getEpisodeDecision(),
+    analytics: window.getEpisodeAnalytics
+      ? getEpisodeAnalytics()
+      : null
+  };
+};
+</script>
 
 </body>
 </html>
