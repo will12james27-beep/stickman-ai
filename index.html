@@ -9395,6 +9395,24 @@ window.RandomFlavors = {
   ]
 };
 </script>
+<script>
+/* ============================
+   33 D — RANDOM PICKER
+============================ */
+
+window.pickRandom = function(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+};
+
+window.buildRandomFlavorBlock = function() {
+  return `
+RANDOM DIRECTION:
+- pacing: ${pickRandom(RandomFlavors.pacing)}
+- camera: ${pickRandom(RandomFlavors.camera)}
+- emotion: ${pickRandom(RandomFlavors.emotionBoost)}
+`;
+};
+</script>
 
 </body>
 </html>
