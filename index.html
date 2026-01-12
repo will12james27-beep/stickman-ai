@@ -4287,6 +4287,63 @@ SAFE MODE — append-only (FULL SCRIPT VERSION)
   }
 })();
 </script>
+<script>
+/*
+22 C.9
+Camera Soft Follow Smoothing (Cinematic)
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  // 1️⃣ Soft follow sozlamalari (agar yo‘q bo‘lsa)
+  if (!cam.softFollow) {
+    cam.softFollow = {
+      enabled: true,
+      strength: 0.08,   // 0.03–0.12 oralig‘i ideal
+      threshold: 0.01
+    };
+    console.log("🎬 22 C.9 SoftFollow config initialized");
+  }
+
+  // 2️⃣ update() ni faqat BIR MARTA wrap qilish
+  if (!cam.__softFollowWrapped) {
+    cam.__softFollowWrapped = true;
+
+    const baseUpdate = cam.update;
+    cam.update = function (dt) {
+      if (
+        this.softFollow &&
+        this.softFollow.enabled &&
+        this.anchor &&
+        this.anchor.active
+      ) {
+        const ax = this.anchor.x || 0;
+        const ay = this.anchor.y || 0;
+        const cx = this.x || 0;
+        const cy = this.y || 0;
+
+        const dx = ax - cx;
+        const dy = ay - cy;
+
+        if (Math.abs(dx) > this.softFollow.threshold) {
+          this.x = cx + dx * this.softFollow.strength;
+        }
+        if (Math.abs(dy) > this.softFollow.threshold) {
+          this.y = cy + dy * this.softFollow.strength;
+        }
+      }
+
+      if (baseUpdate) baseUpdate.call(this, dt);
+    };
+
+    console.log("🎥 22 C.9 Camera soft follow enabled");
+  }
+})();
+</script>
 
 </body>
 </html>
