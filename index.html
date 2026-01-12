@@ -6411,6 +6411,72 @@ window.previewEpisodePreset = function (presetName) {
   return EpisodePresets[presetName] || null;
 };
 </script>
+<script>
+/* =====================================================
+   25 B — PRESET + ANALYTICS AUTO-TUNING
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 25 B.1 PRESET PERFORMANCE TRACKER ---------- */
+window.PresetPerformance = {
+  drama: { uses: 0, strong: 0 },
+  comedy: { uses: 0, strong: 0 },
+  shock: { uses: 0, strong: 0 }
+};
+
+/* ---------- 25 B.2 TRACK PRESET USAGE ---------- */
+(function hookPresetUsageTracking() {
+  if (!window.applyEpisodePreset) return;
+
+  const originalApply = window.applyEpisodePreset;
+
+  window.applyEpisodePreset = function (presetName) {
+    if (PresetPerformance[presetName]) {
+      PresetPerformance[presetName].uses += 1;
+    }
+    return originalApply.apply(this, arguments);
+  };
+})();
+
+/* ---------- 25 B.3 TRACK PRESET SUCCESS ---------- */
+window.evaluatePresetPerformance = function () {
+  if (!window.getEpisodeDecision || !window.EpisodeMeta) return;
+
+  const decision = getEpisodeDecision();
+  const preset = EpisodeMeta.preset;
+
+  if (!preset || !PresetPerformance[preset]) return;
+
+  if (decision.level === "strong") {
+    PresetPerformance[preset].strong += 1;
+  }
+};
+
+/* ---------- 25 B.4 AUTO-SUGGEST NEXT PRESET ---------- */
+window.suggestNextPreset = function () {
+  let best = null;
+  let bestScore = -1;
+
+  Object.keys(PresetPerformance).forEach(p => {
+    const data = PresetPerformance[p];
+    const score =
+      data.uses === 0 ? 0 : data.strong / data.uses;
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
+    }
+  });
+
+  return best || "drama";
+};
+
+/* ---------- 25 B.5 SAFE DEBUG ---------- */
+window.getPresetPerformanceReport = function () {
+  return JSON.parse(JSON.stringify(PresetPerformance));
+};
+</script>
 
 </body>
 </html>
