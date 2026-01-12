@@ -6003,6 +6003,80 @@ window.getEpisodeResetState = function () {
   return JSON.parse(JSON.stringify(EpisodeResetGuard));
 };
 </script>
+<script>
+/* =====================================================
+   24 A — PUBLISHING & PLATFORM ADAPTER LAYER
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 24 A.1 PLATFORM STATE ---------- */
+window.PlatformAdapter = {
+  current: "youtube", // youtube | instagram | tiktok
+};
+
+/* ---------- 24 A.2 PLATFORM PRESETS ---------- */
+window.PlatformPresets = {
+  youtube: {
+    maxDuration: 60,
+    hookPrefix: "",
+    ctaSuffix: " • Subscribe",
+    fontScale: 1.0
+  },
+  instagram: {
+    maxDuration: 30,
+    hookPrefix: "",
+    ctaSuffix: " • Follow",
+    fontScale: 1.05
+  },
+  tiktok: {
+    maxDuration: 25,
+    hookPrefix: "",
+    ctaSuffix: " • Follow for Part 2",
+    fontScale: 1.1
+  }
+};
+
+/* ---------- 24 A.3 SET PLATFORM ---------- */
+window.setPublishingPlatform = function (platform) {
+  if (!PlatformPresets[platform]) return;
+  PlatformAdapter.current = platform;
+  applyPlatformSync();
+};
+
+/* ---------- 24 A.4 APPLY PLATFORM SYNC ---------- */
+function applyPlatformSync() {
+  const preset = PlatformPresets[PlatformAdapter.current];
+  if (!preset) return;
+
+  /* Sync CTA */
+  if (window.SerialCTA) {
+    SerialCTA.subText = (SerialCTA.subText || "") + preset.ctaSuffix;
+  }
+
+  /* Sync Episode Duration Hint */
+  if (window.EpisodeMeta) {
+    EpisodeMeta.maxPlatformDuration = preset.maxDuration;
+    EpisodeMeta.platform = PlatformAdapter.current;
+  }
+
+  /* Font scaling placeholder (future visual hook) */
+  window.__platformFontScale = preset.fontScale;
+}
+
+/* ---------- 24 A.5 AUTO-APPLY ON LOAD ---------- */
+(function autoApplyPlatform() {
+  applyPlatformSync();
+})();
+
+/* ---------- 24 A.6 SAFE DEBUG ---------- */
+window.getPlatformState = function () {
+  return {
+    platform: PlatformAdapter.current,
+    preset: PlatformPresets[PlatformAdapter.current]
+  };
+};
+</script>
 
 </body>
 </html>
