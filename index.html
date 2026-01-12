@@ -7368,6 +7368,95 @@ setTimeout(function(){
   __lastProjectHash = computeProjectHash();
 }, 800);
 </script>
+<script>
+/* =====================================================
+   28 C — VERSION SNAPSHOT + RESTORE
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 28 C.1 VERSION STORAGE ---------- */
+window.ProjectVersionsKey = "stickman_editor_versions_v1";
+window.MaxProjectVersions = 5;
+
+/* ---------- 28 C.2 SAVE SNAPSHOT ---------- */
+window.saveProjectVersion = function () {
+  const data = serializeProject && serializeProject();
+  if (!data) return;
+
+  let versions = [];
+  try {
+    versions = JSON.parse(localStorage.getItem(ProjectVersionsKey)) || [];
+  } catch (e) {
+    versions = [];
+  }
+
+  versions.unshift(data);
+  if (versions.length > MaxProjectVersions) {
+    versions = versions.slice(0, MaxProjectVersions);
+  }
+
+  localStorage.setItem(ProjectVersionsKey, JSON.stringify(versions));
+};
+
+/* ---------- 28 C.3 RESTORE SNAPSHOT ---------- */
+window.restoreProjectVersion = function (index) {
+  let versions = [];
+  try {
+    versions = JSON.parse(localStorage.getItem(ProjectVersionsKey)) || [];
+  } catch (e) {
+    return;
+  }
+
+  const data = versions[index];
+  if (!data) return;
+
+  deserializeProject && deserializeProject(data);
+};
+
+/* ---------- 28 C.4 HOOK INTO AUTO-SAVE ---------- */
+(function hookVersioning(){
+  if (!window.autoSaveIfChanged) return;
+
+  const originalAutoSave = window.autoSaveIfChanged;
+
+  window.autoSaveIfChanged = function () {
+    originalAutoSave.apply(this, arguments);
+    saveProjectVersion();
+  };
+})();
+
+/* ---------- 28 C.5 SIMPLE VERSION UI ---------- */
+(function injectVersionUI(){
+  if (document.getElementById("versionBar")) return;
+
+  const bar = document.createElement("div");
+  bar.id = "versionBar";
+  bar.style.cssText = `
+    position: fixed;
+    bottom: 200px;
+    left: 0;
+    right: 0;
+    background: #141414;
+    border-top: 1px solid #333;
+    padding: 6px 10px;
+    display: flex;
+    gap: 6px;
+    z-index: 9999;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+  `;
+
+  for (let i = 0; i < MaxProjectVersions; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = "⏪ V" + (i + 1);
+    btn.onclick = () => restoreProjectVersion(i);
+    bar.appendChild(btn);
+  }
+
+  document.body.appendChild(bar);
+})();
+</script>
 
 </body>
 </html>
