@@ -9485,6 +9485,16 @@ EPISODE CONTEXT:
 `;
 };
 </script>
+<script>
+/* ============================
+   34 C — AUTO EPISODE ADVANCE
+============================ */
+
+window.onEpisodeRendered = function(promptSummary) {
+  logEpisode(promptSummary);
+  nextEpisode();
+};
+</script>
 
 </body>
 </html>
