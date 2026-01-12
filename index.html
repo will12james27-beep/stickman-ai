@@ -1890,6 +1890,66 @@ loop = function(){
 
 console.log("🎯 21 B.27 Priority Focus System active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.28 — CROWD LOGIC =================
+// SAFE MODE: append-only
+
+if(!window.crowdSystem){
+  window.crowdSystem = {
+    cohesion: 0.5,   // 0..1 (birga turish)
+    spread: 0.5      // 0..1 (tarqalish)
+  };
+}
+
+// assign crowd group
+function assignToCrowd(entity, groupId=0){
+  entity._crowdGroup = groupId;
+  entity._crowdOffset = Math.random()*Math.PI*2;
+}
+
+// auto-assign all world entities to one crowd (safe default)
+if(window.worldEntities){
+  worldEntities.forEach(e=>{
+    if(e._crowdGroup === undefined){
+      assignToCrowd(e, 0);
+    }
+  });
+}
+
+// crowd behavior update
+function updateCrowd(){
+  const leader = chooseGlobalEmotionLeader();
+  let pressure = 0;
+
+  if(leader && leader.emotion){
+    pressure = leader.emotion.intensity || 0;
+  }
+
+  // emotion → crowd params
+  crowdSystem.cohesion = 1 - pressure;   // panic → cohesion down
+  crowdSystem.spread   = pressure;       // panic → spread up
+
+  worldEntities.forEach(e=>{
+    if(e._type === "background") return;
+
+    // micro movement
+    const angle = frame*0.02 + e._crowdOffset;
+    const radius = crowdSystem.spread * 2;
+
+    e.x += Math.cos(angle) * radius * 0.1;
+    e.y += Math.sin(angle) * radius * 0.1;
+  });
+}
+
+// safe loop extension
+const _loop21B28 = loop;
+loop = function(){
+  updateCrowd();
+  _loop21B28();
+};
+
+console.log("👥 21 B.28 Crowd Logic active (SAFE MODE)");
+</script>
 
 </body>
 </html>
