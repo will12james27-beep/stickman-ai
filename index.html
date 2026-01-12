@@ -6611,6 +6611,85 @@ window.renderTimeline = function () {
 /* ---------- 26 A.6 INITIAL DRAW ---------- */
 setTimeout(renderTimeline, 500);
 </script>
+<script>
+/* =====================================================
+   26 B — TIMELINE INTERACTION
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 26 B.1 ACTIVE STATE ---------- */
+window.TimelineState = {
+  activeSceneIndex: null
+};
+
+/* ---------- 26 B.2 STYLE FOR ACTIVE BLOCK ---------- */
+(function injectTimelineActiveStyle(){
+  if (document.getElementById("timeline-active-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "timeline-active-style";
+  style.textContent = `
+    .sceneBlock.active {
+      border-color: #00ffd0;
+      box-shadow: 0 0 0 2px rgba(0,255,208,0.3);
+      background: #1f2f2f;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- 26 B.3 SET ACTIVE SCENE ---------- */
+window.setActiveTimelineScene = function (index) {
+  TimelineState.activeSceneIndex = index;
+  highlightActiveScene();
+
+  // Optional engine focus hook (safe, non-breaking)
+  if (window.SceneStack && SceneStack[index]) {
+    window.__focusedScene = SceneStack[index];
+  }
+};
+
+/* ---------- 26 B.4 HIGHLIGHT LOGIC ---------- */
+window.highlightActiveScene = function () {
+  const blocks = document.querySelectorAll(".sceneBlock");
+  blocks.forEach((block, i) => {
+    if (i === TimelineState.activeSceneIndex) {
+      block.classList.add("active");
+    } else {
+      block.classList.remove("active");
+    }
+  });
+};
+
+/* ---------- 26 B.5 CLICK BINDING (SAFE) ---------- */
+(function bindTimelineClicks(){
+  const originalRender = window.renderTimeline;
+  if (!originalRender) return;
+
+  window.renderTimeline = function () {
+    originalRender.apply(this, arguments);
+
+    const blocks = document.querySelectorAll(".sceneBlock");
+    blocks.forEach((block, index) => {
+      block.onclick = function () {
+        setActiveTimelineScene(index);
+      };
+    });
+
+    highlightActiveScene();
+  };
+})();
+
+/* ---------- 26 B.6 AUTO-ACTIVATE FIRST SCENE ---------- */
+setTimeout(function(){
+  if (TimelineState.activeSceneIndex === null) {
+    if (window.SceneStack && SceneStack.length > 0) {
+      setActiveTimelineScene(0);
+    }
+  }
+}, 600);
+</script>
 
 </body>
 </html>
