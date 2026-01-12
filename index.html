@@ -2715,6 +2715,60 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🔁 21 E.8 Viral Loop Sense ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 E.9 — PATTERN BREAK MICRO-MOMENT =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__patternBreak21E9) return;
+  window.__patternBreak21E9 = true;
+
+  let triggered = false;
+
+  function getProgress(){
+    if(!window.sceneClock || !sceneClock.duration) return 0;
+    return sceneClock.time / sceneClock.duration;
+  }
+
+  function microBreak(){
+    if(triggered) return;
+    triggered = true;
+
+    // Tiny camera nudge
+    if(window.camera){
+      camera.x += (Math.random() > 0.5 ? 1 : -1);
+      camera.zoom += (Math.random() > 0.5 ? 0.02 : -0.02);
+    }
+
+    // Character micro look
+    if(window.getActiveCharacter){
+      const c = getActiveCharacter();
+      if(c){
+        c.lookOffset = (c.lookOffset || 0) + (Math.random()>0.5?1:-1);
+      }
+    }
+  }
+
+  function loop(){
+    const p = getProgress();
+
+    // Trigger once at ~97–99%
+    if(p > 0.97){
+      microBreak();
+    }
+
+    if(p < 0.2){
+      triggered = false;
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+
+  console.log("⚡ 21 E.9 Pattern Break ACTIVE");
+})();
+</script>
 
 </body>
 </html>
