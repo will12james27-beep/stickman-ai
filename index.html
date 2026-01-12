@@ -7593,6 +7593,80 @@ window.generateEpisodeFromPrompt = function () {
   }, 800);
 })();
 </script>
+<script>
+/* =====================================================
+   29 B — AUTO SHORTS TEMPLATE
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 29 B.1 SHORTS TEMPLATE DEFINITION ---------- */
+window.ShortsTemplate = {
+  aspectRatio: "9:16",
+  maxDuration: 10,
+  beats: [
+    { role: "hook", duration: 1.2 },
+    { role: "beat", duration: 2.2 },
+    { role: "beat", duration: 2.2 },
+    { role: "cliff", duration: 1.8 },
+    { role: "cta", duration: 1.2 }
+  ]
+};
+
+/* ---------- 29 B.2 APPLY TEMPLATE TO SCENESTACK ---------- */
+window.applyShortsTemplate = function () {
+  if (!window.SceneStack || !SceneStack.length) return;
+
+  const tpl = ShortsTemplate.beats;
+  const newStack = [];
+
+  let srcIndex = 0;
+
+  tpl.forEach((beat, i) => {
+    const src = SceneStack[srcIndex] || SceneStack[SceneStack.length - 1];
+
+    newStack.push(
+      sanitizeScene ? sanitizeScene({
+        id: beat.role + "_" + i,
+        type: src.type || "scene",
+        duration: beat.duration,
+        role: beat.role,
+        text: src.text || ""
+      }) : {
+        id: beat.role + "_" + i,
+        type: src.type || "scene",
+        duration: beat.duration,
+        role: beat.role,
+        text: src.text || ""
+      }
+    );
+
+    if (srcIndex < SceneStack.length - 1) srcIndex++;
+  });
+
+  window.SceneStack = newStack;
+
+  if (window.TimelineState) {
+    TimelineState.activeSceneIndex = 0;
+  }
+
+  renderTimeline && renderTimeline();
+  highlightActiveScene && highlightActiveScene();
+  renderSceneProperties && renderSceneProperties();
+  autoSaveIfChanged && autoSaveIfChanged();
+};
+
+/* ---------- 29 B.3 AUTO APPLY AFTER PROMPT GENERATION ---------- */
+(function hookIntoPromptGenerator(){
+  if (!window.generateEpisodeFromPrompt) return;
+
+  const original = window.generateEpisodeFromPrompt;
+
+  window.generateEpisodeFromPrompt = function () {
+    original();
+    applyShortsTemplate();
+  };
+})();
+</script>
 
 </body>
 </html>
