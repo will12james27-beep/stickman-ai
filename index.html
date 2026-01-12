@@ -3324,6 +3324,53 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+<script>
+/* ================================
+   22 A.10 — SCENE BOOTSTRAP
+   ENGINE → SCENE CONNECTION
+   SAFE APPEND ONLY
+================================ */
+
+(function () {
+
+  if (!window.SceneSystem) {
+    window.SceneSystem = {
+      active: false,
+      current: null
+    };
+  }
+
+  function createBaseScene() {
+    const scene = document.createElement("div");
+    scene.id = "base-scene";
+    scene.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      overflow: hidden;
+      z-index: 1;
+    `;
+    document.body.appendChild(scene);
+    return scene;
+  }
+
+  function bootScene() {
+    if (window.SceneSystem.active) return;
+
+    const scene = createBaseScene();
+    window.SceneSystem.active = true;
+    window.SceneSystem.current = scene;
+
+    console.log("🎬 Scene booted");
+  }
+
+  // boot scene after engine ready
+  window.addEventListener("load", () => {
+    setTimeout(bootScene, 50);
+  });
+
+})();
+</script>
 
 </body>
 </html>
