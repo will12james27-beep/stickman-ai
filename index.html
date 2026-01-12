@@ -2244,6 +2244,60 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+<script>
+// ================= 21 E.2 — BEAT & MOMENT TRACKER =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__beatTracker21E2) return;
+  window.__beatTracker21E2 = true;
+
+  const beat = {
+    index: 0,
+    lastTime: performance.now(),
+    interval: 700, // default rhythm (ms)
+    active: false
+  };
+
+  // Adjust beat by tempo
+  function updateBeatInterval(){
+    if(window.sceneTempo){
+      beat.interval = 700 / sceneTempo.speed;
+    }
+  }
+
+  function pulse(){
+    const now = performance.now();
+    if(now - beat.lastTime >= beat.interval){
+      beat.lastTime = now;
+      beat.index++;
+      beat.active = true;
+
+      // Soft global signal
+      window.currentBeat = beat.index;
+
+      // Light camera pulse (only if exists)
+      if(window.camera && engineMode === "shorts"){
+        camera.shake += 0.05 * sceneTempo.intensity;
+      }
+
+      // Auto release
+      setTimeout(()=>beat.active=false, 80);
+    }
+
+    requestAnimationFrame(pulse);
+  }
+
+  updateBeatInterval();
+  requestAnimationFrame(pulse);
+
+  // Public helpers
+  window.isBeatActive = () => beat.active;
+  window.getBeatIndex = () => beat.index;
+
+  console.log("🥁 21 E.2 Beat & Moment Tracker ACTIVE");
+})();
+</script>
 
 </body>
 </html>
