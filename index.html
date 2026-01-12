@@ -891,6 +891,91 @@ draw = function(){
 
 console.log("🧍‍♂️ 21 B.11 Emotion → Character Micro-Motion loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.12 — EMOTION → SOUND / BEAT MICRO-SYNC =================
+// SAFE MODE: append-only
+
+// WebAudio safe init
+let _audioCtx = null;
+function getAudioCtx(){
+  try{
+    if(!_audioCtx){
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return _audioCtx;
+  }catch(e){
+    return null;
+  }
+}
+
+// Simple click / pop generator
+function playClick(freq, duration, gain){
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = freq;
+
+  g.gain.value = gain;
+
+  osc.connect(g);
+  g.connect(ctx.destination);
+
+  const now = ctx.currentTime;
+  g.gain.setValueAtTime(gain, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  osc.start(now);
+  osc.stop(now + duration);
+}
+
+// Emotion → sound mapping
+function playEmotionSound(c){
+  if(!c.mood) return;
+
+  switch(c.mood){
+    case "angry":
+      playClick(220, 0.08, 0.06); // past, qattiqroq
+      break;
+    case "shocked":
+      playClick(880, 0.05, 0.05); // yuqori, tez
+      break;
+    case "confused":
+      playClick(440, 0.06, 0.04); // o‘rtacha
+      break;
+    default:
+      // neutral — ovoz yo‘q
+      break;
+  }
+}
+
+// Emotion o‘zgarishini kuzatish (sound uchun)
+function detectEmotionSound(c){
+  if(c._lastSoundMood === undefined){
+    c._lastSoundMood = c.mood;
+    return;
+  }
+
+  if(c.mood !== c._lastSoundMood){
+    playEmotionSound(c);
+    c._lastSoundMood = c.mood;
+  }
+}
+
+// LOOP ga SAFE ulanish
+const _loop21B12 = loop;
+loop = function(){
+  characters.forEach(c=>{
+    detectEmotionSound(c);
+  });
+  _loop21B12();
+};
+
+console.log("🔊 21 B.12 Emotion → Sound Micro-sync loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
