@@ -3226,6 +3226,52 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🧪 22 A.7 Test Render Mode ACTIVE");
 })();
 </script>
+<script>
+/* ================================
+   22 A.8 — ENGINE STATUS OVERLAY CONTROL
+   SAFE APPEND ONLY
+================================ */
+
+(function () {
+  if (!window.engineStatus) {
+    window.engineStatus = {
+      enabled: true,   // engine tirikligini ko‘rsatadi
+      visible: true,   // hozircha ko‘rinadi
+      autoHide: true,  // 1–2 sekundda yo‘qolishi NORMAL
+      hideDelay: 1200  // ms
+    };
+  }
+
+  if (!window._engineStatusInit) {
+    window._engineStatusInit = true;
+
+    const statusEl = document.createElement("div");
+    statusEl.id = "engine-status-overlay";
+    statusEl.style.cssText = `
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #0f0;
+      background: rgba(0,0,0,0.35);
+      padding: 6px 8px;
+      border-radius: 6px;
+      z-index: 9999;
+      pointer-events: none;
+    `;
+    statusEl.textContent = "ENGINE: OK";
+
+    document.body.appendChild(statusEl);
+
+    if (window.engineStatus.autoHide) {
+      setTimeout(() => {
+        statusEl.style.opacity = "0";
+      }, window.engineStatus.hideDelay);
+    }
+  }
+})();
+</script>
 
 </body>
 </html>
