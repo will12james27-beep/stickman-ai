@@ -9237,6 +9237,15 @@ window.buildFinalPrompt = function(userPrompt) {
   return tpl.build(userPrompt);
 };
 </script>
+<script>
+/* ============================
+   33 A — PROMPT PIPELINE HOOK
+============================ */
+
+window.preparePromptForEngine = function(rawPrompt) {
+  return buildFinalPrompt(rawPrompt);
+};
+</script>
 
 </body>
 </html>
