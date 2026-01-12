@@ -7000,6 +7000,109 @@ window.renderSceneProperties = function () {
 /* ---------- 27 A.6 INITIAL RENDER ---------- */
 setTimeout(renderSceneProperties, 600);
 </script>
+<script>
+/* =====================================================
+   27 B — SCENE PROPERTY EDIT (DURATION / TYPE)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 27 B.1 SAFE UPDATE HELPERS ---------- */
+window.updateActiveScene = function (patch) {
+  const scene = getActiveScene && getActiveScene();
+  if (!scene || typeof patch !== "object") return;
+
+  Object.keys(patch).forEach(key => {
+    scene[key] = patch[key];
+  });
+
+  // Re-render dependent UI
+  renderSceneProperties && renderSceneProperties();
+  renderTimeline && renderTimeline();
+};
+
+/* ---------- 27 B.2 INPUT STYLE ---------- */
+(function injectSceneEditStyle(){
+  if (document.getElementById("scene-edit-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "scene-edit-style";
+  style.textContent = `
+    .propValue input, .propValue select {
+      width: 100%;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 12px;
+      box-sizing: border-box;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- 27 B.3 EDITABLE RENDER ---------- */
+(function overridePropertyRenderer(){
+  const originalRender = window.renderSceneProperties;
+  if (!originalRender) return;
+
+  window.renderSceneProperties = function () {
+    const container = document.getElementById("scenePropContent");
+    if (!container) return;
+
+    const scene = getActiveScene && getActiveScene();
+    if (!scene) {
+      container.innerHTML = `<div class="propRow">No scene selected</div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="propRow">
+        <span class="propLabel">Scene ID</span>
+        <div class="propValue">${scene.id || "—"}</div>
+      </div>
+
+      <div class="propRow">
+        <span class="propLabel">Type</span>
+        <div class="propValue">
+          <select id="sceneTypeSelect">
+            <option value="scene">scene</option>
+            <option value="cut">cut</option>
+            <option value="text">text</option>
+            <option value="pause">pause</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="propRow">
+        <span class="propLabel">Duration</span>
+        <div class="propValue">
+          <input id="sceneDurationInput" type="number" min="0" step="0.1" />
+        </div>
+      </div>
+    `;
+
+    const typeSelect = document.getElementById("sceneTypeSelect");
+    const durationInput = document.getElementById("sceneDurationInput");
+
+    if (typeSelect) {
+      typeSelect.value = scene.type || "scene";
+      typeSelect.onchange = function () {
+        updateActiveScene({ type: this.value });
+      };
+    }
+
+    if (durationInput) {
+      durationInput.value = scene.duration || "";
+      durationInput.onchange = function () {
+        const v = parseFloat(this.value);
+        updateActiveScene({ duration: isNaN(v) ? null : v });
+      };
+    }
+  };
+})();
+</script>
 
 </body>
 </html>
