@@ -2310,6 +2310,55 @@ function setEngineMode(mode){
   console.log("🎛️ Engine mode set:", mode);
 }
 </script>
+<script>
+// ================= 21 D.2 — TEMPO & RHYTHM CONTROLLER =================
+// SAFE MODE: append-only
+
+if(!window.tempo){
+  window.tempo = {
+    base: 1,
+    current: 1,
+    target: 1
+  };
+}
+
+// tempo setter
+function setTempo(value){
+  tempo.target = Math.max(0.5, Math.min(2.5, value));
+}
+
+// automatic tempo update
+function updateTempo(){
+  tempo.current += (tempo.target - tempo.current) * 0.05;
+}
+
+// apply tempo to engine parts
+function applyTempo(){
+  // camera shake speed
+  if(window.camera){
+    camera.shake *= tempo.current;
+  }
+
+  // animation speed hook
+  if(window.worldEntities){
+    worldEntities.forEach(e=>{
+      if(e._animSpeed !== undefined){
+        e._animSpeed = tempo.current;
+      }
+    });
+  }
+}
+
+// SAFE LOOP EXTENSION
+const _loop21D2 = loop;
+loop = function(){
+  updateTempo();
+  applyTempo();
+  _loop21D2();
+};
+
+console.log("⚡ 21 D.2 Tempo & Rhythm Controller active");
+</script>
 
 </body>
 </html>
