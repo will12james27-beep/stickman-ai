@@ -4956,6 +4956,88 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.7
+Loop Seam System (Shorts)
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Shots) return;
+
+  const Shots = window.Shots;
+
+  // 1️⃣ Loop sozlamalari
+  if (!Shots.loopSeam) {
+    Shots.loopSeam = {
+      enabled: true,
+      resetEmotion: "neutral",
+      resetZoom: 1.0,
+      resetDelayMs: 120 // outro ichida qanchadan keyin reset
+    };
+    console.log("🔁 23 A.7 Loop seam initialized");
+  }
+
+  // 2️⃣ Reset helpers
+  function resetEmotion() {
+    if (
+      window.Character &&
+      typeof window.Character.setEmotion === "function"
+    ) {
+      window.Character.setEmotion(
+        Shots.loopSeam.resetEmotion
+      );
+      console.log("🔁 Emotion reset");
+    }
+  }
+
+  function resetCamera() {
+    if (window.Camera && Camera.zoom !== undefined) {
+      Camera.zoom +=
+        (Shots.loopSeam.resetZoom - Camera.zoom) * 0.1;
+      console.log("🔁 Camera reset");
+    }
+  }
+
+  // 3️⃣ Outro’da loop tayyorlash
+  if (!Shots.__loopSeamWrapped) {
+    Shots.__loopSeamWrapped = true;
+
+    const baseUpdate = Shots.update;
+    let resetDone = false;
+
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const zone =
+        this.beatTimeline && this.beatTimeline.activeZone;
+
+      if (
+        Shots.loopSeam.enabled &&
+        zone === "outro" &&
+        !resetDone
+      ) {
+        resetDone = true;
+
+        setTimeout(() => {
+          resetEmotion();
+          resetCamera();
+        }, Shots.loopSeam.resetDelayMs);
+      }
+
+      if (zone !== "outro") {
+        resetDone = false;
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("🔁 23 A.7 Loop seam hooked into Shots.update");
+  }
+
+})();
+</script>
 
 </body>
 </html>
