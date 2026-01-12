@@ -2812,6 +2812,49 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("✨ 21 E.10 Final Shorts Polish ACTIVE");
 })();
 </script>
+<script>
+// ================= 22 A.1 — SHORTS FORMAT LOCK =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__shortsFormat22A1) return;
+  window.__shortsFormat22A1 = true;
+
+  const FORMAT = {
+    width: 9,
+    height: 16,
+    safeTop: 0.08,
+    safeBottom: 0.12,
+    safeSide: 0.06
+  };
+
+  window.shortsFormat = FORMAT;
+
+  function applySafeZones(){
+    if(!window.camera) return;
+
+    // Clamp camera position inside safe frame
+    camera.x = Math.max(
+      -FORMAT.safeSide,
+      Math.min(FORMAT.safeSide, camera.x || 0)
+    );
+
+    camera.y = Math.max(
+      -FORMAT.safeTop,
+      Math.min(FORMAT.safeBottom, camera.y || 0)
+    );
+  }
+
+  function formatLoop(){
+    applySafeZones();
+    requestAnimationFrame(formatLoop);
+  }
+
+  requestAnimationFrame(formatLoop);
+
+  console.log("📱 22 A.1 Shorts Format LOCKED (9:16)");
+})();
+</script>
 
 </body>
 </html>
