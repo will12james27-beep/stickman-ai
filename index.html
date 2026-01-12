@@ -8698,6 +8698,96 @@ window.AuthManager = {
 // auto-init
 AuthManager.init();
 </script>
+<script>
+/* ============================
+   31 D.1 — MONETIZATION CORE
+   SAFE MODE — append-only
+============================ */
+
+window.Monetization = {
+  plans: {
+    free: {
+      name: "Free",
+      limits: {
+        projects: 3,
+        exportsPerDay: 3,
+        maxDuration: 8
+      }
+    },
+    pro: {
+      name: "Pro",
+      limits: {
+        projects: Infinity,
+        exportsPerDay: Infinity,
+        maxDuration: 30
+      }
+    }
+  },
+
+  getPlan() {
+    const data = UserStore.get();
+    return data?.subscription?.plan || "free";
+  },
+
+  getLimits() {
+    const plan = this.getPlan();
+    return this.plans[plan].limits;
+  },
+
+  ensureSubscription() {
+    UserStore.update(data => {
+      if (!data.subscription) {
+        data.subscription = {
+          plan: "free",
+          since: Date.now()
+        };
+        console.log("💳 Subscription initialized: FREE");
+      }
+    });
+  },
+
+  canCreateProject() {
+    const limits = this.getLimits();
+    return UserStore.get().projects.length < limits.projects;
+  },
+
+  canExport() {
+    const limits = this.getLimits();
+    const today = new Date().toDateString();
+
+    UserStore.update(data => {
+      if (!data.exportUsage) {
+        data.exportUsage = {};
+      }
+      if (!data.exportUsage[today]) {
+        data.exportUsage[today] = 0;
+      }
+    });
+
+    return UserStore.get().exportUsage[today] < limits.exportsPerDay;
+  },
+
+  recordExport() {
+    const today = new Date().toDateString();
+    UserStore.update(data => {
+      data.exportUsage[today]++;
+    });
+  },
+
+  upgradeToPro() {
+    UserStore.update(data => {
+      data.subscription.plan = "pro";
+      data.subscription.upgradedAt = Date.now();
+    });
+    console.log("🚀 Upgraded to PRO (local)");
+  }
+};
+
+// init
+if (window.UserStore) {
+  Monetization.ensureSubscription();
+}
+</script>
 
 </body>
 </html>
