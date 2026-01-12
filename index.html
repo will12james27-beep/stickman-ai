@@ -4344,6 +4344,74 @@ SAFE MODE — FULL SCRIPT
   }
 })();
 </script>
+<script>
+/*
+22 C.10
+Emotion-Based Camera Weight
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  // 1️⃣ Emotion presetlari (keyin kengaytiriladi)
+  if (!cam.emotionPresets) {
+    cam.emotionPresets = {
+      calm:   { weight: 0.06 },
+      normal: { weight: 0.08 },
+      comedy: { weight: 0.10 },
+      shock:  { weight: 0.14 },
+      drama:  { weight: 0.04 }
+    };
+    console.log("🎭 22 C.10 Emotion presets initialized");
+  }
+
+  // 2️⃣ Joriy emotion holati
+  if (!cam.emotion) {
+    cam.emotion = {
+      name: "normal",
+      targetWeight: cam.emotionPresets.normal.weight,
+      currentWeight: cam.emotionPresets.normal.weight
+    };
+    console.log("🎭 22 C.10 Default emotion set to NORMAL");
+  }
+
+  // 3️⃣ Emotion o‘zgartirish uchun helper
+  if (!cam.setEmotion) {
+    cam.setEmotion = function (name) {
+      if (!this.emotionPresets[name]) return;
+      this.emotion.name = name;
+      this.emotion.targetWeight = this.emotionPresets[name].weight;
+      console.log("🎭 Camera emotion →", name);
+    };
+  }
+
+  // 4️⃣ update() ni faqat BIR MARTA wrap qilish
+  if (!cam.__emotionWeightWrapped) {
+    cam.__emotionWeightWrapped = true;
+
+    const baseUpdate = cam.update;
+    cam.update = function (dt) {
+      if (this.emotion) {
+        // silliq weight interpolatsiya
+        this.emotion.currentWeight +=
+          (this.emotion.targetWeight - this.emotion.currentWeight) * 0.1;
+
+        // agar softFollow bor bo‘lsa, unga ta’sir qilamiz
+        if (this.softFollow && this.softFollow.enabled) {
+          this.softFollow.strength = this.emotion.currentWeight;
+        }
+      }
+
+      if (baseUpdate) baseUpdate.call(this, dt);
+    };
+
+    console.log("⚖️ 22 C.10 Emotion-based camera weight enabled");
+  }
+})();
+</script>
 
 </body>
 </html>
