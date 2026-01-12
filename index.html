@@ -3171,6 +3171,61 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🎨 22 A.6 Caption Render Layer ACTIVE");
 })();
 </script>
+<script>
+// ================= 22 A.7 — TEST RENDER MODE =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__testRender22A7) return;
+  window.__testRender22A7 = true;
+
+  const panel = document.createElement("div");
+  panel.style.position = "fixed";
+  panel.style.top = "8px";
+  panel.style.right = "8px";
+  panel.style.background = "rgba(0,0,0,0.55)";
+  panel.style.color = "#0f0";
+  panel.style.fontFamily = "monospace";
+  panel.style.fontSize = "11px";
+  panel.style.padding = "6px 8px";
+  panel.style.borderRadius = "6px";
+  panel.style.zIndex = "9999";
+  panel.style.pointerEvents = "none";
+
+  document.body.appendChild(panel);
+
+  function updatePanel(){
+    const fps = window.getPerformanceState?.().fps || "--";
+    const quality = window.getPerformanceState?.().quality || "--";
+
+    const t = window.sceneClock?.time?.toFixed(1) || "0";
+    const d = window.shortsTimeline?.duration || "--";
+    const p = d ? ((t / d) * 100).toFixed(0) : "--";
+
+    const cuts = window.getAutoCuts?.() || [];
+    const activeCut = cuts.length ? cuts.map(c => c.length + "s").join("/") : "--";
+
+    const cap = window.getActiveCaption?.();
+    const capState = cap && cap.alpha > 0.1 ? "ON" : "off";
+
+    panel.innerHTML =
+      `FPS: ${fps}<br>` +
+      `Quality: ${quality}<br>` +
+      `Time: ${t}s / ${d}s (${p}%)<br>` +
+      `Cuts: ${activeCut}<br>` +
+      `Caption: ${capState}`;
+  }
+
+  function loop(){
+    updatePanel();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+
+  console.log("🧪 22 A.7 Test Render Mode ACTIVE");
+})();
+</script>
 
 </body>
 </html>
