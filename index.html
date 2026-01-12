@@ -5798,6 +5798,79 @@ window.getEpisodeScoreReport = function () {
   };
 };
 </script>
+<script>
+/* =====================================================
+   23 B.8 — AUTO-HOOK GENERATOR (EP 1–3 CHAIN)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 23 B.8.1 HOOK POOLS ---------- */
+window.AutoHookPool = {
+  strong: [
+    "You won’t believe what happens next",
+    "This changes everything",
+    "Wait till the end",
+    "Nobody expected this"
+  ],
+  medium: [
+    "Something feels wrong",
+    "This wasn’t part of the plan",
+    "He didn’t see this coming",
+    "Things are about to change"
+  ],
+  weak: [
+    "What happens next?",
+    "Can this really work?",
+    "This is just the beginning",
+    "Let’s see what happens"
+  ]
+};
+
+/* ---------- 23 B.8.2 USED HOOK TRACKER ---------- */
+window.UsedHooks = window.UsedHooks || [];
+
+/* ---------- 23 B.8.3 PICK RANDOM HOOK ---------- */
+function pickHookFromPool(level) {
+  const pool = AutoHookPool[level] || AutoHookPool.medium;
+  const available = pool.filter(h => !UsedHooks.includes(h));
+
+  if (available.length === 0) {
+    UsedHooks.length = 0;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  const hook = available[Math.floor(Math.random() * available.length)];
+  UsedHooks.push(hook);
+  return hook;
+}
+
+/* ---------- 23 B.8.4 GENERATE AUTO HOOK ---------- */
+window.generateAutoHook = function () {
+  let level = "medium";
+
+  if (window.getEpisodeDecision) {
+    const decision = getEpisodeDecision();
+    level = decision.level || level;
+  }
+
+  const hookText = pickHookFromPool(level);
+
+  if (window.registerEpisodeHook) {
+    registerEpisodeHook(level, hookText);
+  }
+
+  return {
+    level,
+    text: hookText
+  };
+};
+
+/* ---------- 23 B.8.5 SAFE DEBUG ---------- */
+window.previewNextAutoHook = function () {
+  return generateAutoHook();
+};
+</script>
 
 </body>
 </html>
