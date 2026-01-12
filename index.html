@@ -2364,6 +2364,85 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("😲 21 E.3 Emotion Amplifier ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 E.4 — COMEDY & PAUSE CONTROLLER =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__comedyPause21E4) return;
+  window.__comedyPause21E4 = true;
+
+  const comedy = {
+    pauseActive: false,
+    pauseStart: 0,
+    pauseDuration: 180, // ms (shorts sweet pause)
+    cooldown: 900,
+    lastPause: 0
+  };
+
+  function shouldPause(){
+    // Beat + emotion spike → good comedy timing
+    if(window.isBeatActive && isBeatActive()){
+      if(window.getEmotionBoost && getEmotionBoost() > 1.2){
+        const now = performance.now();
+        if(now - comedy.lastPause > comedy.cooldown){
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function activatePause(){
+    comedy.pauseActive = true;
+    comedy.pauseStart = performance.now();
+    comedy.lastPause = comedy.pauseStart;
+
+    // Soft global slow-down signal (not force)
+    if(window.sceneTempo){
+      sceneTempo.speed *= 0.96;
+    }
+
+    // Camera micro-freeze feel
+    if(window.camera){
+      camera.shake *= 0.6;
+    }
+
+    console.log("😂 21 E.4 Comedy Pause ON");
+  }
+
+  function updatePause(){
+    if(!comedy.pauseActive) return;
+
+    const t = performance.now() - comedy.pauseStart;
+    if(t > comedy.pauseDuration){
+      comedy.pauseActive = false;
+
+      // restore tempo softly
+      if(window.sceneTempo){
+        sceneTempo.speed = Math.min(sceneTempo.speed * 1.04, 1.6);
+      }
+
+      console.log("😂 21 E.4 Comedy Pause OFF");
+    }
+  }
+
+  function comedyLoop(){
+    if(!comedy.pauseActive && shouldPause()){
+      activatePause();
+    }
+
+    updatePause();
+    requestAnimationFrame(comedyLoop);
+  }
+
+  requestAnimationFrame(comedyLoop);
+
+  // Read-only helper
+  window.isComedyPauseActive = () => comedy.pauseActive;
+
+})();
+</script>
 
 </body>
 </html>
