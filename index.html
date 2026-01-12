@@ -6477,6 +6477,140 @@ window.getPresetPerformanceReport = function () {
   return JSON.parse(JSON.stringify(PresetPerformance));
 };
 </script>
+<script>
+/* =====================================================
+   26 A — VISUAL TIMELINE EDITOR (UI MVP)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 26 A.1 BASE STYLE (ISOLATED) ---------- */
+(function injectTimelineStyles(){
+  if (document.getElementById("timeline-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "timeline-style";
+  style.textContent = `
+    #timelinePanel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 160px;
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      border-top: 2px solid #333;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+    }
+    #timelineHeader {
+      padding: 6px 10px;
+      font-size: 13px;
+      background: #1b1b1b;
+      border-bottom: 1px solid #333;
+    }
+    #timelineTracks {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      padding: 10px;
+      gap: 8px;
+    }
+    .sceneBlock {
+      min-width: 120px;
+      height: 60px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px;
+      font-size: 11px;
+      cursor: default;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .sceneBlock span {
+      opacity: 0.8;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- 26 A.2 PANEL CREATION ---------- */
+(function createTimelinePanel(){
+  if (document.getElementById("timelinePanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "timelinePanel";
+
+  const header = document.createElement("div");
+  header.id = "timelineHeader";
+  header.textContent = "🎞 Episode Timeline (26 A — View Mode)";
+
+  const tracks = document.createElement("div");
+  tracks.id = "timelineTracks";
+
+  panel.appendChild(header);
+  panel.appendChild(tracks);
+  document.body.appendChild(panel);
+})();
+
+/* ---------- 26 A.3 SCENE DATA ADAPTER ---------- */
+window.getTimelineScenes = function () {
+  if (!window.SceneStack) return [];
+
+  return SceneStack.map((scene, index) => {
+    return {
+      index,
+      id: scene.id || ("scene_" + index),
+      duration: scene.duration || "?",
+      type: scene.type || "scene"
+    };
+  });
+};
+
+/* ---------- 26 A.4 RENDER TIMELINE ---------- */
+window.renderTimeline = function () {
+  const container = document.getElementById("timelineTracks");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const scenes = getTimelineScenes();
+
+  scenes.forEach(scene => {
+    const block = document.createElement("div");
+    block.className = "sceneBlock";
+
+    block.innerHTML = `
+      <strong>${scene.id}</strong>
+      <span>Type: ${scene.type}</span>
+      <span>Dur: ${scene.duration}</span>
+    `;
+
+    container.appendChild(block);
+  });
+};
+
+/* ---------- 26 A.5 AUTO-RENDER HOOK ---------- */
+(function autoHookTimeline(){
+  if (!window.pushScene) return;
+
+  const originalPush = window.pushScene;
+
+  window.pushScene = function () {
+    const result = originalPush.apply(this, arguments);
+    setTimeout(renderTimeline, 0);
+    return result;
+  };
+})();
+
+/* ---------- 26 A.6 INITIAL DRAW ---------- */
+setTimeout(renderTimeline, 500);
+</script>
 
 </body>
 </html>
