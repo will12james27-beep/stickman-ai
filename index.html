@@ -7667,6 +7667,97 @@ window.applyShortsTemplate = function () {
   };
 })();
 </script>
+<script>
+/* =====================================================
+   29 C — VIRAL LOGIC LAYER
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 29 C.1 VIRAL RULES ---------- */
+window.ViralRules = {
+  hookBoostText: [
+    "WAIT FOR IT",
+    "THIS CHANGES EVERYTHING",
+    "YOU WON'T EXPECT THIS",
+    "WATCH TILL THE END"
+  ],
+  overreactWords: ["WHAT?!", "NO WAY!", "ARE YOU SERIOUS?!"],
+  maxHookDuration: 0.9,
+  punchZoom: 1.08
+};
+
+/* ---------- 29 C.2 APPLY FIRST-FRAME HOOK ---------- */
+window.applyViralHook = function () {
+  if (!window.SceneStack || !SceneStack.length) return;
+
+  const hook = SceneStack[0];
+  if (!hook) return;
+
+  hook.duration = Math.min(hook.duration || 1, ViralRules.maxHookDuration);
+  hook.text =
+    ViralRules.hookBoostText[
+      Math.floor(Math.random() * ViralRules.hookBoostText.length)
+    ];
+
+  hook.viral = true;
+};
+
+/* ---------- 29 C.3 OVERREACT ENHANCER ---------- */
+window.applyOverreactLogic = function () {
+  if (!window.SceneStack) return;
+
+  SceneStack.forEach(scene => {
+    if (scene.role === "beat" || scene.role === "cliff") {
+      scene.emotion = "overreact";
+      scene.punchZoom = ViralRules.punchZoom;
+
+      if (Math.random() > 0.5) {
+        scene.text =
+          (scene.text || "") +
+          " " +
+          ViralRules.overreactWords[
+            Math.floor(Math.random() * ViralRules.overreactWords.length)
+          ];
+      }
+    }
+  });
+};
+
+/* ---------- 29 C.4 RETENTION TIGHTENER ---------- */
+window.applyRetentionRules = function () {
+  if (!window.SceneStack) return;
+
+  SceneStack.forEach(scene => {
+    if (scene.duration > 2.5) {
+      scene.duration = Math.max(1.5, scene.duration - 0.4);
+    }
+  });
+};
+
+/* ---------- 29 C.5 MASTER VIRAL APPLY ---------- */
+window.applyViralLogic = function () {
+  applyViralHook();
+  applyOverreactLogic();
+  applyRetentionRules();
+
+  renderTimeline && renderTimeline();
+  highlightActiveScene && highlightActiveScene();
+  renderSceneProperties && renderSceneProperties();
+  autoSaveIfChanged && autoSaveIfChanged();
+};
+
+/* ---------- 29 C.6 AUTO-ATTACH TO SHORTS PIPELINE ---------- */
+(function hookViralIntoPipeline(){
+  if (!window.applyShortsTemplate) return;
+
+  const originalApply = window.applyShortsTemplate;
+
+  window.applyShortsTemplate = function () {
+    originalApply();
+    applyViralLogic();
+  };
+})();
+</script>
 
 </body>
 </html>
