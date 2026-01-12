@@ -4686,6 +4686,69 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.3
+Beat Timeline System (Shorts)
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Shots) return;
+
+  const Shots = window.Shots;
+
+  // 1️⃣ Beat timeline konfiguratsiyasi
+  if (!Shots.beatTimeline) {
+    Shots.beatTimeline = {
+      zones: [
+        { name: "hook",  start: 0,    end: 3000 },
+        { name: "beat",  start: 3000, end: 6000 },
+        { name: "outro", start: 6000, end: 9000 }
+      ],
+      activeZone: null
+    };
+    console.log("🎵 23 A.3 Beat timeline initialized");
+  }
+
+  // 2️⃣ Joriy beat zonani aniqlash
+  if (!Shots.getBeatZone) {
+    Shots.getBeatZone = function (elapsedMs) {
+      for (let i = 0; i < this.beatTimeline.zones.length; i++) {
+        const z = this.beatTimeline.zones[i];
+        if (elapsedMs >= z.start && elapsedMs < z.end) {
+          return z.name;
+        }
+      }
+      return "post";
+    };
+  }
+
+  // 3️⃣ update() ni xavfsiz kengaytirish
+  if (!Shots.__beatTimelineWrapped) {
+    Shots.__beatTimelineWrapped = true;
+
+    const baseUpdate = Shots.update;
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const now = performance.now();
+      const elapsed = now - this.startTime;
+
+      const zone = this.getBeatZone(elapsed);
+      if (zone !== this.beatTimeline.activeZone) {
+        this.beatTimeline.activeZone = zone;
+        console.log("🎵 Beat zone →", zone);
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("🎶 23 A.3 Beat timeline hooked into Shots.update");
+  }
+
+})();
+</script>
 
 </body>
 </html>
