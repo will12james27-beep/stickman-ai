@@ -2443,6 +2443,83 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+<script>
+// ================= 21 E.5 — CHARACTER SPOTLIGHT SYSTEM =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__characterSpotlight21E5) return;
+  window.__characterSpotlight21E5 = true;
+
+  let activeCharacter = null;
+  let spotlightStrength = 1;
+
+  function chooseActiveCharacter(){
+    if(!window.entities || !entities.length) return;
+
+    // Priority rules:
+    // 1) strongest emotion
+    // 2) fallback: first visible entity
+    let best = null;
+    let bestScore = 0;
+
+    entities.forEach(e=>{
+      let score = 0;
+
+      if(e.emotion && e.emotion.intensity){
+        score += e.emotion.intensity * 2;
+      }
+
+      if(e.speaking) score += 1.5;
+      if(e.isMain) score += 1;
+
+      if(score > bestScore){
+        bestScore = score;
+        best = e;
+      }
+    });
+
+    activeCharacter = best;
+  }
+
+  function applySpotlight(){
+    if(!activeCharacter || !window.entities) return;
+
+    entities.forEach(e=>{
+      if(e === activeCharacter){
+        e.spotlight = Math.min(1, spotlightStrength);
+      }else{
+        e.spotlight = 0.6; // support mode
+      }
+    });
+
+    // Camera bias (very soft)
+    if(window.camera && activeCharacter.position){
+      camera.targetX = camera.targetX * 0.85 + activeCharacter.position.x * 0.15;
+      camera.targetY = camera.targetY * 0.85 + activeCharacter.position.y * 0.15;
+    }
+  }
+
+  function spotlightLoop(){
+    chooseActiveCharacter();
+    applySpotlight();
+
+    // dynamic strength
+    if(window.getEmotionBoost){
+      spotlightStrength = Math.min(1.2, 0.9 + getEmotionBoost() * 0.2);
+    }
+
+    requestAnimationFrame(spotlightLoop);
+  }
+
+  requestAnimationFrame(spotlightLoop);
+
+  // Public read-only helpers
+  window.getActiveCharacter = () => activeCharacter;
+
+  console.log("🌟 21 E.5 Character Spotlight ACTIVE");
+})();
+</script>
 
 </body>
 </html>
