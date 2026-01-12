@@ -8514,6 +8514,82 @@ window.Auth = {
 // auto-init
 Auth.init();
 </script>
+<script>
+/* ============================
+   31 C.2 — USER DATA STORE
+   SAFE MODE — append-only
+============================ */
+
+window.UserStore = {
+  version: 1,
+  data: null,
+
+  _key() {
+    if (!window.Auth || !Auth.userId) {
+      console.warn("Auth not ready yet");
+      return null;
+    }
+    return "stickman_user_data::" + Auth.userId;
+  },
+
+  _defaultData() {
+    return {
+      version: this.version,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      settings: {
+        language: "en",
+        shortsFormat: "9:16"
+      },
+      projects: [],     // user shorts / episodes
+      prompts: []       // saved prompts
+    };
+  },
+
+  load() {
+    const key = this._key();
+    if (!key) return;
+
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      this.data = this._defaultData();
+      this.save();
+      console.log("📦 User data initialized");
+    } else {
+      try {
+        this.data = JSON.parse(raw);
+        console.log("📦 User data loaded");
+      } catch (e) {
+        console.error("❌ Corrupted user data, resetting", e);
+        this.data = this._defaultData();
+        this.save();
+      }
+    }
+  },
+
+  save() {
+    const key = this._key();
+    if (!key || !this.data) return;
+    this.data.updatedAt = Date.now();
+    localStorage.setItem(key, JSON.stringify(this.data));
+  },
+
+  get() {
+    return this.data;
+  },
+
+  update(fn) {
+    if (!this.data) return;
+    fn(this.data);
+    this.save();
+  }
+};
+
+// auto-load after Auth
+if (window.Auth && Auth.userId) {
+  UserStore.load();
+}
+</script>
 
 </body>
 </html>
