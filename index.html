@@ -9165,6 +9165,21 @@ window.FPSMeter = {
   }
 };
 </script>
+<script>
+/* ============================
+   32 D — PRODUCTION FLAGS
+============================ */
+
+window.PRODUCTION = {
+  mode: "release", // dev | release
+  enableFPSMeter: false,
+  enableLogs: false,
+};
+
+if (!PRODUCTION.enableLogs) {
+  console.log = function(){};
+}
+</script>
 
 </body>
 </html>
