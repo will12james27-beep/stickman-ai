@@ -3529,6 +3529,92 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 B.3 – CAMERA SAFE AREA / VIEW -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 B.3
+  Kamera ko‘rinadigan hudud (viewport)
+  va Shorts / mobil uchun safe area ni
+  vizual tekshirish.
+*/
+
+(function () {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  window.__DEBUG_SAFE_AREA__ = true;
+
+  const SAFE = {
+    marginX: 0.08, // 8% yonlardan
+    marginY: 0.12, // 12% yuqori/past
+    viewColor: "#00ffccaa",
+    safeColor: "#ffaa00aa"
+  };
+
+  function drawRect(x, y, w, h, color, label) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(x, y, w, h);
+
+    ctx.fillStyle = color;
+    ctx.font = "12px monospace";
+    ctx.fillText(label, x + 6, y - 6);
+    ctx.restore();
+  }
+
+  function drawSafeArea() {
+    if (!window.__DEBUG_SAFE_AREA__) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Kamera viewport (hozircha butun canvas)
+    drawRect(
+      0,
+      0,
+      w,
+      h,
+      SAFE.viewColor,
+      "CAMERA VIEWPORT"
+    );
+
+    // Safe area (Shorts / mobile friendly)
+    const sx = w * SAFE.marginX;
+    const sy = h * SAFE.marginY;
+    const sw = w - sx * 2;
+    const sh = h - sy * 2;
+
+    drawRect(
+      sx,
+      sy,
+      sw,
+      sh,
+      SAFE.safeColor,
+      "SAFE AREA"
+    );
+  }
+
+  const __oldRAF3 = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return __oldRAF3(function (t) {
+      cb(t);
+      drawSafeArea();
+    });
+  };
+
+  window.toggleSafeArea = function () {
+    window.__DEBUG_SAFE_AREA__ = !window.__DEBUG_SAFE_AREA__;
+    console.log("DEBUG SAFE AREA:", window.__DEBUG_SAFE_AREA__);
+  };
+})();
+</script>
 
 </body>
 </html>
