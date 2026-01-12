@@ -2027,6 +2027,57 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🛡️ 21 D.7 Safe Loop Stabilizer ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 D.8 — RENDER WATCHDOG =================
+// SAFE MODE: append-only, no refactor
+
+(function(){
+  if(window.__renderWatchdog21D8) return;
+  window.__renderWatchdog21D8 = true;
+
+  let lastFrameTime = performance.now();
+  let frozenCount = 0;
+
+  function pingRender(){
+    const now = performance.now();
+    const delta = now - lastFrameTime;
+
+    // if frame gap too big → possible freeze
+    if(delta > 250){
+      frozenCount++;
+
+      console.warn("21 D.8 Watchdog: render delay detected", delta);
+
+      // soft recovery
+      if(window.camera){
+        camera.shake *= 0.9;
+      }
+
+      // hard recovery if repeated
+      if(frozenCount >= 3){
+        console.error("21 D.8 Watchdog: hard recovery triggered");
+
+        frozenCount = 0;
+
+        // force canvas repaint
+        const c = document.querySelector("canvas");
+        if(c){
+          const ctx = c.getContext("2d");
+          ctx && ctx.clearRect(0,0,c.width,c.height);
+        }
+      }
+    }else{
+      frozenCount = 0;
+    }
+
+    lastFrameTime = now;
+    requestAnimationFrame(pingRender);
+  }
+
+  requestAnimationFrame(pingRender);
+  console.log("👁️ 21 D.8 Render Watchdog ACTIVE");
+})();
+</script>
 
 </body>
 </html>
