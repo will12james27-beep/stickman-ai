@@ -1324,6 +1324,61 @@ loop = function(){
 
 console.log("🌍 21 B.17 Universal Entity Emotion Interface loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.18 — ENTITY TYPE → EMOTION MAPPING =================
+// SAFE MODE: append-only
+
+// Entity type emotion rules
+const entityEmotionMap = {
+  human: {
+    danger:  { state:"panic",   intensity:0.8 },
+    conflict:{ state:"angry",   intensity:0.7 },
+    surprise:{ state:"shocked", intensity:0.6 }
+  },
+  animal: {
+    danger:  { state:"panic",   intensity:0.9 },
+    conflict:{ state:"panic",   intensity:0.7 },
+    surprise:{ state:"alert",   intensity:0.5 }
+  },
+  vehicle: {
+    danger:  { state:"danger",  intensity:0.8 },
+    conflict:{ state:"stress",  intensity:0.6 }
+  },
+  aircraft: {
+    danger:  { state:"emergency", intensity:1.0 }
+  },
+  ship: {
+    danger:  { state:"distress", intensity:0.9 }
+  },
+  environment: {
+    danger:  { state:"tense", intensity:0.6 },
+    calm:    { state:"calm",  intensity:0.3 }
+  }
+};
+
+// Universal event trigger
+function triggerSceneEvent(eventType){
+  entities.forEach(e=>{
+    const type = e.entityType || "human";
+    const rules = entityEmotionMap[type];
+    if(!rules) return;
+
+    const rule = rules[eventType];
+    if(rule){
+      setEntityEmotion(e, rule.state, rule.intensity);
+    }
+  });
+}
+
+// DEMO (safe test — xohlasang keyin olib tashlaysan)
+if(!window._21B18Demo){
+  window._21B18Demo = true;
+
+  setTimeout(()=>triggerSceneEvent("danger"), 2000);
+}
+
+console.log("🧠 21 B.18 Entity Emotion Mapping loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
