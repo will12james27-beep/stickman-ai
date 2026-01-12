@@ -9695,6 +9695,40 @@ window.normalizePointer = function(el, handler) {
   }
 })();
 </script>
+<script>
+/* ============================
+   37 A — YT METADATA BUILDER
+============================ */
+
+window.buildYouTubeMetadata = function(context = {}) {
+  const ep = window.EpisodeState || { season: 1, episode: 1 };
+  const preset = window.ActivePromptPreset || "comedy";
+
+  const title = `Episode ${ep.episode} 😱 | Stickman Shorts`;
+  const description = `
+Stickman Shorts — Episode ${ep.episode}
+
+🔥 Style: ${preset}
+🎬 Season ${ep.season}
+
+What happens next? 👀
+Subscribe for part ${ep.episode + 1}!
+
+#shorts #stickman #animation
+`.trim();
+
+  const tags = [
+    "shorts",
+    "stickman",
+    "animation",
+    "funny",
+    preset,
+    `episode${ep.episode}`
+  ];
+
+  return { title, description, tags };
+};
+</script>
 
 </body>
 </html>
