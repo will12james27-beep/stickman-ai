@@ -3615,6 +3615,60 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 B.4 – SCENE BOUNDS / WORLD BOX -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 B.4
+  Debug chizmalarni engine renderidan KEYIN
+  chizish uchun xavfsiz post-render hook.
+*/
+
+(function () {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  // Global world config (vaqtinchalik)
+  window.__SCENE_WORLD__ = {
+    x: 100,
+    y: 80,
+    w: canvas.width - 200,
+    h: canvas.height - 160
+  };
+
+  function drawWorldBounds() {
+    const W = window.__SCENE_WORLD__;
+    if (!W) return;
+
+    ctx.save();
+    ctx.strokeStyle = "#ff00ffaa";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 6]);
+
+    ctx.strokeRect(W.x, W.y, W.w, W.h);
+
+    ctx.fillStyle = "#ff00ffaa";
+    ctx.font = "14px monospace";
+    ctx.fillText("SCENE WORLD BOUNDS", W.x + 10, W.y - 10);
+    ctx.restore();
+  }
+
+  // 🔑 ENGINE DRAW'DAN KEYIN chizish
+  const originalRAF = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return originalRAF(function (t) {
+      cb(t);
+
+      // POST-RENDER DEBUG
+      drawWorldBounds();
+    });
+  };
+})();
+</script>
 
 </body>
 </html>
