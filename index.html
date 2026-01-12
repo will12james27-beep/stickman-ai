@@ -4412,6 +4412,60 @@ SAFE MODE — FULL SCRIPT
   }
 })();
 </script>
+<script>
+/*
+22 C.11
+Camera Micro-Shake System
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  // 1️⃣ Shake holati
+  if (!cam.shake) {
+    cam.shake = {
+      power: 0,
+      decay: 0.9,
+      offsetX: 0,
+      offsetY: 0
+    };
+    console.log("💥 22 C.11 Camera shake system initialized");
+  }
+
+  // 2️⃣ Shake trigger helper
+  if (!cam.shakeNow) {
+    cam.shakeNow = function (strength = 1) {
+      this.shake.power = Math.min(this.shake.power + strength, 5);
+      console.log("💥 Camera shake triggered:", strength);
+    };
+  }
+
+  // 3️⃣ update() ni faqat BIR MARTA wrap qilish
+  if (!cam.__shakeWrapped) {
+    cam.__shakeWrapped = true;
+
+    const baseUpdate = cam.update;
+    cam.update = function (dt) {
+      if (this.shake && this.shake.power > 0.001) {
+        this.shake.offsetX = (Math.random() - 0.5) * this.shake.power;
+        this.shake.offsetY = (Math.random() - 0.5) * this.shake.power;
+
+        this.x += this.shake.offsetX;
+        this.y += this.shake.offsetY;
+
+        this.shake.power *= this.shake.decay;
+      }
+
+      if (baseUpdate) baseUpdate.call(this, dt);
+    };
+
+    console.log("🎥 22 C.11 Camera micro-shake enabled");
+  }
+})();
+</script>
 
 </body>
 </html>
