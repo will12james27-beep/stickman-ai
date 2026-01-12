@@ -2078,6 +2078,68 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("👁️ 21 D.8 Render Watchdog ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 D.9 — EMERGENCY VISUAL FALLBACK =================
+// SAFE MODE: append-only, no touching previous code
+
+(function(){
+  if(window.__visualFallback21D9) return;
+  window.__visualFallback21D9 = true;
+
+  let lastDrawTime = performance.now();
+  let fallbackActive = false;
+
+  // Hook into canvas draw signal
+  const canvas = document.querySelector("canvas");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+
+  // Soft draw ping
+  function markDraw(){
+    lastDrawTime = performance.now();
+    if(fallbackActive){
+      fallbackActive = false;
+      console.warn("21 D.9: Visual recovered, fallback OFF");
+    }
+  }
+
+  // Try to detect real drawing (safe proxy)
+  const _clearRect = ctx.clearRect.bind(ctx);
+  ctx.clearRect = function(){
+    markDraw();
+    _clearRect.apply(ctx, arguments);
+  };
+
+  function fallbackLoop(){
+    const now = performance.now();
+    const delta = now - lastDrawTime;
+
+    if(delta > 400){
+      if(!fallbackActive){
+        console.error("21 D.9: Visual silence detected → fallback ON");
+        fallbackActive = true;
+      }
+
+      // Emergency visual hint
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = "#fff";
+      ctx.font = "14px monospace";
+      ctx.fillText("ENGINE ACTIVE · RECOVERING…", 12, canvas.height - 16);
+      ctx.restore();
+    }
+
+    requestAnimationFrame(fallbackLoop);
+  }
+
+  requestAnimationFrame(fallbackLoop);
+  console.log("🚨 21 D.9 Emergency Visual Fallback ACTIVE");
+})();
+</script>
 
 </body>
 </html>
