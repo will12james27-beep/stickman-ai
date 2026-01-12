@@ -1187,6 +1187,60 @@ loop = function(){
 
 console.log("🎯 21 B.15 Emotion Leader Hard Focus loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.16 — EMOTION COOLDOWN & PRIORITY RESET =================
+// SAFE MODE: append-only
+
+// Cooldown sozlamalari
+const EMO_COOLDOWN = {
+  leaderHold: 90,    // frame: leader qancha ushlanadi (~1.5s)
+  priorityDecay: 0.98,
+  shakeDecay: 0.85,
+  zoomReturn: 0.08
+};
+
+// Leader timer init
+characters.forEach(c=>{
+  if(c._leaderTimer === undefined) c._leaderTimer = 0;
+});
+
+// Cooldown logikasi
+function applyEmotionCooldown(){
+  const leader = characters.find(c=>c.isEmotionLeader);
+
+  if(leader){
+    leader._leaderTimer++;
+    // Ma'lum vaqtdan keyin leaderlik pasayadi
+    if(leader._leaderTimer > EMO_COOLDOWN.leaderHold){
+      characters.forEach(c=>{
+        c.isEmotionLeader = false;
+        c._emoPriority *= EMO_COOLDOWN.priorityDecay;
+      });
+    }
+  }else{
+    // Hech kim leader bo‘lmasa — hammasi tiklanadi
+    characters.forEach(c=>{
+      c._leaderTimer = 0;
+      if(c._emoPriority) c._emoPriority *= EMO_COOLDOWN.priorityDecay;
+    });
+  }
+
+  // Kamera sokinlashuvi
+  if(typeof camera !== "undefined"){
+    camera.shake *= EMO_COOLDOWN.shakeDecay;
+    camera.targetZoom += (1 - camera.targetZoom) * EMO_COOLDOWN.zoomReturn;
+  }
+}
+
+// LOOP ga SAFE ulanish
+const _loop21B16 = loop;
+loop = function(){
+  applyEmotionCooldown();
+  _loop21B16();
+};
+
+console.log("🧊 21 B.16 Emotion Cooldown & Priority Reset loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
