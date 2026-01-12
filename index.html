@@ -4001,6 +4001,61 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 C.4 – CAMERA FOLLOW (SOFT)    -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 C.4
+  Kamera target’ni silliq (damped) kuzatadi.
+  Hozircha test uchun virtual target ishlatiladi.
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  // Follow sozlamalari
+  cam.follow = {
+    enabled: true,
+    damping: 0.08, // 0.05–0.15 oralig‘i ideal
+    target: {
+      x: cam.x,
+      y: cam.y
+    }
+  };
+
+  // Test target harakati (vaqtinchalik)
+  let t = 0;
+  function updateTestTarget() {
+    t += 0.02;
+    cam.follow.target.x = canvas.width / 2 + Math.cos(t) * 120;
+    cam.follow.target.y = canvas.height / 2 + Math.sin(t) * 80;
+  }
+
+  function updateCameraFollow() {
+    if (!cam.follow.enabled || !cam.follow.target) return;
+
+    const tx = cam.follow.target.x;
+    const ty = cam.follow.target.y;
+
+    cam.x += (tx - cam.x) * cam.follow.damping;
+    cam.y += (ty - cam.y) * cam.follow.damping;
+  }
+
+  // Camera update → render’dan oldin
+  const _raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return _raf(function (time) {
+      updateTestTarget();
+      updateCameraFollow();
+      cb(time);
+    });
+  };
+})();
+</script>
 
 </body>
 </html>
