@@ -1712,6 +1712,59 @@ loop = function(){
 
 console.log("🔥 21 B.23 Climax orchestration active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.24 — NARRATIVE BEAT CONTROLLER =================
+// SAFE MODE: append-only
+
+if(!window.beatController){
+  window.beatController = {
+    beat:"intro",   // intro | build | climax | release
+    frame:0
+  };
+}
+
+function updateNarrativeBeat(){
+  beatController.frame++;
+
+  // intro → build
+  if(beatController.beat==="intro" && beatController.frame>40){
+    beatController.beat="build";
+    beatController.frame=0;
+  }
+
+  // build → climax
+  if(beatController.beat==="build" && climaxState.active){
+    beatController.beat="climax";
+    beatController.frame=0;
+  }
+
+  // climax → release
+  if(beatController.beat==="climax" && !climaxState.active){
+    beatController.beat="release";
+    beatController.frame=0;
+  }
+
+  // release → intro (loop-friendly shorts)
+  if(beatController.beat==="release" && beatController.frame>30){
+    beatController.beat="intro";
+    beatController.frame=0;
+  }
+}
+
+// expose beat for other systems
+function getCurrentBeat(){
+  return beatController.beat;
+}
+
+// extend loop safely
+const _loop21B24 = loop;
+loop = function(){
+  updateNarrativeBeat();
+  _loop21B24();
+};
+
+console.log("⏱️ 21 B.24 Narrative Beat Controller active (SAFE MODE)");
+</script>
 
 </body>
 </html>
