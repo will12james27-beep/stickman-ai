@@ -2977,6 +2977,76 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("⏱️ 22 A.3 Timeline Freeze & Capture ACTIVE");
 })();
 </script>
+<script>
+// ================= 22 A.4 — AUTO-CUT SYSTEM =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__autoCut22A4) return;
+  window.__autoCut22A4 = true;
+
+  const CUTS = {
+    variants: [15, 20, 30], // seconds
+    results: []
+  };
+
+  function getClimaxScore(t){
+    let score = 0;
+
+    if(window.getEmotionBoost){
+      score += getEmotionBoost();
+    }
+
+    if(window.camera && camera.intel){
+      score += camera.intel.shake * 2;
+      score += Math.abs(camera.intel.zoom - 1) * 3;
+    }
+
+    if(window.isBeatActive && isBeatActive()){
+      score += 0.5;
+    }
+
+    return score;
+  }
+
+  function findBestWindow(length){
+    const TL = window.shortsTimeline;
+    if(!TL || !window.sceneClock) return null;
+
+    const step = 0.25; // seconds
+    let best = { score: -Infinity, start: 0 };
+
+    for(let t = 0; t + length <= TL.duration; t += step){
+      let sum = 0;
+      for(let s = t; s < t + length; s += step){
+        sum += getClimaxScore(s);
+      }
+      if(sum > best.score){
+        best = { score: sum, start: t };
+      }
+    }
+
+    return {
+      start: best.start,
+      end: best.start + length
+    };
+  }
+
+  function generateCuts(){
+    CUTS.results = CUTS.variants
+      .map(len => ({ length: len, window: findBestWindow(len) }))
+      .filter(c => c.window);
+  }
+
+  // expose for render & batch stages
+  window.getAutoCuts = () => CUTS.results;
+
+  // generate once timeline is ready
+  setTimeout(generateCuts, 500);
+
+  console.log("✂️ 22 A.4 Auto-Cut System ACTIVE");
+})();
+</script>
 
 </body>
 </html>
