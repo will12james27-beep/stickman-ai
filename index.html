@@ -9413,6 +9413,24 @@ RANDOM DIRECTION:
 `;
 };
 </script>
+<script>
+/* ============================
+   33 D — RANDOM INJECTION
+============================ */
+
+const __buildFinalPrompt = window.buildFinalPrompt;
+
+window.buildFinalPrompt = function(userPrompt) {
+  const base = __buildFinalPrompt(userPrompt);
+  const randomBlock = buildRandomFlavorBlock();
+
+  return `
+${base}
+
+${randomBlock}
+`;
+};
+</script>
 
 </body>
 </html>
