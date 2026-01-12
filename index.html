@@ -8229,6 +8229,69 @@ window.createPublishJob = async function(targetKey){
   AppMode.set("production");
 })();
 </script>
+<script>
+/* =====================================================
+   31 A — OPENAI API REAL CONNECTOR (STEP 1)
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 31 A.1 OPENAI CONFIG ---------- */
+window.RealAIConfig = {
+  provider: "openai",
+  model: "gpt-4.1-mini",
+  endpoint: "https://api.openai.com/v1/chat/completions",
+  apiKey: null // key keyinchalik UI yoki env orqali beriladi
+};
+
+/* ---------- 31 A.2 OPENAI GENERATOR ---------- */
+window.OpenAIProvider = {
+  async generate(prompt){
+    if (!RealAIConfig.apiKey) {
+      throw new Error("OpenAI API key not set");
+    }
+
+    const response = await fetch(RealAIConfig.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + RealAIConfig.apiKey
+      },
+      body: JSON.stringify({
+        model: RealAIConfig.model,
+        messages: [
+          { role: "system", content: "You generate short viral video scene structure." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.8
+      })
+    });
+
+    const data = await response.json();
+
+    const text = data.choices?.[0]?.message?.content || "";
+
+    // VERY SAFE fallback parsing
+    return {
+      scenes: [
+        { role:"hook", text:"WAIT FOR THIS", duration:1 },
+        { role:"beat", text:text.slice(0, 80), duration:2 },
+        { role:"cliff", text:"Something changes…", duration:1.6 },
+        { role:"cta", text:"Part 2?", duration:1 }
+      ]
+    };
+  }
+};
+
+/* ---------- 31 A.3 REGISTER REAL PROVIDER ---------- */
+(function registerRealAI(){
+  if (!window.AIProviders) return;
+
+  AIProviders.openai.generate = OpenAIProvider.generate;
+  AIProviders.active = "openai";
+
+  console.log("✅ OpenAI provider registered");
+})();
+</script>
 
 </body>
 </html>
