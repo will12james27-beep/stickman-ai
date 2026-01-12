@@ -6690,6 +6690,103 @@ setTimeout(function(){
   }
 }, 600);
 </script>
+<script>
+/* =====================================================
+   26 C — TIMELINE DRAG SKELETON (VISUAL ONLY)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 26 C.1 DRAG STATE ---------- */
+window.TimelineDragState = {
+  draggingIndex: null,
+  overIndex: null
+};
+
+/* ---------- 26 C.2 DRAG STYLES ---------- */
+(function injectTimelineDragStyles(){
+  if (document.getElementById("timeline-drag-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "timeline-drag-style";
+  style.textContent = `
+    .sceneBlock.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
+    }
+    .sceneBlock.drag-over {
+      outline: 2px dashed #ffaa00;
+      outline-offset: 2px;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- 26 C.3 ENABLE DRAG ATTR ---------- */
+(function enableDragOnBlocks(){
+  const originalRender = window.renderTimeline;
+  if (!originalRender) return;
+
+  window.renderTimeline = function () {
+    originalRender.apply(this, arguments);
+
+    const blocks = document.querySelectorAll(".sceneBlock");
+    blocks.forEach((block, index) => {
+      block.setAttribute("draggable", "true");
+
+      block.ondragstart = function () {
+        TimelineDragState.draggingIndex = index;
+        block.classList.add("dragging");
+      };
+
+      block.ondragend = function () {
+        TimelineDragState.draggingIndex = null;
+        TimelineDragState.overIndex = null;
+        block.classList.remove("dragging");
+        clearDragOver();
+      };
+
+      block.ondragover = function (e) {
+        e.preventDefault();
+        TimelineDragState.overIndex = index;
+        markDragOver(index);
+      };
+
+      block.ondragleave = function () {
+        block.classList.remove("drag-over");
+      };
+
+      block.ondrop = function (e) {
+        e.preventDefault();
+        // ⚠️ NO REAL REORDER YET
+        clearDragOver();
+      };
+    });
+  };
+})();
+
+/* ---------- 26 C.4 VISUAL MARKERS ---------- */
+function markDragOver(index){
+  const blocks = document.querySelectorAll(".sceneBlock");
+  blocks.forEach((b, i) => {
+    if (i === index) b.classList.add("drag-over");
+    else b.classList.remove("drag-over");
+  });
+}
+
+function clearDragOver(){
+  const blocks = document.querySelectorAll(".sceneBlock");
+  blocks.forEach(b => b.classList.remove("drag-over"));
+}
+
+/* ---------- 26 C.5 DEBUG (SAFE) ---------- */
+window.getTimelineDragState = function () {
+  return {
+    dragging: TimelineDragState.draggingIndex,
+    over: TimelineDragState.overIndex
+  };
+};
+</script>
 
 </body>
 </html>
