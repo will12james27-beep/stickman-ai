@@ -1241,6 +1241,89 @@ loop = function(){
 
 console.log("🧊 21 B.16 Emotion Cooldown & Priority Reset loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.17 — UNIVERSAL ENTITY EMOTION INTERFACE =================
+// SAFE MODE: append-only
+
+// Global entity registry (characters, animals, vehicles, objects...)
+if(!window.entities){
+  window.entities = [];
+}
+
+// Characters avtomatik entity sifatida qo‘shiladi
+if(typeof characters !== "undefined"){
+  characters.forEach(c=>{
+    if(!c._isEntity){
+      c._isEntity = true;
+      c.entityType = "human";
+      entities.push(c);
+    }
+  });
+}
+
+// Universal emotion init
+function initEntityEmotion(e){
+  if(!e.emotion){
+    e.emotion = {
+      state: "neutral",
+      intensity: 0,    // 0..1
+      priority: 0
+    };
+  }
+}
+
+// Barcha entity’lar uchun init
+entities.forEach(initEntityEmotion);
+
+// Universal emotion setter
+function setEntityEmotion(e, state, intensity=1){
+  initEntityEmotion(e);
+  e.emotion.state = state;
+  e.emotion.intensity = Math.max(0, Math.min(1, intensity));
+  e.emotion.priority = intensity * 5;
+}
+
+// Universal emotion reader (21 B bilan mos)
+function readEntityEmotion(e){
+  if(!e.emotion) return "neutral";
+  return e.emotion.state;
+}
+
+// Emotion leader tanlash (entity-level)
+function chooseGlobalEmotionLeader(){
+  let leader = null;
+  let max = -1;
+
+  entities.forEach(e=>{
+    if(!e.emotion) return;
+    const p = e.emotion.priority || 0;
+    if(p > max){
+      max = p;
+      leader = e;
+    }
+  });
+
+  // Reset
+  entities.forEach(e=>{
+    e.isEmotionLeader = false;
+  });
+
+  if(leader){
+    leader.isEmotionLeader = true;
+  }
+
+  return leader;
+}
+
+// LOOP ga SAFE ulanish
+const _loop21B17 = loop;
+loop = function(){
+  chooseGlobalEmotionLeader();
+  _loop21B17();
+};
+
+console.log("🌍 21 B.17 Universal Entity Emotion Interface loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
