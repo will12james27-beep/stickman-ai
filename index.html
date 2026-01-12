@@ -9587,6 +9587,32 @@ window.nextEpisode = function() {
   presetSelect.value = ActivePromptPreset;
 })();
 </script>
+<script>
+/* ============================
+   35 C — ADMIN APPLY
+============================ */
+
+(function(){
+  document.getElementById("adminApply").onclick = function() {
+    ActivePromptTemplate =
+      document.getElementById("adminTemplate").value;
+
+    ActivePromptPreset =
+      document.getElementById("adminPreset").value;
+
+    EpisodeState.season =
+      parseInt(document.getElementById("adminSeason").value || EpisodeState.season);
+
+    EpisodeState.episode =
+      parseInt(document.getElementById("adminEpisode").value || EpisodeState.episode);
+
+    alert("Admin settings applied");
+  };
+
+  document.getElementById("adminSeason").value = EpisodeState.season;
+  document.getElementById("adminEpisode").value = EpisodeState.episode;
+})();
+</script>
 
 </body>
 </html>
