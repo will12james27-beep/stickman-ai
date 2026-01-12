@@ -6335,6 +6335,82 @@ window.togglePublishHelper = function () {
     : showPublishHelper();
 };
 </script>
+<script>
+/* =====================================================
+   25 A — EPISODE TEMPLATE PRESETS (FAST START PACKS)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 25 A.1 PRESET DEFINITIONS ---------- */
+window.EpisodePresets = {
+  drama: {
+    hookType: "emotion",
+    hookPool: [
+      "He didn’t know this would hurt so much",
+      "This moment changes everything",
+      "She wasn’t ready for the truth"
+    ],
+    ctaText: "▶ NEXT PART",
+    pacing: "slow_burn"
+  },
+
+  comedy: {
+    hookType: "funny",
+    hookPool: [
+      "This went wrong immediately",
+      "Nobody expected this ending",
+      "He thought this was a good idea"
+    ],
+    ctaText: "▶ WATCH PART 2",
+    pacing: "fast_jump"
+  },
+
+  shock: {
+    hookType: "shock",
+    hookPool: [
+      "This was not supposed to happen",
+      "Wait till you see this",
+      "Everything breaks in 3…2…1…"
+    ],
+    ctaText: "▶ PART 2 NOW",
+    pacing: "hard_cut"
+  }
+};
+
+/* ---------- 25 A.2 APPLY PRESET ---------- */
+window.applyEpisodePreset = function (presetName) {
+  const preset = EpisodePresets[presetName];
+  if (!preset) return;
+
+  /* Apply Hook */
+  if (window.registerEpisodeHook) {
+    const hookText =
+      preset.hookPool[
+        Math.floor(Math.random() * preset.hookPool.length)
+      ];
+    registerEpisodeHook(preset.hookType, hookText);
+  }
+
+  /* Apply CTA tone */
+  if (window.SerialCTA && preset.ctaText) {
+    SerialCTA.text = preset.ctaText;
+  }
+
+  /* Apply pacing flag */
+  if (window.EpisodeMeta) {
+    EpisodeMeta.pacing = preset.pacing;
+    EpisodeMeta.preset = presetName;
+  }
+
+  return presetName;
+};
+
+/* ---------- 25 A.3 PREVIEW PRESET ---------- */
+window.previewEpisodePreset = function (presetName) {
+  return EpisodePresets[presetName] || null;
+};
+</script>
 
 </body>
 </html>
