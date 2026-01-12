@@ -6787,6 +6787,96 @@ window.getTimelineDragState = function () {
   };
 };
 </script>
+<script>
+/* =====================================================
+   26 D — REAL SCENE REORDER (ENGINE-SAFE)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 26 D.1 UNDO SNAPSHOT ---------- */
+window.SceneStackHistory = window.SceneStackHistory || [];
+window.saveSceneStackSnapshot = function () {
+  if (!window.SceneStack) return;
+  SceneStackHistory.push(SceneStack.slice());
+  if (SceneStackHistory.length > 10) SceneStackHistory.shift();
+};
+
+window.undoSceneReorder = function () {
+  if (!SceneStackHistory.length) return;
+  window.SceneStack = SceneStackHistory.pop();
+  setTimeout(function(){
+    renderTimeline && renderTimeline();
+    if (typeof TimelineState !== "undefined") {
+      TimelineState.activeSceneIndex = Math.min(
+        TimelineState.activeSceneIndex || 0,
+        SceneStack.length - 1
+      );
+      highlightActiveScene && highlightActiveScene();
+    }
+  }, 0);
+};
+
+/* ---------- 26 D.2 APPLY REORDER ---------- */
+window.applySceneReorder = function (fromIndex, toIndex) {
+  if (!window.SceneStack) return;
+  if (fromIndex === toIndex) return;
+  if (fromIndex == null || toIndex == null) return;
+
+  saveSceneStackSnapshot();
+
+  const item = SceneStack.splice(fromIndex, 1)[0];
+  SceneStack.splice(toIndex, 0, item);
+
+  if (typeof TimelineState !== "undefined") {
+    TimelineState.activeSceneIndex = toIndex;
+  }
+
+  setTimeout(function(){
+    renderTimeline && renderTimeline();
+    highlightActiveScene && highlightActiveScene();
+  }, 0);
+};
+
+/* ---------- 26 D.3 CONNECT TO DRAG SYSTEM ---------- */
+(function hookRealDrop(){
+  const originalRender = window.renderTimeline;
+  if (!originalRender) return;
+
+  window.renderTimeline = function () {
+    originalRender.apply(this, arguments);
+
+    const blocks = document.querySelectorAll(".sceneBlock");
+    blocks.forEach((block, index) => {
+      block.ondrop = function (e) {
+        e.preventDefault();
+
+        if (window.TimelineDragState) {
+          const from = TimelineDragState.draggingIndex;
+          const to = index;
+
+          if (from !== null && to !== null) {
+            applySceneReorder(from, to);
+          }
+
+          TimelineDragState.draggingIndex = null;
+          TimelineDragState.overIndex = null;
+          clearDragOver && clearDragOver();
+        }
+      };
+    });
+  };
+})();
+
+/* ---------- 26 D.4 SAFE KEYBOARD UNDO (CTRL+Z) ---------- */
+(function bindUndoShortcut(){
+  document.addEventListener("keydown", function(e){
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      undoSceneReorder();
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
