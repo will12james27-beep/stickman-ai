@@ -9431,6 +9431,37 @@ ${randomBlock}
 `;
 };
 </script>
+<script>
+/* ============================
+   34 A — EPISODE CORE
+============================ */
+
+window.EpisodeState = {
+  season: 1,
+  episode: 1,
+  arc: "main",
+  history: []
+};
+
+window.nextEpisode = function() {
+  EpisodeState.episode++;
+};
+
+window.startNewSeason = function() {
+  EpisodeState.season++;
+  EpisodeState.episode = 1;
+};
+
+window.logEpisode = function(promptSummary) {
+  EpisodeState.history.push({
+    season: EpisodeState.season,
+    episode: EpisodeState.episode,
+    arc: EpisodeState.arc,
+    summary: promptSummary,
+    time: Date.now()
+  });
+};
+</script>
 
 </body>
 </html>
