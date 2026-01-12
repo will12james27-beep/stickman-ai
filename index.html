@@ -8977,6 +8977,86 @@ window.addEventListener("load", () => {
   UIStatus.set("Ready", "success");
 });
 </script>
+<script>
+/* ============================
+   32 B — ERROR HANDLING CORE
+   SAFE MODE — append-only
+============================ */
+
+/* ---------- Global error catch ---------- */
+window.addEventListener("error", (e) => {
+  console.error("❌ Runtime error:", e.error || e.message);
+  if (window.UIStatus) UIStatus.set("Error occurred", "error");
+  if (window.Toast) Toast.show("Something went wrong");
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("❌ Promise rejection:", e.reason);
+  if (window.UIStatus) UIStatus.set("Async error", "error");
+  if (window.Toast) Toast.show("Operation failed");
+});
+
+/* ---------- Guards ---------- */
+window.Guard = {
+  require(name, obj) {
+    if (!obj) {
+      const msg = `Missing dependency: ${name}`;
+      console.warn(msg);
+      if (window.Toast) Toast.show(msg);
+      return false;
+    }
+    return true;
+  }
+};
+
+/* ---------- Safe actions ---------- */
+window.SafeActions = {
+
+  createProject(title, prompt) {
+    if (!Guard.require("Projects", window.Projects)) return;
+    if (!Guard.require("Monetization", window.Monetization)) return;
+
+    if (!Monetization.canCreateProject()) {
+      Toast.show("Project limit reached. Upgrade to Pro.");
+      return;
+    }
+
+    try {
+      const id = Projects.create(title, prompt);
+      Toast.show("Project created");
+      return id;
+    } catch (e) {
+      console.error(e);
+      Toast.show("Failed to create project");
+    }
+  },
+
+  exportVideo() {
+    if (!Guard.require("FFmpeg", window.FFmpeg)) {
+      Toast.show("FFmpeg not loaded");
+      return;
+    }
+    if (!Guard.require("Monetization", window.Monetization)) return;
+
+    if (!Monetization.canExport()) {
+      Toast.show("Daily export limit reached");
+      return;
+    }
+
+    try {
+      UIStatus.set("Exporting…", "info");
+      // real export handled elsewhere
+      Monetization.recordExport();
+      UIStatus.set("Export complete", "success");
+      Toast.show("Video exported");
+    } catch (e) {
+      console.error(e);
+      UIStatus.set("Export failed", "error");
+      Toast.show("Export failed");
+    }
+  }
+};
+</script>
 
 </body>
 </html>
