@@ -1950,6 +1950,74 @@ loop = function(){
 
 console.log("👥 21 B.28 Crowd Logic active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.29 — SCENE STRESS FIELD =================
+// SAFE MODE: append-only
+
+if(!window.sceneStress){
+  window.sceneStress = {
+    x: 0,
+    y: 0,
+    power: 0,     // 0..1
+    decay: 0.98   // how fast stress fades
+  };
+}
+
+// trigger stress event (safe API)
+function triggerSceneStress(x, y, power=1){
+  sceneStress.x = x;
+  sceneStress.y = y;
+  sceneStress.power = Math.max(sceneStress.power, power);
+}
+
+// auto-hook: emotion leader causes stress
+function updateSceneStress(){
+  const leader = chooseGlobalEmotionLeader();
+  if(leader && leader.emotion){
+    sceneStress.x = leader.x;
+    sceneStress.y = leader.y;
+    sceneStress.power = Math.max(
+      sceneStress.power,
+      leader.emotion.intensity || 0
+    );
+  }
+
+  // decay
+  sceneStress.power *= sceneStress.decay;
+}
+
+// stress influence on entities
+function applyStressToWorld(){
+  if(!window.worldEntities) return;
+
+  worldEntities.forEach(e=>{
+    if(e._type === "background") return;
+
+    const dx = e.x - sceneStress.x;
+    const dy = e.y - sceneStress.y;
+    const dist = Math.sqrt(dx*dx + dy*dy) + 0.001;
+
+    const force = sceneStress.power / dist;
+
+    // micro push
+    e.x += dx * force * 0.05;
+    e.y += dy * force * 0.05;
+
+    // store stress level (future systems)
+    e._stress = force;
+  });
+}
+
+// safe loop extension
+const _loop21B29 = loop;
+loop = function(){
+  updateSceneStress();
+  applyStressToWorld();
+  _loop21B29();
+};
+
+console.log("🌪️ 21 B.29 Scene Stress Field active (SAFE MODE)");
+</script>
 
 </body>
 </html>
