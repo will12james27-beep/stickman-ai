@@ -9560,6 +9560,33 @@ window.nextEpisode = function() {
   };
 })();
 </script>
+<script>
+/* ============================
+   35 B — ADMIN DATA BINDING
+============================ */
+
+(function(){
+  const tplSelect = document.getElementById("adminTemplate");
+  const presetSelect = document.getElementById("adminPreset");
+
+  for (const id in PromptTemplates) {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = id;
+    tplSelect.appendChild(o);
+  }
+
+  for (const id in PromptPresets) {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = id;
+    presetSelect.appendChild(o);
+  }
+
+  tplSelect.value = ActivePromptTemplate;
+  presetSelect.value = ActivePromptPreset;
+})();
+</script>
 
 </body>
 </html>
