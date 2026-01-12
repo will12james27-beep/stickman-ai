@@ -5942,6 +5942,67 @@ window.getEpisodePartState = function () {
   return JSON.parse(JSON.stringify(EpisodePartState));
 };
 </script>
+<script>
+/* =====================================================
+   23 B.10 — EPISODE RESET & SAFE RESTART GUARD
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 23 B.10.1 RESET LOCK ---------- */
+window.EpisodeResetGuard = {
+  resetting: false,
+  lastResetAt: null
+};
+
+/* ---------- 23 B.10.2 FULL RESET FUNCTION ---------- */
+window.resetEpisodeStateSafely = function () {
+  if (EpisodeResetGuard.resetting) return;
+  EpisodeResetGuard.resetting = true;
+
+  /* Reset Analytics */
+  if (window.EpisodeAnalytics) {
+    Object.keys(EpisodeAnalytics).forEach(key => {
+      EpisodeAnalytics[key] =
+        typeof EpisodeAnalytics[key] === "boolean" ? false : null;
+    });
+  }
+
+  /* Reset CTA */
+  if (window.SerialCTA) {
+    SerialCTA.shown = false;
+  }
+
+  /* Reset Meta (except episode/season counters) */
+  if (window.EpisodeMeta) {
+    EpisodeMeta.hookType = null;
+    EpisodeMeta.hookText = null;
+    EpisodeMeta.cliffhangerType = null;
+    EpisodeMeta.createdAt = Date.now();
+  }
+
+  EpisodeResetGuard.lastResetAt = Date.now();
+  EpisodeResetGuard.resetting = false;
+};
+
+/* ---------- 23 B.10.3 AUTO-HOOK INTO ROLL-OVER ---------- */
+(function attachResetToRollOver() {
+  if (!window.rollToNextEpisodePart) return;
+
+  const originalRoll = window.rollToNextEpisodePart;
+
+  window.rollToNextEpisodePart = function () {
+    const result = originalRoll.apply(this, arguments);
+    resetEpisodeStateSafely();
+    return result;
+  };
+})();
+
+/* ---------- 23 B.10.4 SAFE DEBUG ---------- */
+window.getEpisodeResetState = function () {
+  return JSON.parse(JSON.stringify(EpisodeResetGuard));
+};
+</script>
 
 </body>
 </html>
