@@ -2217,6 +2217,67 @@ loop = function(){
 
 console.log("🧩 21 B.32 Scene Layer Priority active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.33 — GLOBAL FOCUS LOCK =================
+// SAFE MODE: append-only
+
+if(!window.focusLock){
+  window.focusLock = {
+    active: false,
+    target: null,
+    timer: 0
+  };
+}
+
+// focus lock trigger (masalan: climax payti)
+function lockGlobalFocus(entity, durationFrames){
+  if(!entity) return;
+
+  focusLock.active = true;
+  focusLock.target = entity;
+  focusLock.timer = durationFrames || 60; // default ~1 sec
+}
+
+// focus lock release
+function releaseGlobalFocus(){
+  focusLock.active = false;
+  focusLock.target = null;
+  focusLock.timer = 0;
+}
+
+// apply lock to camera & attention
+function applyFocusLock(){
+  if(!focusLock.active || !focusLock.target || !window.camera) return;
+
+  const t = focusLock.target;
+
+  // kamera qotishi
+  camera.x += (t.x - camera.x) * 0.15;
+  camera.y += (t.y - camera.y) * 0.15;
+
+  camera.targetZoom = Math.max(camera.targetZoom || 1, 1.35);
+
+  // attention override
+  if(window.attentionSystem){
+    attentionSystem.target = t;
+    attentionSystem.strength = 1;
+  }
+
+  focusLock.timer--;
+  if(focusLock.timer <= 0){
+    releaseGlobalFocus();
+  }
+}
+
+// SAFE LOOP EXTENSION
+const _loop21B33 = loop;
+loop = function(){
+  applyFocusLock();
+  _loop21B33();
+};
+
+console.log("🎯 21 B.33 Global Focus Lock active (SAFE MODE)");
+</script>
 
 </body>
 </html>
