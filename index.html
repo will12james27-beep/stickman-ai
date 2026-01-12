@@ -1847,6 +1847,49 @@ loop = function(){
 
 console.log("🌍 21 B.26 World Entity Sync active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.27 — PRIORITY FOCUS SYSTEM =================
+// SAFE MODE: append-only
+
+let focusEntity = null;
+
+// set main focus (character / object / event)
+function setFocus(entity){
+  focusEntity = entity;
+}
+
+// auto focus fallback (first registered)
+function autoFocus(){
+  if(!focusEntity && window.worldEntities && worldEntities.length){
+    focusEntity = worldEntities[0];
+  }
+}
+
+// focus pulse
+function focusPulse(){
+  autoFocus();
+  if(!focusEntity) return;
+
+  worldEntities.forEach(e=>{
+    if(e === focusEntity){
+      e.scale = (e._baseScale || 1) * 1.08;
+      e.opacity = 1;
+    }else{
+      e.scale = (e._baseScale || 1) * 0.96;
+      e.opacity = 0.7;
+    }
+  });
+}
+
+// safe loop extension
+const _loop21B27 = loop;
+loop = function(){
+  focusPulse();
+  _loop21B27();
+};
+
+console.log("🎯 21 B.27 Priority Focus System active (SAFE MODE)");
+</script>
 
 </body>
 </html>
