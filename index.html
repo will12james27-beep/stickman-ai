@@ -5105,6 +5105,89 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.9
+Shorts Debug Overlay
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Shots) return;
+
+  const Shots = window.Shots;
+
+  // 1️⃣ Overlay yaratish
+  if (!window.__shortsDebugOverlay) {
+    const el = document.createElement("div");
+    el.id = "__shortsDebugOverlay";
+    el.style.position = "fixed";
+    el.style.top = "8px";
+    el.style.left = "8px";
+    el.style.zIndex = "9999";
+    el.style.background = "rgba(0,0,0,0.65)";
+    el.style.color = "#0f0";
+    el.style.fontFamily = "monospace";
+    el.style.fontSize = "12px";
+    el.style.padding = "6px 8px";
+    el.style.borderRadius = "6px";
+    el.style.pointerEvents = "none";
+    el.style.whiteSpace = "pre";
+
+    el.textContent = "Shorts Debug\n— init —";
+    document.body.appendChild(el);
+
+    window.__shortsDebugOverlay = el;
+    console.log("📊 23 A.9 Debug overlay created");
+  }
+
+  const overlay = window.__shortsDebugOverlay;
+
+  // 2️⃣ Overlay update helper
+  function updateOverlay() {
+    const zone =
+      Shots.beatTimeline && Shots.beatTimeline.activeZone;
+
+    const shotIndex =
+      typeof Shots.index === "number" ? Shots.index : "-";
+
+    const emotion =
+      window.Character && window.Character.currentEmotion
+        ? window.Character.currentEmotion
+        : "-";
+
+    const zoom =
+      window.Camera && typeof Camera.zoom === "number"
+        ? Camera.zoom.toFixed(2)
+        : "-";
+
+    overlay.textContent =
+      "🎬 SHORTS DEBUG\n" +
+      "Beat: " + (zone || "-") + "\n" +
+      "Shot: " + shotIndex + "\n" +
+      "Emotion: " + emotion + "\n" +
+      "Zoom: " + zoom;
+  }
+
+  // 3️⃣ Shots.update ga ulash
+  if (!Shots.__debugOverlayWrapped) {
+    Shots.__debugOverlayWrapped = true;
+
+    const baseUpdate = Shots.update;
+
+    Shots.update = function () {
+      if (this.playing) {
+        updateOverlay();
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("📊 23 A.9 Debug overlay hooked into Shots.update");
+  }
+
+})();
+</script>
 
 </body>
 </html>
