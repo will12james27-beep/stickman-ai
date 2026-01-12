@@ -3464,6 +3464,71 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- =============================== -->
+<!-- 22 B.2 – ORIGIN & CENTER MARKER -->
+<!-- APPEND-ONLY | SAFE MODE        -->
+<!-- =============================== -->
+<script>
+/*
+  22 B.2
+  Scene origin (0,0) va canvas center nuqtasini
+  aniq ko‘rish uchun vizual markerlar.
+*/
+
+(function () {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  window.__DEBUG_MARKERS__ = true;
+
+  function drawMarker(x, y, color, label) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(x - 10, y);
+    ctx.lineTo(x + 10, y);
+    ctx.moveTo(x, y - 10);
+    ctx.lineTo(x, y + 10);
+    ctx.stroke();
+
+    ctx.font = "12px monospace";
+    ctx.fillText(label, x + 12, y - 12);
+    ctx.restore();
+  }
+
+  function drawMarkers() {
+    if (!window.__DEBUG_MARKERS__) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Origin (0,0)
+    drawMarker(0, 0, "#ff0044", "ORIGIN (0,0)");
+
+    // Canvas center
+    drawMarker(w / 2, h / 2, "#00aaff", "CENTER");
+  }
+
+  // Frame oxirida chizish
+  const __oldRAF2 = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return __oldRAF2(function (t) {
+      cb(t);
+      drawMarkers();
+    });
+  };
+
+  window.toggleMarkers = function () {
+    window.__DEBUG_MARKERS__ = !window.__DEBUG_MARKERS__;
+    console.log("DEBUG MARKERS:", window.__DEBUG_MARKERS__);
+  };
+})();
+</script>
 
 </body>
 </html>
