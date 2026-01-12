@@ -5188,6 +5188,73 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.10
+Shorts Export Readiness (Production Mode)
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+
+  // 1️⃣ Global export flag
+  if (!window.EXPORT_MODE) {
+    window.EXPORT_MODE = {
+      production: true // ⬅️ true = PROD, false = DEV
+    };
+  }
+
+  const PROD = window.EXPORT_MODE.production;
+
+  // 2️⃣ Debug overlay o‘chirish
+  if (PROD && window.__shortsDebugOverlay) {
+    window.__shortsDebugOverlay.remove();
+    window.__shortsDebugOverlay = null;
+    console.log("🚀 Debug overlay removed (PROD)");
+  }
+
+  // 3️⃣ Shorts loglarini jim qilish
+  if (PROD && !window.__shortsLogSilenced) {
+    window.__shortsLogSilenced = true;
+
+    const originalLog = console.log;
+    console.log = function (...args) {
+      const msg = args[0];
+      if (
+        typeof msg === "string" &&
+        (
+          msg.includes("23 A.") ||
+          msg.includes("🎵") ||
+          msg.includes("🎭") ||
+          msg.includes("📸") ||
+          msg.includes("🔁") ||
+          msg.includes("✂️")
+        )
+      ) {
+        return;
+      }
+      originalLog.apply(console, args);
+    };
+  }
+
+  // 4️⃣ Shorts tizimlarini majburan yoqilgan holatga keltirish
+  if (window.Shots) {
+    if (Shots.autoCut) Shots.autoCut.enabled = true;
+    if (Shots.loopSeam) Shots.loopSeam.enabled = true;
+  }
+
+  if (window.Camera && Camera.punch) {
+    Camera.punch.enabled = true;
+  }
+
+  console.log(
+    PROD
+      ? "🚀 23 A.10 Shorts EXPORT MODE active"
+      : "🧪 23 A.10 Shorts DEV MODE active"
+  );
+
+})();
+</script>
 
 </body>
 </html>
