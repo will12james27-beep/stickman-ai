@@ -2916,6 +2916,67 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🎚️ 22 A.2 FPS & Resolution Control ACTIVE");
 })();
 </script>
+<script>
+// ================= 22 A.3 — TIMELINE FREEZE & CAPTURE =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__timelineFreeze22A3) return;
+  window.__timelineFreeze22A3 = true;
+
+  const TL = {
+    duration: 20,       // default Shorts length (seconds)
+    endZone: 0.9,       // last 10%
+    frozen: false
+  };
+
+  // expose for later stages (22 A.4, 22 A.7)
+  window.shortsTimeline = TL;
+
+  function getTime(){
+    if(!window.sceneClock) return 0;
+    return sceneClock.time || 0;
+  }
+
+  function normalizeEnd(){
+    // Calm everything before loop
+    if(window.sceneTempo){
+      sceneTempo.speed *= 0.985;
+      sceneTempo.intensity *= 0.98;
+    }
+
+    if(window.camera && camera.intel){
+      camera.intel.shake *= 0.9;
+      camera.intel.zoom += (1 - camera.intel.zoom) * 0.05;
+    }
+  }
+
+  function timelineLoop(){
+    const t = getTime();
+    const p = t / TL.duration;
+
+    // End-zone handling
+    if(p >= TL.endZone){
+      normalizeEnd();
+    }
+
+    // Hard freeze guard (no runaway scenes)
+    if(t >= TL.duration && !TL.frozen){
+      TL.frozen = true;
+      // keep time capped
+      if(sceneClock){
+        sceneClock.time = TL.duration;
+      }
+    }
+
+    requestAnimationFrame(timelineLoop);
+  }
+
+  requestAnimationFrame(timelineLoop);
+
+  console.log("⏱️ 22 A.3 Timeline Freeze & Capture ACTIVE");
+})();
+</script>
 
 </body>
 </html>
