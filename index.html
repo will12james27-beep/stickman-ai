@@ -3826,6 +3826,59 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 C.1 – LOGICAL CAMERA CORE     -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 C.1
+  Logical camera — hali chizishga aralashmaydi.
+  Faqat scene → view koordinata hisoblash uchun.
+*/
+
+(function () {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) return;
+
+  // Global camera object
+  window.Camera = {
+    x: 0,
+    y: 0,
+    zoom: 1,
+
+    // Kamera markazi (view center)
+    get centerX() {
+      return this.x;
+    },
+    get centerY() {
+      return this.y;
+    },
+
+    // Scene → Screen transform
+    worldToScreen(wx, wy) {
+      return {
+        x: (wx - this.x) * this.zoom + canvas.width / 2,
+        y: (wy - this.y) * this.zoom + canvas.height / 2
+      };
+    },
+
+    // Screen → Scene transform
+    screenToWorld(sx, sy) {
+      return {
+        x: (sx - canvas.width / 2) / this.zoom + this.x,
+        y: (sy - canvas.height / 2) / this.zoom + this.y
+      };
+    }
+  };
+
+  // Default camera position — scene center
+  Camera.x = canvas.width / 2;
+  Camera.y = canvas.height / 2;
+
+  console.log("Camera initialized:", Camera);
+})();
+</script>
 
 </body>
 </html>
