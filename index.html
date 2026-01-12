@@ -3669,6 +3669,59 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 B.5 – UNIFIED DEBUG DRAW LAYER -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 B.5
+  Barcha debug overlay’lar uchun yagona,
+  engine’dan keyin chiziladigan qatlam.
+*/
+
+(function () {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  // Global debug master switch
+  window.DEBUG = {
+    enabled: true,
+    drawList: []
+  };
+
+  // Debug element qo‘shish helper
+  window.addDebugDraw = function (fn) {
+    if (typeof fn === "function") {
+      window.DEBUG.drawList.push(fn);
+    }
+  };
+
+  function drawAllDebug() {
+    if (!window.DEBUG.enabled) return;
+    for (const fn of window.DEBUG.drawList) {
+      fn(ctx, canvas);
+    }
+  }
+
+  // POST-RENDER hook
+  const _raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return _raf(function (t) {
+      cb(t);
+      drawAllDebug();
+    });
+  };
+
+  // Toggle from console
+  window.toggleDebug = function () {
+    window.DEBUG.enabled = !window.DEBUG.enabled;
+    console.log("DEBUG ENABLED:", window.DEBUG.enabled);
+  };
+})();
+</script>
 
 </body>
 </html>
