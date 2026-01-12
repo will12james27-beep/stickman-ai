@@ -2593,6 +2593,70 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🎥 21 E.6 Camera Intelligence ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 E.7 — CHAOS CONTROL LAYER =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__chaosControl21E7) return;
+  window.__chaosControl21E7 = true;
+
+  const chaos = {
+    level: 0,
+    max: 1,
+    decay: 0.95
+  };
+
+  function sampleChaos(){
+    let c = 0;
+
+    if(window.getEmotionBoost){
+      c += Math.max(0, getEmotionBoost() - 1);
+    }
+
+    if(window.camera && camera.intel){
+      c += camera.intel.shake * 0.5;
+      c += Math.abs(camera.intel.zoom - 1) * 1.5;
+    }
+
+    if(window.isBeatActive && isBeatActive()){
+      c += 0.1;
+    }
+
+    chaos.level = Math.min(chaos.max, chaos.level + c);
+  }
+
+  function applyControl(){
+    if(!window.sceneTempo) return;
+
+    // Soft clamp on tempo & intensity
+    if(chaos.level > 0.6){
+      sceneTempo.speed *= 0.985;
+      sceneTempo.intensity *= 0.98;
+    }
+
+    // Camera calming
+    if(window.camera && camera.intel){
+      camera.intel.shake *= 0.92;
+    }
+
+    chaos.level *= chaos.decay;
+  }
+
+  function chaosLoop(){
+    sampleChaos();
+    applyControl();
+    requestAnimationFrame(chaosLoop);
+  }
+
+  requestAnimationFrame(chaosLoop);
+
+  // Read-only monitor
+  window.getChaosLevel = () => chaos.level;
+
+  console.log("🌪️ 21 E.7 Chaos Control ACTIVE");
+})();
+</script>
 
 </body>
 </html>
