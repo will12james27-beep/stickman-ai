@@ -4749,6 +4749,78 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.4
+Auto-Cut Logic (Beat-Aware)
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Shots) return;
+
+  const Shots = window.Shots;
+
+  // 1️⃣ Auto-cut sozlamalari
+  if (!Shots.autoCut) {
+    Shots.autoCut = {
+      enabled: true,
+      cutOnZone: "outro", // qaysi beat zonada cut bo‘lsin
+      allowFallback: true
+    };
+    console.log("✂️ 23 A.4 AutoCut initialized");
+  }
+
+  // 2️⃣ Keyingi shotga o‘tish funksiyasi
+  if (!Shots.nextShot) {
+    Shots.nextShot = function () {
+      if (!this.list || this.list.length === 0) return;
+
+      const nextIndex = (this.index + 1) % this.list.length;
+      console.log("✂️ AutoCut → next shot:", nextIndex);
+      this.play(nextIndex);
+    };
+  }
+
+  // 3️⃣ update() ichiga auto-cut qo‘shish
+  if (!Shots.__autoCutWrapped) {
+    Shots.__autoCutWrapped = true;
+
+    const baseUpdate = Shots.update;
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const now = performance.now();
+      const elapsed = now - this.startTime;
+
+      // Beat zonani tekshiramiz
+      if (
+        this.autoCut.enabled &&
+        this.beatTimeline &&
+        this.beatTimeline.activeZone === this.autoCut.cutOnZone
+      ) {
+        this.nextShot();
+        return;
+      }
+
+      // Fallback: duration tugasa ham cut
+      if (
+        this.autoCut.allowFallback &&
+        this.current.duration &&
+        elapsed >= this.current.duration
+      ) {
+        this.nextShot();
+        return;
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("✂️ 23 A.4 AutoCut hooked into Shots.update");
+  }
+
+})();
+</script>
 
 </body>
 </html>
