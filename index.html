@@ -5523,6 +5523,75 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/* =====================================================
+   23 B.4 — NEXT EPISODE CTA SYSTEM
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 23 B.4.1 CTA STATE ---------- */
+window.SerialCTA = {
+  enabled: true,
+  shown: false,
+  delayAfterCliffhanger: 800, // ms
+  duration: 1800, // ms
+  text: "▶ NEXT EPISODE →",
+  subText: "Follow to continue"
+};
+
+/* ---------- 23 B.4.2 CTA TRIGGER ---------- */
+/* Cliffhanger tugagach chaqiriladi */
+window.triggerNextEpisodeCTA = function () {
+  if (!window.SerialCTA) return;
+  if (!SerialCTA.enabled) return;
+  if (SerialCTA.shown) return;
+
+  SerialCTA.shown = true;
+
+  setTimeout(() => {
+    showNextEpisodeCTA();
+  }, SerialCTA.delayAfterCliffhanger);
+};
+
+/* ---------- 23 B.4.3 CTA RENDER ---------- */
+function showNextEpisodeCTA() {
+  const cta = document.createElement("div");
+
+  cta.style.position = "absolute";
+  cta.style.bottom = "12%";
+  cta.style.left = "50%";
+  cta.style.transform = "translateX(-50%)";
+  cta.style.padding = "10px 18px";
+  cta.style.background = "rgba(0,0,0,0.75)";
+  cta.style.color = "#ffffff";
+  cta.style.fontFamily = "Arial, sans-serif";
+  cta.style.fontSize = "14px";
+  cta.style.borderRadius = "14px";
+  cta.style.textAlign = "center";
+  cta.style.pointerEvents = "none";
+  cta.style.opacity = "0";
+  cta.style.transition = "opacity 0.4s ease";
+
+  cta.innerHTML = `
+    <div style="font-weight:bold">${SerialCTA.text}</div>
+    <div style="font-size:11px;opacity:0.8">${SerialCTA.subText}</div>
+  `;
+
+  document.body.appendChild(cta);
+
+  requestAnimationFrame(() => {
+    cta.style.opacity = "1";
+  });
+
+  setTimeout(() => {
+    cta.style.opacity = "0";
+    setTimeout(() => {
+      if (cta.parentNode) cta.remove();
+    }, 400);
+  }, SerialCTA.duration);
+}
+</script>
 
 </body>
 </html>
