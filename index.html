@@ -4160,6 +4160,81 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 C.7 – CAMERA SHAKE SYSTEM     -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 C.7
+  Kamera uchun vaqtinchalik shake (impact/emotion).
+  Follow + zoom + bounds bilan mos ishlaydi.
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  cam.shake = {
+    active: false,
+    intensity: 0,
+    duration: 0,
+    time: 0
+  };
+
+  // Shake boshlash helper
+  cam.startShake = function (intensity = 10, duration = 300) {
+    cam.shake.active = true;
+    cam.shake.intensity = intensity;
+    cam.shake.duration = duration;
+    cam.shake.time = 0;
+  };
+
+  function updateShake(dt) {
+    const s = cam.shake;
+    if (!s.active) return { x: 0, y: 0 };
+
+    s.time += dt;
+    const progress = s.time / s.duration;
+
+    if (progress >= 1) {
+      s.active = false;
+      return { x: 0, y: 0 };
+    }
+
+    // Ease-out (silkinish asta tugaydi)
+    const power = (1 - progress);
+    const angle = Math.random() * Math.PI * 2;
+
+    return {
+      x: Math.cos(angle) * s.intensity * power,
+      y: Math.sin(angle) * s.intensity * power
+    };
+  }
+
+  let lastTime = performance.now();
+  let shakeOffset = { x: 0, y: 0 };
+
+  // Camera update hook
+  const _raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return _raf(function (time) {
+      const dt = time - lastTime;
+      lastTime = time;
+
+      shakeOffset = updateShake(dt);
+
+      // Shake offsetni kamera markaziga qo‘shamiz
+      cam._shakeX = shakeOffset.x;
+      cam._shakeY = shakeOffset.y;
+
+      cb(time);
+    });
+  };
+
+})();
+</script>
 
 </body>
 </html>
