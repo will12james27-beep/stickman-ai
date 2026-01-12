@@ -9350,6 +9350,25 @@ window.pickRandomCTA = function() {
   return CTAVariants[Math.floor(Math.random() * CTAVariants.length)];
 };
 </script>
+<script>
+/* ============================
+   33 C — CTA INJECTION
+============================ */
+
+const _buildFinalPrompt = window.buildFinalPrompt;
+
+window.buildFinalPrompt = function(userPrompt) {
+  const base = _buildFinalPrompt(userPrompt);
+  const cta = pickRandomCTA();
+
+  return `
+${base}
+
+FINAL CTA (show on last frame):
+"${cta}"
+`;
+};
+</script>
 
 </body>
 </html>
