@@ -5038,6 +5038,73 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.8
+Sound / Beat Sync Hooks
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Shots) return;
+
+  const Shots = window.Shots;
+
+  // 1️⃣ Audio hook konfiguratsiyasi
+  if (!Shots.soundHooks) {
+    Shots.soundHooks = {
+      hook: "hit",     // 0–3s
+      beat: "beat",    // 3–6s
+      outro: "tail"    // 6–9s
+    };
+    console.log("🎵 23 A.8 Sound hooks initialized");
+  }
+
+  // 2️⃣ Sound play helper
+  if (!Shots.playSound) {
+    Shots.playSound = function (name) {
+      if (
+        window.AudioEngine &&
+        typeof window.AudioEngine.play === "function"
+      ) {
+        window.AudioEngine.play(name);
+        console.log("🎵 Sound played:", name);
+      } else {
+        console.log("🎵 Sound hook (no audio):", name);
+      }
+    };
+  }
+
+  // 3️⃣ Beat zone o‘zgarganda sound trigger
+  if (!Shots.__soundHookWrapped) {
+    Shots.__soundHookWrapped = true;
+
+    const baseUpdate = Shots.update;
+    let lastZone = null;
+
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const zone =
+        this.beatTimeline && this.beatTimeline.activeZone;
+
+      if (zone && zone !== lastZone) {
+        lastZone = zone;
+
+        const sound = this.soundHooks[zone];
+        if (sound) {
+          this.playSound(sound);
+        }
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("🎵 23 A.8 Sound hook connected to beat timeline");
+  }
+
+})();
+</script>
 
 </body>
 </html>
