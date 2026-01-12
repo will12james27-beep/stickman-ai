@@ -5419,6 +5419,110 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 B.3
+Cliffhanger System (Episode End Hook)
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Serial || !window.Shots) return;
+
+  const Serial = window.Serial;
+  const Shots = window.Shots;
+
+  // 1️⃣ Cliffhanger state
+  if (!Serial.cliffhanger) {
+    Serial.cliffhanger = {
+      enabled: true,
+      emotion: "shock",
+      zoom: 1.45,
+      triggered: false
+    };
+    console.log("🧲 23 B.3 Cliffhanger system initialized");
+  }
+
+  // 2️⃣ Episode oxirgi shotini tekshirish helper
+  function isLastEpisodeShot() {
+    const ep = Serial.currentEpisode;
+    if (!ep) return false;
+
+    const pos = Serial._episodeState.shotPos;
+    return pos === ep.shots.length - 1;
+  }
+
+  // 3️⃣ Outro’da cliffhanger trigger
+  if (!Shots.__cliffhangerWrapped) {
+    Shots.__cliffhangerWrapped = true;
+
+    const baseUpdate = Shots.update;
+
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const zone =
+        this.beatTimeline && this.beatTimeline.activeZone;
+
+      if (
+        Serial.currentEpisode &&
+        Serial.cliffhanger.enabled &&
+        !Serial.cliffhanger.triggered &&
+        isLastEpisodeShot() &&
+        zone === "outro"
+      ) {
+        Serial.cliffhanger.triggered = true;
+
+        // Emotion zarbasi
+        if (
+          window.Character &&
+          typeof Character.setEmotion === "function"
+        ) {
+          Character.setEmotion(Serial.cliffhanger.emotion);
+        }
+
+        // Camera punch
+        if (window.Camera) {
+          Camera.zoom +=
+            (Serial.cliffhanger.zoom - Camera.zoom) * 0.25;
+        }
+
+        console.log("🧲 Cliffhanger TRIGGERED");
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("🧲 23 B.3 Cliffhanger hooked into Shots.update");
+  }
+
+  // 4️⃣ Episode tugaganda flag qo‘yish
+  if (!Serial.__cliffhangerEndWrapped) {
+    Serial.__cliffhangerEndWrapped = true;
+
+    const baseNextEpisodeShot = Serial.nextEpisodeShot;
+
+    Serial.nextEpisodeShot = function () {
+      const ep = this.currentEpisode;
+
+      // Agar oxirgi shotdan keyin chaqirilsa
+      if (
+        ep &&
+        Serial._episodeState.shotPos >= ep.shots.length - 1
+      ) {
+        Serial.cliffhangerReady = true;
+        console.log("🧲 Cliffhanger READY — next episode teased");
+        return;
+      }
+
+      if (baseNextEpisodeShot) {
+        baseNextEpisodeShot.call(this);
+      }
+    };
+  }
+
+})();
+</script>
 
 </body>
 </html>
