@@ -8788,6 +8788,79 @@ if (window.UserStore) {
   Monetization.ensureSubscription();
 }
 </script>
+<script>
+/* ============================
+   31 D.2 — MONETIZATION UI HOOKS
+   SAFE MODE — append-only
+============================ */
+
+window.MonetizationUI = {
+
+  init() {
+    this.scan();
+    this.injectBanner();
+  },
+
+  scan() {
+    document.querySelectorAll("[data-requires]").forEach(el => {
+      const type = el.getAttribute("data-requires");
+
+      let allowed = true;
+      if (type === "create-project") {
+        allowed = Monetization.canCreateProject();
+      }
+      if (type === "export") {
+        allowed = Monetization.canExport();
+      }
+
+      if (!allowed) {
+        el.disabled = true;
+        el.style.opacity = "0.5";
+        el.title = "Upgrade to Pro to unlock";
+      }
+    });
+  },
+
+  injectBanner() {
+    const plan = Monetization.getPlan();
+    if (plan !== "free") return;
+
+    const banner = document.createElement("div");
+    banner.innerHTML = `
+      <strong>Free plan</strong> limits reached.
+      <button id="upgradeProBtn">Upgrade to Pro</button>
+    `;
+
+    Object.assign(banner.style, {
+      position: "fixed",
+      bottom: "10px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "#222",
+      color: "#fff",
+      padding: "10px 16px",
+      borderRadius: "8px",
+      fontSize: "14px",
+      zIndex: 9999
+    });
+
+    document.body.appendChild(banner);
+
+    banner.querySelector("#upgradeProBtn").onclick = () => {
+      Monetization.upgradeToPro();
+      banner.remove();
+      MonetizationUI.scan();
+    };
+  }
+};
+
+// auto-init on load
+window.addEventListener("load", () => {
+  if (window.Monetization) {
+    MonetizationUI.init();
+  }
+});
+</script>
 
 </body>
 </html>
