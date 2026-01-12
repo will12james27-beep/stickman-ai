@@ -5592,6 +5592,52 @@ function showNextEpisodeCTA() {
   }, SerialCTA.duration);
 }
 </script>
+<script>
+/* =====================================================
+   23 B.5 — EPISODE METADATA & HOOK SYNC SYSTEM
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 23 B.5.1 EPISODE METADATA ---------- */
+window.EpisodeMeta = {
+  episodeNumber: 1,
+  season: 1,
+  hookType: "question", 
+  hookText: "What happens next?",
+  cliffhangerType: "freeze",
+  durationSec: 20,
+  language: "en",
+  createdAt: Date.now()
+};
+
+/* ---------- 23 B.5.2 HOOK REGISTRATION ---------- */
+/* Episode boshida chaqiriladi */
+window.registerEpisodeHook = function (type, text) {
+  EpisodeMeta.hookType = type || EpisodeMeta.hookType;
+  EpisodeMeta.hookText = text || EpisodeMeta.hookText;
+};
+
+/* ---------- 23 B.5.3 CLIFFHANGER SYNC ---------- */
+/* Cliffhanger paytida chaqiriladi */
+window.syncCliffhangerMeta = function (type) {
+  EpisodeMeta.cliffhangerType = type || EpisodeMeta.cliffhangerType;
+};
+
+/* ---------- 23 B.5.4 CTA AUTO SYNC ---------- */
+/* CTA matnini metadata asosida moslaydi */
+(function syncCTAWithEpisodeMeta() {
+  if (!window.SerialCTA || !window.EpisodeMeta) return;
+
+  SerialCTA.text = `▶ EPISODE ${EpisodeMeta.episodeNumber + 1}`;
+  SerialCTA.subText = "Tap follow to continue";
+})();
+
+/* ---------- 23 B.5.5 DEBUG (SAFE, SILENT) ---------- */
+window.getEpisodeMeta = function () {
+  return JSON.parse(JSON.stringify(EpisodeMeta));
+};
+</script>
 
 </body>
 </html>
