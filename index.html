@@ -9462,6 +9462,29 @@ window.logEpisode = function(promptSummary) {
   });
 };
 </script>
+<script>
+/* ============================
+   34 B — EPISODE CONTINUITY
+============================ */
+
+const ___buildFinalPrompt = window.buildFinalPrompt;
+
+window.buildFinalPrompt = function(userPrompt) {
+  const base = ___buildFinalPrompt(userPrompt);
+
+  const ep = EpisodeState;
+
+  return `
+${base}
+
+EPISODE CONTEXT:
+- Season: ${ep.season}
+- Episode: ${ep.episode}
+- Story Arc: ${ep.arc}
+- Continue from previous episode naturally
+`;
+};
+</script>
 
 </body>
 </html>
