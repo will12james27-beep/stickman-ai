@@ -1104,6 +1104,89 @@ loop = function(){
 
 console.log("⚖️ 21 B.14 Multi-character Emotion Priority loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.15 — EMOTION LEADER HARD FOCUS =================
+// SAFE MODE: append-only
+
+// Leader focus config (subtle but visible)
+const LEADER_FOCUS = {
+  zoomBoost: 0.08,   // qo‘shimcha zoom
+  shakeBoost: 2.0,  // qo‘shimcha shake
+  textScale: 1.12   // text kattalashuvi
+};
+
+// Camera mavjud bo‘lmasa — safe init
+if(typeof camera === "undefined"){
+  window.camera = { x:0, y:0, zoom:1, targetZoom:1, shake:0 };
+}
+
+// Leaderga qarab kamera impuls
+function applyLeaderCameraFocus(){
+  const leader = characters.find(c=>c.isEmotionLeader);
+  if(!leader) return;
+
+  camera.targetZoom = Math.max(
+    camera.targetZoom || 1,
+    1 + LEADER_FOCUS.zoomBoost
+  );
+
+  camera.shake = Math.max(
+    camera.shake || 0,
+    LEADER_FOCUS.shakeBoost
+  );
+}
+
+// Text focus uchun scale flag
+function getLeaderTextScale(c){
+  return c.isEmotionLeader ? LEADER_FOCUS.textScale : 1;
+}
+
+// DRAW ga SAFE ulanish — faqat leader textini urg‘ulaymiz
+const _draw21B15 = draw;
+draw = function(){
+  _draw21B15();
+
+  ctx.save();
+  ctx.textAlign = "center";
+
+  characters.forEach(c=>{
+    if(!c.pos) return;
+
+    const worldX = c.pos.x;
+    const worldY = c.pos.y - 56; // leader text biroz yuqoriroq
+
+    const screenX = (worldX - camera.x) * camera.zoom;
+    const screenY = (worldY - camera.y) * camera.zoom;
+
+    ctx.save();
+    ctx.translate(screenX, screenY);
+
+    const s = getLeaderTextScale(c);
+    ctx.scale(s, s);
+
+    ctx.font = c.isEmotionLeader ? "bold 14px Arial" : "12px Arial";
+    ctx.fillStyle = "#000";
+
+    // Faqat leader uchun belgi (demo uchun)
+    if(c.isEmotionLeader){
+      ctx.fillText("★ FOCUS ★", 0, 0);
+    }
+
+    ctx.restore();
+  });
+
+  ctx.restore();
+};
+
+// LOOP ga SAFE ulanish — kamera fokusini qo‘llaymiz
+const _loop21B15 = loop;
+loop = function(){
+  applyLeaderCameraFocus();
+  _loop21B15();
+};
+
+console.log("🎯 21 B.15 Emotion Leader Hard Focus loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
