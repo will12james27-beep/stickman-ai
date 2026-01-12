@@ -3272,6 +3272,58 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   }
 })();
 </script>
+<script>
+/* ================================
+   22 A.9 — ENGINE MODE SYSTEM
+   DEV / PREVIEW / EXPORT
+   SAFE APPEND ONLY
+================================ */
+
+(function () {
+
+  if (!window.EngineMode) {
+    window.EngineMode = {
+      current: "DEV", // DEV | PREVIEW | EXPORT
+    };
+  }
+
+  function applyEngineMode() {
+    const overlay = document.getElementById("engine-status-overlay");
+    if (!overlay) return;
+
+    switch (window.EngineMode.current) {
+
+      case "DEV":
+        overlay.style.display = "block";
+        overlay.style.opacity = "1";
+        overlay.textContent = "ENGINE MODE: DEV";
+        break;
+
+      case "PREVIEW":
+        overlay.style.display = "block";
+        overlay.style.opacity = "0.4";
+        overlay.textContent = "ENGINE MODE: PREVIEW";
+        break;
+
+      case "EXPORT":
+        overlay.style.display = "none";
+        break;
+    }
+  }
+
+  // initial apply
+  applyEngineMode();
+
+  // expose helper for later steps
+  window.setEngineMode = function (mode) {
+    if (!["DEV", "PREVIEW", "EXPORT"].includes(mode)) return;
+    window.EngineMode.current = mode;
+    applyEngineMode();
+    console.log("🎬 Engine mode set to:", mode);
+  };
+
+})();
+</script>
 
 </body>
 </html>
