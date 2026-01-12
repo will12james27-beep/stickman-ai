@@ -6077,6 +6077,83 @@ window.getPlatformState = function () {
   };
 };
 </script>
+<script>
+/* =====================================================
+   24 B — CAPTION, TITLE & HASHTAG AUTO-COMPOSER
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 24 B.1 HASHTAG POOLS ---------- */
+window.HashtagPools = {
+  general: ["#shorts", "#viral", "#animation"],
+  story: ["#story", "#episode", "#part"],
+  platform: {
+    youtube: ["#youtubeshorts"],
+    instagram: ["#reels", "#instagramreels"],
+    tiktok: ["#tiktok", "#fyp"]
+  }
+};
+
+/* ---------- 24 B.2 TITLE GENERATOR ---------- */
+window.generateEpisodeTitle = function () {
+  if (!window.EpisodeMeta) return "";
+
+  const part = window.getEpisodePartLabel
+    ? getEpisodePartLabel()
+    : "";
+
+  const hook = EpisodeMeta.hookText || "Episode";
+
+  return `${hook} — ${part}`;
+};
+
+/* ---------- 24 B.3 CAPTION GENERATOR ---------- */
+window.generateEpisodeCaption = function () {
+  const title = generateEpisodeTitle();
+  const cta = window.SerialCTA ? SerialCTA.text : "";
+
+  return `${title}\n${cta}`;
+};
+
+/* ---------- 24 B.4 HASHTAG COMPOSER ---------- */
+window.generateEpisodeHashtags = function () {
+  const tags = [];
+
+  /* General */
+  tags.push(...HashtagPools.general);
+
+  /* Story / Part */
+  if (window.EpisodePartState) {
+    tags.push(...HashtagPools.story);
+  }
+
+  /* Platform */
+  if (window.PlatformAdapter) {
+    const p = PlatformAdapter.current;
+    if (HashtagPools.platform[p]) {
+      tags.push(...HashtagPools.platform[p]);
+    }
+  }
+
+  /* Remove duplicates */
+  return Array.from(new Set(tags)).join(" ");
+};
+
+/* ---------- 24 B.5 FULL COMPOSER ---------- */
+window.composeEpisodePublishText = function () {
+  return {
+    title: generateEpisodeTitle(),
+    caption: generateEpisodeCaption(),
+    hashtags: generateEpisodeHashtags()
+  };
+};
+
+/* ---------- 24 B.6 SAFE DEBUG ---------- */
+window.previewPublishText = function () {
+  return composeEpisodePublishText();
+};
+</script>
 
 </body>
 </html>
