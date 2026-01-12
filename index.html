@@ -9057,6 +9057,114 @@ window.SafeActions = {
   }
 };
 </script>
+<script>
+/* ============================
+   32 C — PERFORMANCE & MEMORY
+   SAFE MODE — append-only
+============================ */
+
+/* ---------- RAF Throttle ---------- */
+window.RAFScheduler = {
+  running: false,
+  lastTime: 0,
+  fpsLimit: 60,
+
+  start(loopFn) {
+    if (this.running) return;
+    this.running = true;
+
+    const frame = (t) => {
+      if (!this.running) return;
+
+      const delta = t - this.lastTime;
+      const minDelta = 1000 / this.fpsLimit;
+
+      if (delta >= minDelta) {
+        this.lastTime = t;
+        try {
+          loopFn(delta);
+        } catch (e) {
+          console.error("RAF loop error:", e);
+        }
+      }
+      requestAnimationFrame(frame);
+    };
+
+    requestAnimationFrame(frame);
+  },
+
+  stop() {
+    this.running = false;
+  }
+};
+
+/* ---------- Visibility Pause ---------- */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (window.UIStatus) UIStatus.set("Paused (tab hidden)", "warning");
+    if (window.RAFScheduler) RAFScheduler.stop();
+  } else {
+    if (window.UIStatus) UIStatus.set("Resumed", "info");
+    // engine loop can restart itself if needed
+  }
+});
+
+/* ---------- Resource Manager ---------- */
+window.ResourceManager = {
+  intervals: new Set(),
+  timeouts: new Set(),
+
+  setInterval(fn, ms) {
+    const id = setInterval(fn, ms);
+    this.intervals.add(id);
+    return id;
+  },
+
+  clearInterval(id) {
+    clearInterval(id);
+    this.intervals.delete(id);
+  },
+
+  setTimeout(fn, ms) {
+    const id = setTimeout(fn, ms);
+    this.timeouts.add(id);
+    return id;
+  },
+
+  clearTimeout(id) {
+    clearTimeout(id);
+    this.timeouts.delete(id);
+  },
+
+  clearAll() {
+    this.intervals.forEach(id => clearInterval(id));
+    this.timeouts.forEach(id => clearTimeout(id));
+    this.intervals.clear();
+    this.timeouts.clear();
+    console.log("🧹 Resources cleaned");
+  }
+};
+
+/* ---------- Lightweight FPS Meter (dev-only) ---------- */
+window.FPSMeter = {
+  frames: 0,
+  last: performance.now(),
+  fps: 0,
+
+  tick() {
+    this.frames++;
+    const now = performance.now();
+    if (now - this.last >= 1000) {
+      this.fps = this.frames;
+      this.frames = 0;
+      this.last = now;
+      if (window.UIStatus) {
+        UIStatus.set(`FPS: ${this.fps}`, "info");
+      }
+    }
+  }
+};
+</script>
 
 </body>
 </html>
