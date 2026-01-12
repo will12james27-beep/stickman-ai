@@ -9304,6 +9304,28 @@ window.getActivePreset = function() {
   return PromptPresets[ActivePromptPreset] || PromptPresets.comedy;
 };
 </script>
+<script>
+/* ============================
+   33 B — TEMPLATE + PRESET MERGE
+============================ */
+
+window.buildFinalPrompt = function(userPrompt) {
+  const tpl = PromptTemplates[ActivePromptTemplate];
+  const preset = getActivePreset();
+
+  if (!tpl || !preset) return userPrompt;
+
+  return `
+${tpl.build(userPrompt)}
+
+TONE:
+${preset.tone}
+
+DIRECTING RULES:
+- ${preset.rules.join("\n- ")}
+`;
+};
+</script>
 
 </body>
 </html>
