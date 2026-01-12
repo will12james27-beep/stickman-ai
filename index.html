@@ -2278,6 +2278,38 @@ loop = function(){
 
 console.log("🎯 21 B.33 Global Focus Lock active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 D.1 — ENGINE MODE CONTROLLER =================
+// SAFE MODE: append-only
+
+if(!window.engineMode){
+  window.engineMode = "story"; // default
+}
+
+function setEngineMode(mode){
+  engineMode = mode;
+
+  // Kamera sozlamalari
+  if(window.camera){
+    if(mode === "shorts"){
+      camera.targetZoom = 1.25;
+      camera.shake = Math.max(camera.shake || 0, 3);
+    }
+
+    if(mode === "story"){
+      camera.targetZoom = 1;
+      camera.shake = 0;
+    }
+
+    if(mode === "chaos"){
+      camera.targetZoom = 1.4;
+      camera.shake = Math.max(camera.shake || 0, 8);
+    }
+  }
+
+  console.log("🎛️ Engine mode set:", mode);
+}
+</script>
 
 </body>
 </html>
