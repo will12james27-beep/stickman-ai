@@ -5346,6 +5346,79 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 B.2
+Episode Auto-Continue System
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Serial || !window.Shots) return;
+
+  const Serial = window.Serial;
+  const Shots = window.Shots;
+
+  // 1️⃣ Episode ichidagi joriy shot pozitsiyasi
+  if (!Serial._episodeState) {
+    Serial._episodeState = {
+      shotPos: 0
+    };
+  }
+
+  // 2️⃣ Episode boshlanganda reset
+  const basePlayEpisode = Serial.playEpisode;
+  Serial.playEpisode = function (arcId, episodeIndex = 0) {
+    Serial._episodeState.shotPos = 0;
+    basePlayEpisode.call(this, arcId, episodeIndex);
+  };
+
+  // 3️⃣ Episode next shot helper
+  if (!Serial.nextEpisodeShot) {
+    Serial.nextEpisodeShot = function () {
+      const ep = this.currentEpisode;
+      if (!ep) return;
+
+      Serial._episodeState.shotPos++;
+
+      const nextShotIndex =
+        ep.shots[Serial._episodeState.shotPos];
+
+      if (nextShotIndex == null) {
+        console.log("📺 Episode finished:", ep.id);
+        return;
+      }
+
+      console.log(
+        "📺 Episode next shot:",
+        nextShotIndex
+      );
+      Shots.play(nextShotIndex);
+    };
+  }
+
+  // 4️⃣ AutoCut’ni Serial bilan bog‘lash
+  if (!Shots.__serialAutoContinueWrapped) {
+    Shots.__serialAutoContinueWrapped = true;
+
+    const baseNextShot = Shots.nextShot;
+
+    Shots.nextShot = function () {
+      // Agar episode aktiv bo‘lsa → Serial boshqaradi
+      if (Serial.currentEpisode) {
+        Serial.nextEpisodeShot();
+        return;
+      }
+
+      // Aks holda — eski Shorts logika
+      if (baseNextShot) baseNextShot.call(this);
+    };
+
+    console.log("📺 23 B.2 Episode auto-continue hooked");
+  }
+
+})();
+</script>
 
 </body>
 </html>
