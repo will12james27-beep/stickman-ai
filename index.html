@@ -8489,6 +8489,31 @@ window.renderMP4WithFFmpeg = async function(){
   btn.onclick = renderMP4WithFFmpeg;
 })();
 </script>
+<script>
+/* ============================
+   31 C.1 — USER IDENTITY CORE
+   SAFE MODE — append-only
+============================ */
+
+window.Auth = {
+  userId: null,
+
+  init() {
+    let id = localStorage.getItem("stickman_user_id");
+    if (!id) {
+      id = "user_" + Math.random().toString(36).slice(2) + Date.now();
+      localStorage.setItem("stickman_user_id", id);
+      console.log("🆕 New user created:", id);
+    } else {
+      console.log("👤 Returning user:", id);
+    }
+    this.userId = id;
+  }
+};
+
+// auto-init
+Auth.init();
+</script>
 
 </body>
 </html>
