@@ -2359,6 +2359,30 @@ loop = function(){
 
 console.log("⚡ 21 D.2 Tempo & Rhythm Controller active");
 </script>
+// 21 D.3 Emotion → Tempo Coupling
+function emotionToTempo(emotion){
+  if(!emotion) return;
+
+  if(emotion.intensity !== undefined){
+    tempo.target = 0.8 + emotion.intensity * 0.7;
+  }
+
+  if(mode === "shorts"){
+    tempo.target *= 1.1;
+  }
+
+  if(mode === "story"){
+    tempo.target *= 0.95;
+  }
+}
+
+if(window.onEmotionUpdate){
+  const _onEmotionUpdate21D3 = onEmotionUpdate;
+  onEmotionUpdate = function(emotion){
+    emotionToTempo(emotion);
+    _onEmotionUpdate21D3(emotion);
+  };
+}
 
 </body>
 </html>
