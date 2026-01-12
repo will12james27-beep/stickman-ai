@@ -3047,6 +3047,80 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("✂️ 22 A.4 Auto-Cut System ACTIVE");
 })();
 </script>
+<script>
+// ================= 22 A.5 — CAPTION TIMING ENGINE =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__caption22A5) return;
+  window.__caption22A5 = true;
+
+  const CaptionEngine = {
+    active: false,
+    text: "",
+    alpha: 0,
+    lastTrigger: 0,
+    minGap: 0.4, // seconds between captions
+    maxDuration: 1.8
+  };
+
+  function captionTrigger(){
+    let score = 0;
+
+    if(window.getEmotionBoost){
+      score += getEmotionBoost();
+    }
+
+    if(window.isBeatActive && isBeatActive()){
+      score += 0.5;
+    }
+
+    if(window.camera && camera.intel){
+      score += camera.intel.shake * 1.5;
+      score += Math.abs(camera.intel.zoom - 1) * 2;
+    }
+
+    return score > 0.9;
+  }
+
+  function pickCaptionText(){
+    if(window.sceneContext && sceneContext.captionPool){
+      const pool = sceneContext.captionPool;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+    return "😳 WHAT?!";
+  }
+
+  function updateCaption(dt){
+    const now = window.sceneClock || 0;
+
+    if(!CaptionEngine.active){
+      if(captionTrigger() && now - CaptionEngine.lastTrigger > CaptionEngine.minGap){
+        CaptionEngine.active = true;
+        CaptionEngine.text = pickCaptionText();
+        CaptionEngine.alpha = 0;
+        CaptionEngine.startTime = now;
+        CaptionEngine.lastTrigger = now;
+      }
+    } else {
+      const life = now - CaptionEngine.startTime;
+      if(life > CaptionEngine.maxDuration){
+        CaptionEngine.active = false;
+      }
+    }
+
+    // smooth alpha
+    CaptionEngine.alpha += (CaptionEngine.active ? 1 : -1) * dt * 6;
+    CaptionEngine.alpha = Math.max(0, Math.min(1, CaptionEngine.alpha));
+  }
+
+  // expose for render
+  window.updateCaptionEngine = updateCaption;
+  window.getActiveCaption = () => CaptionEngine;
+
+  console.log("📝 22 A.5 Caption Timing Engine ACTIVE");
+})();
+</script>
 
 </body>
 </html>
