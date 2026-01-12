@@ -9246,6 +9246,53 @@ window.preparePromptForEngine = function(rawPrompt) {
   return buildFinalPrompt(rawPrompt);
 };
 </script>
+<script>
+/* ============================
+   33 B — PROMPT PRESETS
+============================ */
+
+window.PromptPresets = {
+  comedy: {
+    id: "comedy",
+    tone: "funny, exaggerated, absurd",
+    rules: [
+      "overreact facial expressions",
+      "unexpected punchline",
+      "physical comedy"
+    ]
+  },
+
+  drama: {
+    id: "drama",
+    tone: "serious, emotional, tense",
+    rules: [
+      "slow emotional buildup",
+      "clear conflict",
+      "strong facial emotions"
+    ]
+  },
+
+  rage: {
+    id: "rage",
+    tone: "angry, explosive, chaotic",
+    rules: [
+      "fast movements",
+      "extreme reactions",
+      "sudden outbursts"
+    ]
+  },
+
+  cute: {
+    id: "cute",
+    tone: "adorable, soft, wholesome",
+    rules: [
+      "round movements",
+      "innocent reactions",
+      "positive ending"
+    ]
+  }
+};
+</script>
 
 </body>
 </html>
