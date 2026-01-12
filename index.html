@@ -5638,6 +5638,79 @@ window.getEpisodeMeta = function () {
   return JSON.parse(JSON.stringify(EpisodeMeta));
 };
 </script>
+<script>
+/* =====================================================
+   23 B.6 — EPISODE ANALYTICS FLAGS (RETENTION-READY)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 23 B.6.1 ANALYTICS STATE ---------- */
+window.EpisodeAnalytics = {
+  hookSeen: false,
+  hookTimestamp: null,
+
+  midpointReached: false,
+  midpointTimestamp: null,
+
+  cliffhangerSeen: false,
+  cliffhangerTimestamp: null,
+
+  ctaShown: false,
+  ctaTimestamp: null,
+
+  completed: false,
+  completedTimestamp: null
+};
+
+/* ---------- 23 B.6.2 HOOK FLAG ---------- */
+window.markHookSeen = function () {
+  if (EpisodeAnalytics.hookSeen) return;
+  EpisodeAnalytics.hookSeen = true;
+  EpisodeAnalytics.hookTimestamp = Date.now();
+};
+
+/* ---------- 23 B.6.3 MIDPOINT FLAG ---------- */
+window.markMidpointReached = function () {
+  if (EpisodeAnalytics.midpointReached) return;
+  EpisodeAnalytics.midpointReached = true;
+  EpisodeAnalytics.midpointTimestamp = Date.now();
+};
+
+/* ---------- 23 B.6.4 CLIFFHANGER FLAG ---------- */
+window.markCliffhangerSeen = function () {
+  if (EpisodeAnalytics.cliffhangerSeen) return;
+  EpisodeAnalytics.cliffhangerSeen = true;
+  EpisodeAnalytics.cliffhangerTimestamp = Date.now();
+};
+
+/* ---------- 23 B.6.5 CTA FLAG (AUTO-HOOK) ---------- */
+(function hookIntoCTAAnalytics() {
+  if (!window.triggerNextEpisodeCTA) return;
+
+  const originalTrigger = window.triggerNextEpisodeCTA;
+
+  window.triggerNextEpisodeCTA = function () {
+    if (!EpisodeAnalytics.ctaShown) {
+      EpisodeAnalytics.ctaShown = true;
+      EpisodeAnalytics.ctaTimestamp = Date.now();
+    }
+    return originalTrigger.apply(this, arguments);
+  };
+})();
+
+/* ---------- 23 B.6.6 COMPLETION FLAG ---------- */
+window.markEpisodeCompleted = function () {
+  if (EpisodeAnalytics.completed) return;
+  EpisodeAnalytics.completed = true;
+  EpisodeAnalytics.completedTimestamp = Date.now();
+};
+
+/* ---------- 23 B.6.7 SAFE DEBUG ACCESS ---------- */
+window.getEpisodeAnalytics = function () {
+  return JSON.parse(JSON.stringify(EpisodeAnalytics));
+};
+</script>
 
 </body>
 </html>
