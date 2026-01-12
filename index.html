@@ -2177,6 +2177,73 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+<script>
+// ================= 21 E.1 — ATTENTION HOOK SYSTEM =================
+// SAFE MODE: append-only, Creative Layer start
+
+(function(){
+  if(window.__attentionHook21E1) return;
+  window.__attentionHook21E1 = true;
+
+  // Hook state
+  const hook = {
+    active: false,
+    startTime: 0,
+    duration: 1800, // ms (0–2s sweet spot)
+    intensity: 1
+  };
+
+  // Decide hook based on engine & tempo
+  function evaluateHook(){
+    if(!window.engineMode || !window.sceneTempo) return false;
+
+    // Shorts always eligible
+    if(engineMode === "shorts") return true;
+
+    // Story only if tempo is fast or chaos
+    if(engineMode === "story" && sceneTempo.speed > 1.1) return true;
+
+    return false;
+  }
+
+  // Activate hook
+  function activateHook(){
+    hook.active = true;
+    hook.startTime = performance.now();
+
+    // Gentle camera micro-signal
+    if(window.camera){
+      camera.shake += 0.15 * sceneTempo.intensity;
+      camera.targetZoom *= 1.03;
+    }
+
+    console.log("🎣 21 E.1 Attention Hook ON");
+  }
+
+  // Hook update loop
+  function hookLoop(){
+    if(!hook.active && evaluateHook()){
+      activateHook();
+    }
+
+    if(hook.active){
+      const t = performance.now() - hook.startTime;
+      if(t > hook.duration){
+        hook.active = false;
+        console.log("🎣 21 E.1 Attention Hook OFF");
+      }
+    }
+
+    requestAnimationFrame(hookLoop);
+  }
+
+  requestAnimationFrame(hookLoop);
+
+  // Public read-only signal (for next stages)
+  window.attentionHookActive = () => hook.active;
+
+})();
+</script>
 
 </body>
 </html>
