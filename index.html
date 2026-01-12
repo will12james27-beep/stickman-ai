@@ -8590,6 +8590,69 @@ if (window.Auth && Auth.userId) {
   UserStore.load();
 }
 </script>
+<script>
+/* ============================
+   31 C.3 — PROJECTS OWNERSHIP
+   SAFE MODE — append-only
+============================ */
+
+window.Projects = {
+
+  _uid() {
+    return "proj_" + Math.random().toString(36).slice(2) + Date.now();
+  },
+
+  create(title = "Untitled Project", prompt = "") {
+    if (!window.UserStore || !UserStore.data) return null;
+
+    const project = {
+      id: this._uid(),
+      title,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      prompt,
+      scenes: [],
+      meta: {
+        aspect: UserStore.data.settings.shortsFormat || "9:16",
+        duration: 8,
+        status: "draft"
+      }
+    };
+
+    UserStore.update(data => {
+      data.projects.push(project);
+    });
+
+    console.log("🎬 Project created:", project.id);
+    return project.id;
+  },
+
+  list() {
+    if (!window.UserStore || !UserStore.data) return [];
+    return UserStore.data.projects;
+  },
+
+  get(id) {
+    return this.list().find(p => p.id === id);
+  },
+
+  update(id, fn) {
+    UserStore.update(data => {
+      const p = data.projects.find(p => p.id === id);
+      if (!p) return;
+      fn(p);
+      p.updatedAt = Date.now();
+    });
+  },
+
+  remove(id) {
+    UserStore.update(data => {
+      data.projects = data.projects.filter(p => p.id !== id);
+    });
+    console.log("🗑 Project removed:", id);
+  }
+};
+</script>
 
 </body>
 </html>
