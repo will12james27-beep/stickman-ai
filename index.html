@@ -1595,6 +1595,63 @@ loop = function(){
 
 console.log("💥 21 B.21 Emotion → Motion Amplification loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.22 — EMOTION → COLOR & FX =================
+// SAFE MODE: append-only
+
+// FX overlay canvas
+if(!window.fxCanvas){
+  fxCanvas = document.createElement("canvas");
+  fxCanvas.width = canvas.width;
+  fxCanvas.height = canvas.height;
+  fxCanvas.style.position = "absolute";
+  fxCanvas.style.left = canvas.offsetLeft + "px";
+  fxCanvas.style.top  = canvas.offsetTop  + "px";
+  fxCanvas.style.pointerEvents = "none";
+  document.body.appendChild(fxCanvas);
+  window.fxCtx = fxCanvas.getContext("2d");
+}
+
+// Emotion → visual rules
+const emotionFXMap = {
+  angry:     { color:"rgba(255,0,0,0.15)",   flash:0.0 },
+  panic:     { color:"rgba(255,255,0,0.18)", flash:0.2 },
+  shocked:   { color:"rgba(255,255,255,0.2)",flash:0.3 },
+  danger:    { color:"rgba(255,60,60,0.22)", flash:0.15 },
+  emergency: { color:"rgba(255,0,0,0.3)",    flash:0.4 },
+  calm:      { color:"rgba(120,180,255,0.08)",flash:0.0 }
+};
+
+// FX draw
+function drawEmotionFX(){
+  fxCtx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+
+  const leader = chooseGlobalEmotionLeader();
+  if(!leader || !leader.emotion) return;
+
+  const rule = emotionFXMap[leader.emotion.state];
+  if(!rule) return;
+
+  // Base color overlay
+  fxCtx.fillStyle = rule.color;
+  fxCtx.fillRect(0,0,fxCanvas.width,fxCanvas.height);
+
+  // Flash effect (panic / shocked / emergency)
+  if(rule.flash && Math.random() < rule.flash){
+    fxCtx.fillStyle = "rgba(255,255,255,0.25)";
+    fxCtx.fillRect(0,0,fxCanvas.width,fxCanvas.height);
+  }
+}
+
+// SAFE LOOP hook
+const _loop21B22 = loop;
+loop = function(){
+  drawEmotionFX();
+  _loop21B22();
+};
+
+console.log("🎨 21 B.22 Emotion → Color & FX loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
