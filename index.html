@@ -1525,6 +1525,76 @@ loop = function(){
 
 console.log("🔊 21 B.20 Emotion → Sound Trigger loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.21 — EMOTION → MOTION AMPLIFICATION =================
+// SAFE MODE: append-only
+
+// Motion params (soft, safe)
+const motionConfig = {
+  baseShake: 0.3,
+  maxShake:  6,
+  basePulse: 0.02,
+  maxPulse:  0.15
+};
+
+// Init motion state for entities
+function initEntityMotion(e){
+  if(!e.motion){
+    e.motion = {
+      energy: 0,     // 0..1
+      pulse: 0,
+      jitter: 0
+    };
+  }
+}
+
+// Apply motion from emotion
+function applyMotionFromEmotion(){
+  entities.forEach(e=>{
+    if(!e.emotion) return;
+    initEntityMotion(e);
+
+    const intensity = e.emotion.intensity || 0;
+
+    // Energy follows emotion (smooth)
+    e.motion.energy += (intensity - e.motion.energy) * 0.1;
+
+    // Pulse & jitter derived
+    e.motion.pulse = motionConfig.basePulse +
+      e.motion.energy * (motionConfig.maxPulse - motionConfig.basePulse);
+
+    e.motion.jitter = motionConfig.baseShake +
+      e.motion.energy * (motionConfig.maxShake - motionConfig.baseShake);
+  });
+}
+
+// Camera gets global motion hint
+function applyCameraMotion(){
+  const leader = chooseGlobalEmotionLeader();
+  if(!leader || !leader.motion) return;
+
+  // SAFE camera influence
+  camera.shake = Math.max(
+    camera.shake || 0,
+    leader.motion.jitter
+  );
+
+  camera.targetZoom = Math.max(
+    camera.targetZoom || 1,
+    1 + leader.motion.energy * 0.15
+  );
+}
+
+// SAFE LOOP hook
+const _loop21B21 = loop;
+loop = function(){
+  applyMotionFromEmotion();
+  applyCameraMotion();
+  _loop21B21();
+};
+
+console.log("💥 21 B.21 Emotion → Motion Amplification loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
