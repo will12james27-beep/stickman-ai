@@ -7457,6 +7457,142 @@ window.restoreProjectVersion = function (index) {
   document.body.appendChild(bar);
 })();
 </script>
+<script>
+/* =====================================================
+   29 A — PROMPT → EPISODE GENERATOR (FOUNDATION)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 29 A.1 PROMPT UI ---------- */
+(function injectPromptUI(){
+  if (document.getElementById("promptPanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "promptPanel";
+  panel.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 240px;
+    background: #0f0f0f;
+    border-bottom: 2px solid #333;
+    padding: 10px;
+    z-index: 10000;
+    font-family: Arial, sans-serif;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  `;
+
+  panel.innerHTML = `
+    <input id="episodePromptInput"
+      placeholder="Describe your short episode..."
+      style="
+        flex:1;
+        padding:6px 8px;
+        background:#111;
+        color:#fff;
+        border:1px solid #333;
+        border-radius:4px;
+        font-size:13px;
+      "
+    />
+    <button id="generateEpisodeBtn">⚡ Generate</button>
+  `;
+
+  document.body.appendChild(panel);
+
+  document.getElementById("generateEpisodeBtn").onclick = generateEpisodeFromPrompt;
+})();
+
+/* ---------- 29 A.2 PROMPT PARSER (SIMPLE) ---------- */
+window.parsePromptToScenes = function (prompt) {
+  const base = prompt.toLowerCase();
+
+  const scenes = [];
+
+  // Hook
+  scenes.push({
+    id: "hook",
+    type: "scene",
+    duration: 1.5,
+    text: "Something unexpected happens..."
+  });
+
+  // Core logic (very simple heuristic)
+  if (base.includes("fight") || base.includes("argument")) {
+    scenes.push({
+      id: "conflict",
+      type: "scene",
+      duration: 2,
+      text: "Characters get into conflict"
+    });
+  } else if (base.includes("funny") || base.includes("joke")) {
+    scenes.push({
+      id: "comedy",
+      type: "scene",
+      duration: 2,
+      text: "A funny situation unfolds"
+    });
+  } else {
+    scenes.push({
+      id: "moment",
+      type: "scene",
+      duration: 2,
+      text: "A key moment happens"
+    });
+  }
+
+  // Cliffhanger
+  scenes.push({
+    id: "cliff",
+    type: "scene",
+    duration: 1.5,
+    text: "But something is about to change..."
+  });
+
+  // CTA
+  scenes.push({
+    id: "cta",
+    type: "text",
+    duration: 1,
+    text: "Part 2?"
+  });
+
+  return scenes;
+};
+
+/* ---------- 29 A.3 GENERATE EPISODE ---------- */
+window.generateEpisodeFromPrompt = function () {
+  const input = document.getElementById("episodePromptInput");
+  if (!input || !input.value.trim()) return;
+
+  const prompt = input.value.trim();
+
+  const scenes = parsePromptToScenes(prompt);
+
+  // Replace SceneStack safely
+  window.SceneStack = scenes.map(s => sanitizeScene ? sanitizeScene(s) : s);
+
+  if (window.TimelineState) {
+    TimelineState.activeSceneIndex = 0;
+  }
+
+  renderTimeline && renderTimeline();
+  highlightActiveScene && highlightActiveScene();
+  renderSceneProperties && renderSceneProperties();
+  autoSaveIfChanged && autoSaveIfChanged();
+};
+
+/* ---------- 29 A.4 UX HELPER ---------- */
+(function autoFocusPrompt(){
+  setTimeout(function(){
+    const i = document.getElementById("episodePromptInput");
+    if (i) i.focus();
+  }, 800);
+})();
+</script>
 
 </body>
 </html>
