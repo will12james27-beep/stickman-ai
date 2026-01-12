@@ -4466,6 +4466,77 @@ SAFE MODE — FULL SCRIPT
   }
 })();
 </script>
+<script>
+/*
+22 C.12
+Cinematic Camera Finalize
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  // 1️⃣ Cinematic master flag
+  if (cam.cinematicMode === undefined) {
+    cam.cinematicMode = true;
+    console.log("🎬 22 C.12 Cinematic mode ENABLED");
+  }
+
+  // 2️⃣ Kamera qatlamlari mavjudligini tekshirish (guard)
+  cam.__cinematicLayers = cam.__cinematicLayers || {
+    anchor: !!cam.anchor,
+    softFollow: !!cam.softFollow,
+    emotion: !!cam.emotion,
+    shake: !!cam.shake
+  };
+
+  // 3️⃣ Fallback xavfsizligi (agar biror qatlam o‘chiq bo‘lsa)
+  if (!cam.softFollow && cam.cinematicMode) {
+    cam.softFollow = {
+      enabled: true,
+      strength: 0.08,
+      threshold: 0.01
+    };
+    console.warn("🎬 22 C.12 SoftFollow fallback activated");
+  }
+
+  if (!cam.emotion && cam.cinematicMode) {
+    cam.emotion = {
+      name: "normal",
+      targetWeight: 0.08,
+      currentWeight: 0.08
+    };
+    console.warn("🎬 22 C.12 Emotion fallback activated");
+  }
+
+  if (!cam.shake && cam.cinematicMode) {
+    cam.shake = {
+      power: 0,
+      decay: 0.9,
+      offsetX: 0,
+      offsetY: 0
+    };
+    console.warn("🎬 22 C.12 Shake fallback activated");
+  }
+
+  // 4️⃣ Public status (debug / future tools uchun)
+  if (!cam.getCinematicStatus) {
+    cam.getCinematicStatus = function () {
+      return {
+        cinematicMode: this.cinematicMode,
+        anchor: !!this.anchor,
+        softFollow: !!this.softFollow,
+        emotion: !!this.emotion,
+        shake: !!this.shake
+      };
+    };
+  }
+
+  console.log("🔒 22 C.12 Camera system FINALIZED");
+})();
+</script>
 
 </body>
 </html>
