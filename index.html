@@ -9512,6 +9512,54 @@ window.nextEpisode = function() {
   }
 };
 </script>
+<script>
+/* ============================
+   35 A — ADMIN PANEL UI
+============================ */
+
+(function(){
+  const panel = document.createElement("div");
+  panel.id = "adminPanel";
+  panel.style.cssText = `
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 260px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 10px;
+    font-family: sans-serif;
+    font-size: 12px;
+    border-radius: 8px;
+    z-index: 99999;
+    display: none;
+  `;
+
+  panel.innerHTML = `
+    <b>ADMIN PANEL</b><br><br>
+
+    <label>Template:</label>
+    <select id="adminTemplate"></select><br><br>
+
+    <label>Preset:</label>
+    <select id="adminPreset"></select><br><br>
+
+    <label>Season:</label>
+    <input id="adminSeason" type="number" style="width:60px"><br><br>
+
+    <label>Episode:</label>
+    <input id="adminEpisode" type="number" style="width:60px"><br><br>
+
+    <button id="adminApply">Apply</button>
+  `;
+
+  document.body.appendChild(panel);
+
+  window.toggleAdminPanel = function() {
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  };
+})();
+</script>
 
 </body>
 </html>
