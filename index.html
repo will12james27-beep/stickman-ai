@@ -5255,6 +5255,97 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 B.1
+Serial Pipeline — Episode / Story Arc Core
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+
+  // 1️⃣ Global SERIAL namespace
+  if (!window.Serial) {
+    window.Serial = {
+      arcs: {},          // barcha story arc’lar
+      currentArc: null,
+      currentEpisode: null
+    };
+    console.log("📺 23 B.1 Serial system initialized");
+  }
+
+  const Serial = window.Serial;
+
+  // 2️⃣ Arc yaratish
+  if (!Serial.createArc) {
+    Serial.createArc = function (id, meta = {}) {
+      if (!this.arcs[id]) {
+        this.arcs[id] = {
+          id,
+          meta,
+          episodes: []
+        };
+        console.log("📺 Arc created:", id);
+      }
+      return this.arcs[id];
+    };
+  }
+
+  // 3️⃣ Episode yaratish
+  if (!Serial.createEpisode) {
+    Serial.createEpisode = function (arcId, episodeId, meta = {}) {
+      const arc = this.createArc(arcId);
+
+      const ep = {
+        id: episodeId,
+        arcId,
+        meta,
+        shots: []
+      };
+
+      arc.episodes.push(ep);
+      console.log("📺 Episode created:", arcId, "→", episodeId);
+      return ep;
+    };
+  }
+
+  // 4️⃣ Shot’ni episode’ga bog‘lash
+  if (!Serial.attachShot) {
+    Serial.attachShot = function (episode, shotIndex) {
+      if (!episode || shotIndex == null) return;
+      episode.shots.push(shotIndex);
+      console.log("📺 Shot attached:", shotIndex, "→", episode.id);
+    };
+  }
+
+  // 5️⃣ Episode’ni aktiv qilish
+  if (!Serial.playEpisode) {
+    Serial.playEpisode = function (arcId, episodeIndex = 0) {
+      const arc = this.arcs[arcId];
+      if (!arc) return;
+
+      const ep = arc.episodes[episodeIndex];
+      if (!ep) return;
+
+      this.currentArc = arc;
+      this.currentEpisode = ep;
+
+      console.log(
+        "▶️ Playing Episode:",
+        arc.id,
+        "—",
+        ep.id
+      );
+
+      // Episode birinchi shotidan boshlash
+      if (window.Shots && ep.shots.length > 0) {
+        Shots.play(ep.shots[0]);
+      }
+    };
+  }
+
+})();
+</script>
 
 </body>
 </html>
