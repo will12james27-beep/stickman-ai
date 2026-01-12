@@ -7881,6 +7881,111 @@ window.exportShortMock = function () {
   if (exp) exp.onclick = exportShortMock;
 })();
 </script>
+<script>
+/* =====================================================
+   30 A — REAL AI CONNECTOR (FOUNDATION)
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 30 A.1 AI PROVIDER REGISTRY ---------- */
+window.AIProviders = {
+  active: "mock", // 'mock' | 'openai' | 'local'
+  mock: {
+    name: "MockAI",
+    generate(prompt){
+      // Simple structured response similar to LLM output
+      return Promise.resolve({
+        scenes: [
+          { role:"hook", text:"WAIT—this starts crazy!", duration:1.0 },
+          { role:"beat", text:"A sudden problem appears", duration:2.0 },
+          { role:"beat", text:"Things get worse fast", duration:2.0 },
+          { role:"cliff", text:"But then—everything changes", duration:1.6 },
+          { role:"cta", text:"Part 2?", duration:1.0 }
+        ]
+      });
+    }
+  },
+  // Placeholders for future
+  openai: {
+    name: "OpenAI",
+    generate(prompt){
+      return Promise.reject("OpenAI provider not connected yet");
+    }
+  },
+  local: {
+    name: "LocalLLM",
+    generate(prompt){
+      return Promise.reject("Local LLM not connected yet");
+    }
+  }
+};
+
+/* ---------- 30 A.2 NORMALIZER ---------- */
+window.normalizeAIScenes = function(aiScenes){
+  if (!Array.isArray(aiScenes)) return [];
+
+  return aiScenes.map((s, i) => sanitizeScene ? sanitizeScene({
+    id: s.role + "_ai_" + i,
+    type: "scene",
+    role: s.role,
+    text: s.text || "",
+    duration: s.duration || 1.5
+  }) : {
+    id: s.role + "_ai_" + i,
+    type: "scene",
+    role: s.role,
+    text: s.text || "",
+    duration: s.duration || 1.5
+  });
+};
+
+/* ---------- 30 A.3 AI GENERATE PIPE ---------- */
+window.generateEpisodeViaAI = async function(prompt){
+  const provider = AIProviders[AIProviders.active];
+  if (!provider) throw new Error("AI provider not found");
+
+  try {
+    const res = await provider.generate(prompt);
+    if (res && res.scenes) {
+      return normalizeAIScenes(res.scenes);
+    }
+    throw new Error("Invalid AI response");
+  } catch (e) {
+    console.warn("AI failed, fallback used:", e);
+    // fallback to heuristic generator
+    return (window.parsePromptToScenes
+      ? window.parsePromptToScenes(prompt)
+      : []);
+  }
+};
+
+/* ---------- 30 A.4 HOOK INTO GENERATE BUTTON ---------- */
+(function hookAIGenerator(){
+  if (!window.generateEpisodeFromPrompt) return;
+
+  const original = window.generateEpisodeFromPrompt;
+
+  window.generateEpisodeFromPrompt = async function(){
+    const input = document.getElementById("episodePromptInput");
+    if (!input || !input.value.trim()) return;
+
+    const prompt = input.value.trim();
+
+    const scenes = await generateEpisodeViaAI(prompt);
+
+    window.SceneStack = scenes;
+
+    if (window.applyShortsTemplate) applyShortsTemplate();
+
+    if (window.TimelineState) TimelineState.activeSceneIndex = 0;
+
+    renderTimeline && renderTimeline();
+    highlightActiveScene && highlightActiveScene();
+    renderSceneProperties && renderSceneProperties();
+    autoSaveIfChanged && autoSaveIfChanged();
+  };
+})();
+</script>
 
 </body>
 </html>
