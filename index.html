@@ -8861,6 +8861,46 @@ window.addEventListener("load", () => {
   }
 });
 </script>
+<script>
+/* ============================
+   31 D.3 — PAYMENT ADAPTER
+   SAFE MODE — append-only
+============================ */
+
+window.PaymentAdapter = {
+  provider: "none",
+
+  init(providerName = "stripe") {
+    this.provider = providerName;
+    console.log("💳 Payment provider set:", providerName);
+  },
+
+  canCheckout() {
+    // future: backend + API key check
+    return false;
+  },
+
+  checkout(plan = "pro") {
+    console.warn(
+      "💳 Checkout requested but provider is not active yet.",
+      plan
+    );
+    alert("Payments are not enabled yet. This is a demo.");
+  }
+};
+
+/* -------- Stripe Placeholder -------- */
+
+window.StripeAdapter = {
+  checkout(plan) {
+    console.log("🟣 Stripe checkout placeholder:", plan);
+    PaymentAdapter.checkout(plan);
+  }
+};
+
+// auto-init
+PaymentAdapter.init("stripe");
+</script>
 
 </body>
 </html>
