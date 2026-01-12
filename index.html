@@ -4235,16 +4235,19 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+<script>
 /* 
 22 C.8
 Camera ↔ Scene Reference Anchor
-SAFE MODE — append-only
+SAFE MODE — append-only (FULL SCRIPT VERSION)
 */
 
 (function () {
   if (!window.Camera) return;
 
-  // Global scene anchor (markaziy nuqta)
+  const cam = window.Camera;
+
+  // 1️⃣ Global Scene Anchor (faqat bir marta)
   if (!window.SceneAnchor) {
     window.SceneAnchor = {
       x: 0,
@@ -4255,26 +4258,35 @@ SAFE MODE — append-only
     console.log("🧷 22 C.8 SceneAnchor initialized");
   }
 
-  const cam = window.Camera;
-
-  // Kamera sahnaga ulanmagan bo‘lsa — ulang
+  // 2️⃣ Kamerani anchor’ga ulash
   if (!cam.anchor) {
     cam.anchor = window.SceneAnchor;
     console.log("🎥 22 C.8 Camera anchored to SceneAnchor");
   }
 
-  // Kamera update jarayonida anchor’ni hisobga olish
-  const _camUpdate = cam.update;
-  cam.update = function (dt) {
-    if (this.anchor && this.anchor.active) {
-      this.x += (this.anchor.x - (this.x || 0)) * 0.02;
-      this.y += (this.anchor.y - (this.y || 0)) * 0.02;
-    }
+  // 3️⃣ update() ni faqat BIR MARTA wrap qilish
+  if (!cam.__sceneAnchorWrapped) {
+    cam.__sceneAnchorWrapped = true;
 
-    if (_camUpdate) _camUpdate.call(this, dt);
-  };
+    const baseUpdate = cam.update;
+    cam.update = function (dt) {
+      if (this.anchor && this.anchor.active) {
+        const ax = this.anchor.x || 0;
+        const ay = this.anchor.y || 0;
+        const cx = this.x || 0;
+        const cy = this.y || 0;
 
+        this.x = cx + (ax - cx) * 0.02;
+        this.y = cy + (ay - cy) * 0.02;
+      }
+
+      if (baseUpdate) baseUpdate.call(this, dt);
+    };
+
+    console.log("🔗 22 C.8 Camera update safely wrapped");
+  }
 })();
+</script>
 
 </body>
 </html>
