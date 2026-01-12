@@ -2657,6 +2657,64 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🌪️ 21 E.7 Chaos Control ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 E.8 — VIRAL LOOP SENSE =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__viralLoop21E8) return;
+  window.__viralLoop21E8 = true;
+
+  const loop = {
+    duration: 1.4, // seconds
+    active: false
+  };
+
+  function getProgress(){
+    if(!window.sceneClock || !sceneClock.duration) return 0;
+    return sceneClock.time / sceneClock.duration;
+  }
+
+  function softenToStart(){
+    // Camera reset illusion
+    if(window.camera && camera.intel){
+      camera.intel.zoom += (1 - camera.intel.zoom) * 0.08;
+      camera.intel.shake *= 0.85;
+    }
+
+    // Tempo normalization
+    if(window.sceneTempo){
+      sceneTempo.speed += (1 - sceneTempo.speed) * 0.05;
+      sceneTempo.intensity += (1 - sceneTempo.intensity) * 0.04;
+    }
+
+    // Emotion hold (don’t drop to zero)
+    if(window.setEmotionBoost){
+      setEmotionBoost(Math.max(0.9, getEmotionBoost?.() || 1));
+    }
+  }
+
+  function loopCheck(){
+    const p = getProgress();
+
+    // Last ~8–10% of the short
+    if(p > 0.9){
+      loop.active = true;
+      softenToStart();
+    } else {
+      loop.active = false;
+    }
+
+    requestAnimationFrame(loopCheck);
+  }
+
+  requestAnimationFrame(loopCheck);
+
+  window.__viralLoopActive = () => loop.active;
+
+  console.log("🔁 21 E.8 Viral Loop Sense ACTIVE");
+})();
+</script>
 
 </body>
 </html>
