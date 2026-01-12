@@ -6877,6 +6877,129 @@ window.applySceneReorder = function (fromIndex, toIndex) {
   });
 })();
 </script>
+<script>
+/* =====================================================
+   27 A — SCENE PROPERTY PANEL (FOUNDATION)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 27 A.1 PANEL STYLE ---------- */
+(function injectPropertyPanelStyle(){
+  if (document.getElementById("scene-prop-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "scene-prop-style";
+  style.textContent = `
+    #scenePropertyPanel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 240px;
+      height: calc(100% - 160px);
+      background: #151515;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      border-left: 2px solid #333;
+      z-index: 9998;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    #scenePropertyPanel h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
+    }
+    .propRow {
+      font-size: 12px;
+      margin-bottom: 8px;
+      opacity: 0.9;
+    }
+    .propLabel {
+      opacity: 0.6;
+      display: block;
+      font-size: 11px;
+    }
+    .propValue {
+      margin-top: 2px;
+      background: #222;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- 27 A.2 PANEL CREATION ---------- */
+(function createScenePropertyPanel(){
+  if (document.getElementById("scenePropertyPanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "scenePropertyPanel";
+  panel.innerHTML = `
+    <h3>🎬 Scene Properties</h3>
+    <div id="scenePropContent">
+      <div class="propRow">No scene selected</div>
+    </div>
+  `;
+  document.body.appendChild(panel);
+})();
+
+/* ---------- 27 A.3 GET ACTIVE SCENE ---------- */
+window.getActiveScene = function () {
+  if (
+    typeof TimelineState === "undefined" ||
+    TimelineState.activeSceneIndex == null ||
+    !window.SceneStack
+  ) return null;
+
+  return SceneStack[TimelineState.activeSceneIndex] || null;
+};
+
+/* ---------- 27 A.4 RENDER PROPERTIES ---------- */
+window.renderSceneProperties = function () {
+  const container = document.getElementById("scenePropContent");
+  if (!container) return;
+
+  const scene = getActiveScene();
+  if (!scene) {
+    container.innerHTML = `<div class="propRow">No scene selected</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="propRow">
+      <span class="propLabel">Scene ID</span>
+      <div class="propValue">${scene.id || "—"}</div>
+    </div>
+    <div class="propRow">
+      <span class="propLabel">Type</span>
+      <div class="propValue">${scene.type || "scene"}</div>
+    </div>
+    <div class="propRow">
+      <span class="propLabel">Duration</span>
+      <div class="propValue">${scene.duration || "auto"}</div>
+    </div>
+  `;
+};
+
+/* ---------- 27 A.5 AUTO UPDATE ON SELECTION ---------- */
+(function hookPropertyRender(){
+  if (!window.setActiveTimelineScene) return;
+
+  const originalSetActive = window.setActiveTimelineScene;
+
+  window.setActiveTimelineScene = function () {
+    originalSetActive.apply(this, arguments);
+    setTimeout(renderSceneProperties, 0);
+  };
+})();
+
+/* ---------- 27 A.6 INITIAL RENDER ---------- */
+setTimeout(renderSceneProperties, 600);
+</script>
 
 </body>
 </html>
