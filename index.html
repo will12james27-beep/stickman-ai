@@ -2358,7 +2358,7 @@ loop = function(){
 };
 
 console.log("⚡ 21 D.2 Tempo & Rhythm Controller active");
-</script>
+
 // 21 D.3 Emotion → Tempo Coupling
 function emotionToTempo(emotion){
   if(!emotion) return;
@@ -2383,6 +2383,37 @@ if(window.onEmotionUpdate){
     _onEmotionUpdate21D3(emotion);
   };
 }
+</script>
+// 21 D.4 Camera ↔ Tempo micro-sync
+function tempoToCamera(){
+  if(!window.camera || !window.tempo) return;
 
+  const t = tempo.current || 1;
+
+  // asosiy mikro ta'sir
+  camera.shake += Math.max(0, (t - 1) * 2);
+  camera.targetZoom += (t - 1) * 0.05;
+
+  if(mode === "shorts"){
+    camera.shake *= 1.15;
+  }
+
+  if(mode === "story"){
+    camera.shake *= 0.7;
+    camera.targetZoom *= 0.98;
+  }
+
+  if(mode === "chaos"){
+    camera.shake *= 1.4;
+  }
+}
+
+// SAFE LOOP HOOK
+const _loop21D4 = loop;
+loop = function(){
+  tempoToCamera();
+  _loop21D4();
+};
+  
 </body>
 </html>
