@@ -3949,6 +3949,58 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
 
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 C.3 – CAMERA PAN CONTROLLER   -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 C.3
+  Kamera pan (move) qilish uchun oddiy controller.
+  WASD yoki strelkalar bilan sinash mumkin.
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+  const speed = 5; // pan tezligi
+
+  const keys = {};
+
+  window.addEventListener("keydown", e => {
+    keys[e.key.toLowerCase()] = true;
+  });
+
+  window.addEventListener("keyup", e => {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  function updateCameraPan() {
+    let dx = 0;
+    let dy = 0;
+
+    if (keys["a"] || keys["arrowleft"]) dx -= speed;
+    if (keys["d"] || keys["arrowright"]) dx += speed;
+    if (keys["w"] || keys["arrowup"]) dy -= speed;
+    if (keys["s"] || keys["arrowdown"]) dy += speed;
+
+    if (dx !== 0 || dy !== 0) {
+      cam.x += dx;
+      cam.y += dy;
+    }
+  }
+
+  // Update camera before render
+  const _raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return _raf(function (t) {
+      updateCameraPan();
+      cb(t);
+    });
+  };
+})();
+</script>
 
 </body>
 </html>
