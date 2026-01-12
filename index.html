@@ -2855,6 +2855,67 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("📱 22 A.1 Shorts Format LOCKED (9:16)");
 })();
 </script>
+<script>
+// ================= 22 A.2 — RESOLUTION & FPS CONTROL =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__fpsControl22A2) return;
+  window.__fpsControl22A2 = true;
+
+  const PERF = {
+    targetFPS: 60,
+    minFPS: 28,
+    lastTime: performance.now(),
+    frameCount: 0,
+    fps: 60,
+    quality: 1 // 1 = full, 0.8 = medium, 0.6 = low
+  };
+
+  function measureFPS(now){
+    PERF.frameCount++;
+    const delta = now - PERF.lastTime;
+
+    if(delta >= 1000){
+      PERF.fps = (PERF.frameCount * 1000) / delta;
+      PERF.frameCount = 0;
+      PERF.lastTime = now;
+
+      adjustQuality();
+    }
+  }
+
+  function adjustQuality(){
+    if(PERF.fps < PERF.minFPS){
+      PERF.quality = Math.max(0.6, PERF.quality - 0.1);
+    } else if(PERF.fps > PERF.targetFPS){
+      PERF.quality = Math.min(1, PERF.quality + 0.05);
+    }
+
+    if(window.renderScale !== undefined){
+      window.renderScale = PERF.quality;
+    }
+
+    if(window.camera && camera.intel){
+      camera.intel.shake *= PERF.quality;
+    }
+  }
+
+  function fpsLoop(now){
+    measureFPS(now);
+    requestAnimationFrame(fpsLoop);
+  }
+
+  requestAnimationFrame(fpsLoop);
+
+  window.getPerformanceState = () => ({
+    fps: Math.round(PERF.fps),
+    quality: PERF.quality
+  });
+
+  console.log("🎚️ 22 A.2 FPS & Resolution Control ACTIVE");
+})();
+</script>
 
 </body>
 </html>
