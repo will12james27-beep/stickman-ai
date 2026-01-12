@@ -9666,6 +9666,23 @@ window.enforceVerticalCanvas = function(canvas) {
   resize();
 };
 </script>
+<script>
+/* ============================
+   36 C — TOUCH NORMALIZER
+============================ */
+
+window.normalizePointer = function(el, handler) {
+  const getPos = e => {
+    if (e.touches) return e.touches[0];
+    return e;
+  };
+
+  el.addEventListener("mousedown", e => handler(getPos(e)));
+  el.addEventListener("mousemove", e => handler(getPos(e)));
+  el.addEventListener("touchstart", e => handler(getPos(e)));
+  el.addEventListener("touchmove", e => handler(getPos(e)));
+};
+</script>
 
 </body>
 </html>
