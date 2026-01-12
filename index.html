@@ -9642,6 +9642,30 @@ document.addEventListener("keydown", e => {
   document.head.appendChild(meta);
 })();
 </script>
+<script>
+/* ============================
+   36 B — VERTICAL CANVAS
+============================ */
+
+window.enforceVerticalCanvas = function(canvas) {
+  function resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const targetRatio = 9 / 16;
+
+    if (w / h > targetRatio) {
+      canvas.height = h;
+      canvas.width = h * targetRatio;
+    } else {
+      canvas.width = w;
+      canvas.height = w / targetRatio;
+    }
+  }
+
+  window.addEventListener("resize", resize);
+  resize();
+};
+</script>
 
 </body>
 </html>
