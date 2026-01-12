@@ -9293,6 +9293,17 @@ window.PromptPresets = {
   }
 };
 </script>
+<script>
+/* ============================
+   33 B — ACTIVE PRESET
+============================ */
+
+window.ActivePromptPreset = "comedy";
+
+window.getActivePreset = function() {
+  return PromptPresets[ActivePromptPreset] || PromptPresets.comedy;
+};
+</script>
 
 </body>
 </html>
