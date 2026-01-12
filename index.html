@@ -4056,6 +4056,60 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   };
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 C.5 – CAMERA ZOOM (SMOOTH)    -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 C.5
+  Kamera uchun silliq (damped) zoom tizimi.
+*/
+
+(function () {
+  if (!window.Camera) return;
+
+  const cam = window.Camera;
+
+  cam.zoomSystem = {
+    enabled: true,
+    zoom: cam.zoom || 1,
+    targetZoom: cam.zoom || 1,
+    damping: 0.12,
+    min: 0.6,
+    max: 2.5
+  };
+
+  // Mouse wheel bilan test zoom
+  window.addEventListener("wheel", e => {
+    if (!cam.zoomSystem.enabled) return;
+
+    e.preventDefault();
+
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    cam.zoomSystem.targetZoom += delta;
+    cam.zoomSystem.targetZoom = Math.max(
+      cam.zoomSystem.min,
+      Math.min(cam.zoomSystem.max, cam.zoomSystem.targetZoom)
+    );
+  }, { passive: false });
+
+  function updateZoom() {
+    const z = cam.zoomSystem;
+    z.zoom += (z.targetZoom - z.zoom) * z.damping;
+    cam.zoom = z.zoom;
+  }
+
+  // Update zoom → render’dan oldin
+  const _raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = function (cb) {
+    return _raf(function (time) {
+      updateZoom();
+      cb(time);
+    });
+  };
+})();
+</script>
 
 </body>
 </html>
