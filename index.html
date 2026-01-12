@@ -6154,6 +6154,72 @@ window.previewPublishText = function () {
   return composeEpisodePublishText();
 };
 </script>
+<script>
+/* =====================================================
+   24 C — EXPORT PACKAGE BUILDER (JSON / COPY-READY)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 24 C.1 BUILD EXPORT OBJECT ---------- */
+window.buildEpisodeExportPackage = function () {
+  const platformState = window.getPlatformState
+    ? getPlatformState()
+    : null;
+
+  const publishText = window.composeEpisodePublishText
+    ? composeEpisodePublishText()
+    : { title: "", caption: "", hashtags: "" };
+
+  const analytics = window.getEpisodeAnalytics
+    ? getEpisodeAnalytics()
+    : null;
+
+  const decisionReport = window.getEpisodeScoreReport
+    ? getEpisodeScoreReport()
+    : null;
+
+  return {
+    meta: window.EpisodeMeta || null,
+    part: window.getEpisodePartState
+      ? getEpisodePartState()
+      : null,
+    platform: platformState,
+    publish: publishText,
+    analytics: analytics,
+    decision: decisionReport,
+    exportedAt: Date.now()
+  };
+};
+
+/* ---------- 24 C.2 EXPORT AS JSON STRING ---------- */
+window.exportEpisodeAsJSON = function () {
+  const pkg = buildEpisodeExportPackage();
+  return JSON.stringify(pkg, null, 2);
+};
+
+/* ---------- 24 C.3 EXPORT AS COPY-READY TEXT ---------- */
+window.exportEpisodeAsText = function () {
+  const pkg = buildEpisodeExportPackage();
+
+  let text = "";
+  if (pkg.publish) {
+    text += pkg.publish.title + "\n\n";
+    text += pkg.publish.caption + "\n\n";
+    text += pkg.publish.hashtags;
+  }
+
+  return text.trim();
+};
+
+/* ---------- 24 C.4 SAFE DEBUG PREVIEW ---------- */
+window.previewExportPackage = function () {
+  return {
+    json: exportEpisodeAsJSON(),
+    text: exportEpisodeAsText()
+  };
+};
+</script>
 
 </body>
 </html>
