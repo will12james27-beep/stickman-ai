@@ -976,6 +976,72 @@ loop = function(){
 
 console.log("🔊 21 B.12 Emotion → Sound Micro-sync loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.13 — EMOTION → COLOR / LINE-WEIGHT MICRO-SYNC =================
+// SAFE MODE: append-only
+
+// Emotion visual presets
+const EMO_VIS = {
+  angry:   { color:"#ff4d4d", boost:2 },
+  shocked: { color:"#ffd966", boost:2 },
+  confused:{ color:"#8fd3ff", boost:1 }
+};
+
+// Init defaults per character (safe)
+characters.forEach(c=>{
+  if(!c._baseColor) c._baseColor = c.color || "#000";
+  if(!c._baseLine)  c._baseLine  = c.lineWidth || 2;
+  if(!c._flashT)    c._flashT = 0;
+});
+
+// Apply visual pulse
+function applyEmotionVisual(c){
+  if(!c.mood) return;
+
+  const p = EMO_VIS[c.mood];
+  if(!p) return;
+
+  c.color = p.color;
+  c.lineWidth = c._baseLine + p.boost;
+  c._flashT = 3; // frames
+}
+
+// Restore smoothly
+function restoreVisual(c){
+  if(c._flashT > 0){
+    c._flashT--;
+    if(c._flashT === 0){
+      c.color = c._baseColor;
+      c.lineWidth = c._baseLine;
+    }
+  }
+}
+
+// Detect emotion change (visual)
+function detectEmotionVisual(c){
+  if(c._lastVisMood === undefined){
+    c._lastVisMood = c.mood;
+    return;
+  }
+
+  if(c.mood !== c._lastVisMood){
+    applyEmotionVisual(c);
+    c._lastVisMood = c.mood;
+  }
+}
+
+// LOOP hook (SAFE)
+const _loop21B13 = loop;
+loop = function(){
+  characters.forEach(c=>{
+    detectEmotionVisual(c);
+    restoreVisual(c);
+  });
+  _loop21B13();
+};
+
+console.log("🎨 21 B.13 Emotion → Color & Line-weight micro-sync loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
