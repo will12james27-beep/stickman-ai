@@ -1765,6 +1765,48 @@ loop = function(){
 
 console.log("⏱️ 21 B.24 Narrative Beat Controller active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.25 — ATTENTION SPIKE INJECTOR =================
+// SAFE MODE: append-only
+
+if(!window.attentionSpike){
+  window.attentionSpike = {
+    timer:0,
+    interval: Math.floor(120 + Math.random()*120) // 2–4 sec
+  };
+}
+
+function runAttentionSpike(){
+  attentionSpike.timer++;
+
+  if(attentionSpike.timer > attentionSpike.interval){
+    attentionSpike.timer = 0;
+    attentionSpike.interval = Math.floor(120 + Math.random()*120);
+
+    // 🔥 emotion spike
+    characters.forEach(c=>{
+      c.emotion.intensity = Math.min(1, c.emotion.intensity + 0.4);
+    });
+
+    // 🎥 camera micro shock
+    camera.shake = 0.8;
+
+    // ✨ text flash
+    if(window.spawnFloatingText){
+      spawnFloatingText("!", camera.x, camera.y, 8);
+    }
+  }
+}
+
+// safe loop extension
+const _loop21B25 = loop;
+loop = function(){
+  runAttentionSpike();
+  _loop21B25();
+};
+
+console.log("🚀 21 B.25 Attention Spike Injector active (SAFE MODE)");
+</script>
 
 </body>
 </html>
