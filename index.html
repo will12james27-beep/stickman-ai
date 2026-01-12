@@ -4821,6 +4821,73 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.5
+Emotion-Driven Beat Hooks
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Shots) return;
+
+  const Shots = window.Shots;
+
+  // 1️⃣ Emotion mapping (beat → emotion)
+  if (!Shots.emotionHooks) {
+    Shots.emotionHooks = {
+      hook: "shock",     // 0–3s
+      beat: "talk",      // 3–6s
+      outro: "neutral"   // 6–9s
+    };
+    console.log("🎭 23 A.5 Emotion hooks initialized");
+  }
+
+  // 2️⃣ Emotion apply helper
+  if (!Shots.applyEmotion) {
+    Shots.applyEmotion = function (emotion) {
+      if (
+        window.Character &&
+        typeof window.Character.setEmotion === "function"
+      ) {
+        window.Character.setEmotion(emotion);
+        console.log("🎭 Emotion applied:", emotion);
+      } else {
+        console.log("🎭 Emotion (no character):", emotion);
+      }
+    };
+  }
+
+  // 3️⃣ Beat zone o‘zgarganda emotion almashtirish
+  if (!Shots.__emotionHookWrapped) {
+    Shots.__emotionHookWrapped = true;
+
+    const baseUpdate = Shots.update;
+    let lastZone = null;
+
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const zone =
+        this.beatTimeline && this.beatTimeline.activeZone;
+
+      if (zone && zone !== lastZone) {
+        lastZone = zone;
+
+        const emotion = this.emotionHooks[zone];
+        if (emotion) {
+          this.applyEmotion(emotion);
+        }
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("🎭 23 A.5 Emotion hook connected to beat timeline");
+  }
+
+})();
+</script>
 
 </body>
 </html>
