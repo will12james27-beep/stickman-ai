@@ -1870,6 +1870,56 @@ loop = function(){
 
 console.log("🎥 21 D.4 Camera ↔ Tempo Micro Sync active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 D.4 — CAMERA ↔ TEMPO MICRO SYNC =================
+// SAFE MODE: append-only
+// JOYI: eng oxirgi </script> bilan </body> orasida
+
+if(!window.cameraTempoSync){
+  window.cameraTempoSync = {
+    enabled: true
+  };
+}
+
+function tempoToCamera(){
+  if(!window.camera || !window.tempo) return;
+
+  const t = tempo.current || 1;
+
+  // asosiy mikro ta’sir
+  let shake = Math.max(0, (t - 1) * 2);
+  let zoom  = 1 + (t - 1) * 0.08;
+
+  // engine mode farqlari
+  if(engineMode === "shorts"){
+    shake *= 1.15;
+  }
+
+  if(engineMode === "story"){
+    shake *= 0.7;
+    zoom  *= 0.98;
+  }
+
+  if(engineMode === "chaos"){
+    shake *= 1.4;
+  }
+
+  // camera targetlarga yumshoq ulash
+  camera.shake = (camera.shake || 0) * 0.8 + shake * 0.2;
+  camera.targetZoom = camera.targetZoom
+    ? camera.targetZoom * 0.9 + zoom * 0.1
+    : zoom;
+}
+
+// SAFE LOOP EXTENSION
+const _loop21D4 = loop;
+loop = function(){
+  tempoToCamera();
+  _loop21D4();
+};
+
+console.log("🎥 21 D.4 Camera ↔ Tempo Micro Sync active (SAFE MODE)");
+</script>
 
 </body>
 </html>
