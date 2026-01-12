@@ -9613,6 +9613,23 @@ window.nextEpisode = function() {
   document.getElementById("adminEpisode").value = EpisodeState.episode;
 })();
 </script>
+<script>
+/* ============================
+   35 D — ADMIN TOGGLE
+============================ */
+
+let _adminClicks = 0;
+
+document.addEventListener("keydown", e => {
+  if (e.key === "`") {
+    _adminClicks++;
+    if (_adminClicks >= 3) {
+      toggleAdminPanel();
+      _adminClicks = 0;
+    }
+  }
+});
+</script>
 
 </body>
 </html>
