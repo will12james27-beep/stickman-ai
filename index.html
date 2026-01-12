@@ -2140,6 +2140,43 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🚨 21 D.9 Emergency Visual Fallback ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 D.10 — ENGINE D FINAL LOCK =================
+// SAFE MODE: append-only, FINALIZE SECTION D
+
+(function(){
+  if(window.__engineDLocked) return;
+  window.__engineDLocked = true;
+
+  // Snapshot of Engine D status
+  window.engineDStatus = {
+    loopStabilized: !!window.__loopStabilized21D7,
+    renderWatchdog: !!window.__renderWatchdog21D8,
+    visualFallback: !!window.__visualFallback21D9,
+    tempoController: !!window.sceneTempo,
+    lockedAt: new Date().toISOString()
+  };
+
+  // Prevent double initialization of D systems
+  Object.freeze(window.engineDStatus);
+
+  // Soft assert (non-breaking)
+  const missing = Object.entries(engineDStatus)
+    .filter(([k,v]) => v === false)
+    .map(([k]) => k);
+
+  if(missing.length){
+    console.warn("21 D.10: Engine D locked with missing parts:", missing);
+  }else{
+    console.log("🔒 21 D.10 Engine D FULLY LOCKED");
+  }
+
+  // Mark section complete
+  window.engineSectionCompleted = window.engineSectionCompleted || {};
+  window.engineSectionCompleted["21D"] = true;
+
+})();
+</script>
 
 </body>
 </html>
