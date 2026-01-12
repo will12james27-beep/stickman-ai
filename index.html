@@ -9495,6 +9495,23 @@ window.onEpisodeRendered = function(promptSummary) {
   nextEpisode();
 };
 </script>
+<script>
+/* ============================
+   34 D — SEASON RULE
+============================ */
+
+window.MAX_EPISODES_PER_SEASON = 20;
+
+const _nextEpisode = window.nextEpisode;
+
+window.nextEpisode = function() {
+  if (EpisodeState.episode >= MAX_EPISODES_PER_SEASON) {
+    startNewSeason();
+  } else {
+    _nextEpisode();
+  }
+};
+</script>
 
 </body>
 </html>
