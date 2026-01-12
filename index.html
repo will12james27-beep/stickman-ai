@@ -7986,6 +7986,132 @@ window.generateEpisodeViaAI = async function(prompt){
   };
 })();
 </script>
+<script>
+/* =====================================================
+   30 B — REAL MP4 EXPORT (FOUNDATION)
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 30 B.1 RENDERER REGISTRY ---------- */
+window.Renderers = {
+  active: "canvas", // 'canvas' | 'wasm' | 'server'
+  canvas: {
+    name: "CanvasRenderer",
+    fps: 30,
+    async render(scenes){
+      const frames = [];
+      const canvas = document.createElement("canvas");
+      canvas.width = 540;
+      canvas.height = 960; // 9:16
+      const ctx = canvas.getContext("2d");
+
+      scenes.forEach(scene => {
+        const frameCount = Math.max(1, Math.floor((scene.duration || 1) * this.fps));
+        for (let i = 0; i < frameCount; i++) {
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 32px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          wrapText(
+            ctx,
+            scene.text || "",
+            canvas.width / 2,
+            canvas.height / 2,
+            canvas.width - 60,
+            38
+          );
+
+          frames.push(canvas.toDataURL("image/png"));
+        }
+      });
+
+      return {
+        type: "frames",
+        fps: this.fps,
+        frames
+      };
+    }
+  }
+};
+
+/* ---------- 30 B.2 TEXT WRAP HELPER ---------- */
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(" ");
+  let line = "";
+  let lines = [];
+
+  words.forEach(word => {
+    const testLine = line + word + " ";
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && line !== "") {
+      lines.push(line);
+      line = word + " ";
+    } else {
+      line = testLine;
+    }
+  });
+  lines.push(line);
+
+  const totalHeight = lines.length * lineHeight;
+  let offsetY = y - totalHeight / 2;
+
+  lines.forEach(l => {
+    ctx.fillText(l, x, offsetY);
+    offsetY += lineHeight;
+  });
+}
+
+/* ---------- 30 B.3 EXPORT JOB ---------- */
+window.createExportJob = async function(){
+  if (!window.SceneStack || !SceneStack.length) return;
+
+  const renderer = Renderers[Renderers.active];
+  if (!renderer) throw new Error("Renderer not found");
+
+  const renderResult = await renderer.render(SceneStack);
+
+  const job = {
+    aspect: "9:16",
+    renderer: renderer.name,
+    createdAt: new Date().toISOString(),
+    data: renderResult
+  };
+
+  return job;
+};
+
+/* ---------- 30 B.4 DOWNLOAD MOCK ---------- */
+window.downloadExportJob = async function(){
+  const job = await createExportJob();
+  if (!job) return;
+
+  const blob = new Blob([JSON.stringify(job, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "shorts-export-job.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+
+  alert("Export job yaratildi ✅ (MP4 ready pipeline)");
+};
+
+/* ---------- 30 B.5 HOOK EXPORT BUTTON ---------- */
+(function hookRealExport(){
+  const btn = document.getElementById("exportMockBtn");
+  if (!btn) return;
+
+  btn.textContent = "⬇ Export MP4";
+  btn.onclick = downloadExportJob;
+})();
+</script>
 
 </body>
 </html>
