@@ -7758,6 +7758,129 @@ window.applyViralLogic = function () {
   };
 })();
 </script>
+<script>
+/* =====================================================
+   29 D — PREVIEW / EXPORT MODE (FOUNDATION)
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 29 D.1 PREVIEW PANEL UI ---------- */
+(function injectPreviewPanel(){
+  if (document.getElementById("previewPanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "previewPanel";
+  panel.style.cssText = `
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 240px;
+    height: 140px;
+    background: #0b0b0b;
+    border-top: 2px solid #333;
+    z-index: 10000;
+    font-family: Arial, sans-serif;
+    padding: 8px;
+    box-sizing: border-box;
+  `;
+
+  panel.innerHTML = `
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
+      <button id="previewPlayBtn">▶ Play</button>
+      <button id="previewPauseBtn">⏸ Pause</button>
+      <span id="previewTime" style="color:#aaa;font-size:12px;">0.00s</span>
+      <button id="exportMockBtn" style="margin-left:auto;">⬇ Export</button>
+    </div>
+    <div id="previewSceneText"
+         style="color:#fff;font-size:14px;padding:6px;background:#111;border-radius:4px;">
+      No preview
+    </div>
+  `;
+
+  document.body.appendChild(panel);
+})();
+
+/* ---------- 29 D.2 PREVIEW STATE ---------- */
+window.PreviewState = {
+  playing: false,
+  time: 0,
+  sceneIndex: 0,
+  lastTick: 0
+};
+
+/* ---------- 29 D.3 PREVIEW LOOP ---------- */
+window.startPreview = function () {
+  if (!window.SceneStack || !SceneStack.length) return;
+
+  PreviewState.playing = true;
+  PreviewState.time = 0;
+  PreviewState.sceneIndex = 0;
+  PreviewState.lastTick = performance.now();
+
+  requestAnimationFrame(previewLoop);
+};
+
+window.pausePreview = function () {
+  PreviewState.playing = false;
+};
+
+function previewLoop(ts) {
+  if (!PreviewState.playing) return;
+
+  const dt = (ts - PreviewState.lastTick) / 1000;
+  PreviewState.lastTick = ts;
+  PreviewState.time += dt;
+
+  const scene = SceneStack[PreviewState.sceneIndex];
+  if (!scene) {
+    PreviewState.playing = false;
+    return;
+  }
+
+  document.getElementById("previewTime").textContent =
+    PreviewState.time.toFixed(2) + "s";
+
+  document.getElementById("previewSceneText").textContent =
+    scene.text || "[ scene ]";
+
+  if (PreviewState.time >= scene.duration) {
+    PreviewState.time = 0;
+    PreviewState.sceneIndex++;
+
+    if (PreviewState.sceneIndex >= SceneStack.length) {
+      PreviewState.playing = false;
+      return;
+    }
+  }
+
+  requestAnimationFrame(previewLoop);
+}
+
+/* ---------- 29 D.4 EXPORT MOCK ---------- */
+window.exportShortMock = function () {
+  if (!window.SceneStack) return;
+
+  const payload = {
+    aspect: "9:16",
+    scenes: SceneStack,
+    exportedAt: new Date().toISOString()
+  };
+
+  console.log("EXPORT MOCK:", payload);
+  alert("Export pipeline tayyor ✅ (hozircha mock)");
+};
+
+/* ---------- 29 D.5 UI HOOKS ---------- */
+(function hookPreviewButtons(){
+  const play = document.getElementById("previewPlayBtn");
+  const pause = document.getElementById("previewPauseBtn");
+  const exp = document.getElementById("exportMockBtn");
+
+  if (play) play.onclick = startPreview;
+  if (pause) pause.onclick = pausePreview;
+  if (exp) exp.onclick = exportShortMock;
+})();
+</script>
 
 </body>
 </html>
