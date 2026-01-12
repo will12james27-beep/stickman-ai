@@ -9224,6 +9224,19 @@ OUTPUT:
   }
 };
 </script>
+<script>
+/* ============================
+   33 A — ACTIVE TEMPLATE
+============================ */
+
+window.ActivePromptTemplate = "viral_short";
+
+window.buildFinalPrompt = function(userPrompt) {
+  const tpl = PromptTemplates[ActivePromptTemplate];
+  if (!tpl) return userPrompt;
+  return tpl.build(userPrompt);
+};
+</script>
 
 </body>
 </html>
