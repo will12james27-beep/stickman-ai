@@ -6220,6 +6220,121 @@ window.previewExportPackage = function () {
   };
 };
 </script>
+<script>
+/* =====================================================
+   24 D — MANUAL PUBLISH HELPER (UI COPY PANEL)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 24 D.1 PANEL STATE ---------- */
+window.PublishHelperUI = {
+  visible: false,
+  panelEl: null
+};
+
+/* ---------- 24 D.2 CREATE PANEL ---------- */
+function createPublishHelperPanel() {
+  if (PublishHelperUI.panelEl) return PublishHelperUI.panelEl;
+
+  const panel = document.createElement("div");
+  panel.style.position = "fixed";
+  panel.style.right = "12px";
+  panel.style.bottom = "12px";
+  panel.style.width = "320px";
+  panel.style.maxWidth = "90vw";
+  panel.style.background = "rgba(0,0,0,0.88)";
+  panel.style.color = "#fff";
+  panel.style.fontFamily = "Arial, sans-serif";
+  panel.style.fontSize = "12px";
+  panel.style.borderRadius = "14px";
+  panel.style.padding = "12px";
+  panel.style.zIndex = "99999";
+  panel.style.boxShadow = "0 10px 30px rgba(0,0,0,0.4)";
+
+  panel.innerHTML = `
+    <div style="font-weight:bold;margin-bottom:6px">
+      📦 Publish Helper
+    </div>
+
+    <textarea id="ph-preview"
+      style="width:100%;height:110px;
+      background:#111;color:#0f0;
+      border:none;border-radius:8px;
+      padding:8px;box-sizing:border-box;
+      resize:none;font-size:11px"></textarea>
+
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button id="ph-copy-text">Copy Caption</button>
+      <button id="ph-copy-json">Copy JSON</button>
+      <button id="ph-close">✕</button>
+    </div>
+  `;
+
+  const btnStyle = `
+    background:#222;color:#fff;
+    border:none;border-radius:8px;
+    padding:6px 8px;font-size:11px;
+    cursor:pointer;
+  `;
+
+  panel.querySelectorAll("button").forEach(b => {
+    b.style.cssText = btnStyle;
+  });
+
+  document.body.appendChild(panel);
+  PublishHelperUI.panelEl = panel;
+
+  /* Button actions */
+  panel.querySelector("#ph-copy-text").onclick = () => {
+    const txt = window.exportEpisodeAsText
+      ? exportEpisodeAsText()
+      : "";
+    navigator.clipboard.writeText(txt);
+  };
+
+  panel.querySelector("#ph-copy-json").onclick = () => {
+    const json = window.exportEpisodeAsJSON
+      ? exportEpisodeAsJSON()
+      : "";
+    navigator.clipboard.writeText(json);
+  };
+
+  panel.querySelector("#ph-close").onclick = () => {
+    hidePublishHelper();
+  };
+
+  return panel;
+}
+
+/* ---------- 24 D.3 SHOW PANEL ---------- */
+window.showPublishHelper = function () {
+  const panel = createPublishHelperPanel();
+
+  const preview = window.exportEpisodeAsText
+    ? exportEpisodeAsText()
+    : "";
+
+  panel.querySelector("#ph-preview").value = preview;
+
+  panel.style.display = "block";
+  PublishHelperUI.visible = true;
+};
+
+/* ---------- 24 D.4 HIDE PANEL ---------- */
+window.hidePublishHelper = function () {
+  if (!PublishHelperUI.panelEl) return;
+  PublishHelperUI.panelEl.style.display = "none";
+  PublishHelperUI.visible = false;
+};
+
+/* ---------- 24 D.5 TOGGLE HELPER ---------- */
+window.togglePublishHelper = function () {
+  PublishHelperUI.visible
+    ? hidePublishHelper()
+    : showPublishHelper();
+};
+</script>
 
 </body>
 </html>
