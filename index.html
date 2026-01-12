@@ -4888,6 +4888,74 @@ SAFE MODE — FULL SCRIPT
 
 })();
 </script>
+<script>
+/*
+23 A.6
+Auto Camera Punch / Zoom (Hook)
+SAFE MODE — FULL SCRIPT
+*/
+
+(function () {
+  if (!window.Shots || !window.Camera) return;
+
+  const Shots = window.Shots;
+  const Camera = window.Camera;
+
+  // 1️⃣ Camera punch sozlamalari
+  if (!Camera.punch) {
+    Camera.punch = {
+      enabled: true,
+      hookZoom: 1.35,   // HOOK paytida zoom
+      normalZoom: 1.0, // default
+      speedIn: 0.15,
+      speedOut: 0.05,
+      current: 1.0
+    };
+    console.log("📸 23 A.6 Camera punch initialized");
+  }
+
+  // 2️⃣ Zoom apply helper
+  if (!Camera.applyZoom) {
+    Camera.applyZoom = function (target, speed) {
+      this.punch.current += (target - this.punch.current) * speed;
+      this.zoom = this.punch.current;
+    };
+  }
+
+  // 3️⃣ Shots.update ga camera punch ulash
+  if (!Shots.__cameraPunchWrapped) {
+    Shots.__cameraPunchWrapped = true;
+
+    const baseUpdate = Shots.update;
+
+    Shots.update = function () {
+      if (!this.playing || !this.current) return;
+
+      const zone =
+        this.beatTimeline && this.beatTimeline.activeZone;
+
+      if (Camera.punch.enabled && zone) {
+        if (zone === "hook") {
+          Camera.applyZoom(
+            Camera.punch.hookZoom,
+            Camera.punch.speedIn
+          );
+        } else {
+          Camera.applyZoom(
+            Camera.punch.normalZoom,
+            Camera.punch.speedOut
+          );
+        }
+      }
+
+      if (baseUpdate) baseUpdate.call(this);
+    };
+
+    console.log("📸 23 A.6 Camera punch hooked into Shots.update");
+  }
+
+})();
+</script>
 
 </body>
 </html>
