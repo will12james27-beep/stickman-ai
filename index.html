@@ -9180,6 +9180,50 @@ if (!PRODUCTION.enableLogs) {
   console.log = function(){};
 }
 </script>
+<script>
+/* ============================
+   33 A — PROMPT TEMPLATE ENGINE
+============================ */
+
+window.PromptTemplates = {
+  viral_short: {
+    id: "viral_short",
+    title: "Viral Shorts",
+    structure: [
+      "HOOK (0–2s): shocking / funny moment",
+      "CONFLICT (2–6s): problem or exaggeration",
+      "TWIST (6–9s): unexpected change",
+      "CTA (9–12s): tease next episode"
+    ],
+    build(userPrompt) {
+      return `
+Create a SHORTS-style stickman animation.
+
+STYLE:
+- simple stick figures
+- exaggerated emotions
+- fast pacing
+- clean background
+
+STORY STRUCTURE:
+1. HOOK: Immediate attention grab
+2. CONFLICT: Escalating situation
+3. TWIST: Unexpected funny turn
+4. CTA: Cliffhanger for next episode
+
+USER IDEA:
+"${userPrompt}"
+
+OUTPUT:
+- 1 scene
+- 1–2 characters
+- strong facial expressions
+- end with curiosity
+`;
+    }
+  }
+};
+</script>
 
 </body>
 </html>
