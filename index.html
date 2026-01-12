@@ -3879,6 +3879,76 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("Camera initialized:", Camera);
 })();
 </script>
+<!-- ================================= -->
+<!-- 22 C.2 – CAMERA DEBUG VISUAL     -->
+<!-- APPEND-ONLY | SAFE MODE          -->
+<!-- ================================= -->
+<script>
+/*
+  22 C.2
+  Logical camera markazini va view
+  transformini debug layer’da ko‘rsatish.
+*/
+
+(function () {
+  if (!window.addDebugDraw || !window.Camera) return;
+
+  // Kamera markazi marker
+  window.addDebugDraw(function (ctx, canvas) {
+    const cam = window.Camera;
+
+    // Kamera world center → screen
+    const p = cam.worldToScreen(cam.x, cam.y);
+
+    ctx.save();
+    ctx.strokeStyle = "#00ffcc";
+    ctx.fillStyle = "#00ffcc";
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(p.x - 12, p.y);
+    ctx.lineTo(p.x + 12, p.y);
+    ctx.moveTo(p.x, p.y - 12);
+    ctx.lineTo(p.x, p.y + 12);
+    ctx.stroke();
+
+    ctx.font = "13px monospace";
+    ctx.fillText("CAMERA CENTER", p.x + 14, p.y - 14);
+    ctx.restore();
+  });
+
+  // Kamera view rect (zoom=1 da)
+  window.addDebugDraw(function (ctx, canvas) {
+    const cam = window.Camera;
+
+    const viewW = canvas.width / cam.zoom;
+    const viewH = canvas.height / cam.zoom;
+
+    const topLeft = cam.worldToScreen(
+      cam.x - viewW / 2,
+      cam.y - viewH / 2
+    );
+
+    ctx.save();
+    ctx.setLineDash([8, 5]);
+    ctx.strokeStyle = "#00ccffaa";
+    ctx.lineWidth = 2;
+
+    ctx.strokeRect(
+      topLeft.x,
+      topLeft.y,
+      viewW * cam.zoom,
+      viewH * cam.zoom
+    );
+
+    ctx.font = "12px monospace";
+    ctx.fillStyle = "#00ccffaa";
+    ctx.fillText("CAMERA VIEW", topLeft.x + 6, topLeft.y - 6);
+    ctx.restore();
+  });
+
+})();
+</script>
 
 </body>
 </html>
