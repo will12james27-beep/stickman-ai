@@ -2298,6 +2298,72 @@ console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)")
   console.log("🥁 21 E.2 Beat & Moment Tracker ACTIVE");
 })();
 </script>
+<script>
+// ================= 21 E.3 — EMOTION AMPLIFIER =================
+// SAFE MODE: append-only
+
+(function(){
+  if(window.__emotionAmp21E3) return;
+  window.__emotionAmp21E3 = true;
+
+  const amp = {
+    boost: 1.0,
+    maxBoost: 1.8,
+    decay: 0.92
+  };
+
+  function updateEmotionBoost(){
+    // Beat moment → boost
+    if(window.isBeatActive && isBeatActive()){
+      amp.boost += 0.15 * (window.sceneTempo ? sceneTempo.intensity : 1);
+    }
+
+    // Attention hook → stronger start
+    if(window.attentionHookActive && attentionHookActive()){
+      amp.boost += 0.25;
+    }
+
+    // Clamp
+    amp.boost = Math.min(amp.boost, amp.maxBoost);
+  }
+
+  function applyEmotion(){
+    if(!window.entities) return;
+
+    entities.forEach(e=>{
+      if(e.emotion){
+        // amplify existing emotion only
+        e.emotion.intensity = Math.min(
+          1,
+          e.emotion.intensity * amp.boost
+        );
+      }
+    });
+
+    // camera reaction (soft)
+    if(window.camera){
+      camera.shake += 0.04 * amp.boost;
+    }
+
+    // decay back to normal
+    amp.boost *= amp.decay;
+    if(amp.boost < 1) amp.boost = 1;
+  }
+
+  function emotionLoop(){
+    updateEmotionBoost();
+    applyEmotion();
+    requestAnimationFrame(emotionLoop);
+  }
+
+  requestAnimationFrame(emotionLoop);
+
+  // Read-only info
+  window.getEmotionBoost = () => amp.boost;
+
+  console.log("😲 21 E.3 Emotion Amplifier ACTIVE");
+})();
+</script>
 
 </body>
 </html>
