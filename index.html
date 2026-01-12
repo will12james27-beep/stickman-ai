@@ -1807,6 +1807,46 @@ loop = function(){
 
 console.log("🚀 21 B.25 Attention Spike Injector active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.26 — WORLD ENTITY SYNC =================
+// SAFE MODE: append-only
+
+if(!window.worldEntities){
+  window.worldEntities = [];
+}
+
+// universal entity register
+function registerEntity(entity, type="generic"){
+  entity._type = type;
+  entity._baseScale = entity.scale || 1;
+  worldEntities.push(entity);
+}
+
+// global sync pulse
+function worldSyncPulse(){
+  worldEntities.forEach(e=>{
+    // emotion pressure → scale micro reaction
+    if(window.globalTension !== undefined){
+      const t = globalTension || 0;
+      e.scale = e._baseScale * (1 + t*0.04);
+    }
+
+    // subtle motion for "alive" feeling
+    if(e._type !== "background"){
+      e.x += Math.sin(frame*0.01 + e.y)*0.05;
+    }
+  });
+}
+
+// safe loop extension
+const _loop21B26 = loop;
+loop = function(){
+  worldSyncPulse();
+  _loop21B26();
+};
+
+console.log("🌍 21 B.26 World Entity Sync active (SAFE MODE)");
+</script>
 
 </body>
 </html>
