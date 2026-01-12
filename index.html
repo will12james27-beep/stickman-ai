@@ -1993,6 +1993,40 @@ loop = function(){
 
 console.log("🎚️ 21 D.6 Scene Tempo & Rhythm Controller loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 D.7 — SAFE LOOP STABILIZER =================
+// SAFE MODE: append-only, NO touching previous code
+
+(function(){
+  if(window.__loopStabilized21D7) return;
+  window.__loopStabilized21D7 = true;
+
+  // Detect real render loop safely
+  const originalLoop = window.loop;
+
+  if(typeof originalLoop !== "function"){
+    console.warn("21 D.7: loop function not found, aborting stabilizer");
+    return;
+  }
+
+  window.loop = function(){
+    try{
+      originalLoop();
+    }catch(e){
+      console.error("21 D.7 loop error caught:", e);
+    }
+  };
+
+  // Canvas visibility safeguard
+  const c = document.querySelector("canvas");
+  if(c){
+    c.style.display = "block";
+    c.style.background = "transparent";
+  }
+
+  console.log("🛡️ 21 D.7 Safe Loop Stabilizer ACTIVE");
+})();
+</script>
 
 </body>
 </html>
