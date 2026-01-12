@@ -2067,6 +2067,81 @@ loop = function(){
 
 console.log("🎥 21 B.30 Camera Stress Response active (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.31 — OBJECT ATTENTION SYSTEM =================
+// SAFE MODE: append-only
+
+if(!window.attentionSystem){
+  window.attentionSystem = {
+    target: null,
+    strength: 0
+  };
+}
+
+// score entity importance
+function scoreEntityAttention(e){
+  let score = 0;
+
+  if(e.emotion && e.emotion.intensity){
+    score += e.emotion.intensity * 2;
+  }
+
+  if(e._stress){
+    score += e._stress;
+  }
+
+  if(e._velocity){
+    score += Math.abs(e._velocity.x || 0) + Math.abs(e._velocity.y || 0);
+  }
+
+  return score;
+}
+
+// choose attention target
+function updateAttentionTarget(){
+  if(!window.worldEntities) return;
+
+  let best = null;
+  let bestScore = 0;
+
+  worldEntities.forEach(e=>{
+    if(e._type === "background") return;
+    const s = scoreEntityAttention(e);
+    if(s > bestScore){
+      bestScore = s;
+      best = e;
+    }
+  });
+
+  if(best){
+    attentionSystem.target = best;
+    attentionSystem.strength = Math.min(1, bestScore);
+  } else {
+    attentionSystem.strength *= 0.95;
+  }
+}
+
+// apply camera attraction
+function applyAttentionToCamera(){
+  if(!attentionSystem.target || !window.camera) return;
+
+  const t = attentionSystem.target;
+  const power = attentionSystem.strength * 0.05;
+
+  camera.x += (t.x - camera.x) * power;
+  camera.y += (t.y - camera.y) * power;
+}
+
+// safe loop extension
+const _loop21B31 = loop;
+loop = function(){
+  updateAttentionTarget();
+  applyAttentionToCamera();
+  _loop21B31();
+};
+
+console.log("👀 21 B.31 Object Attention System active (SAFE MODE)");
+</script>
 
 </body>
 </html>
