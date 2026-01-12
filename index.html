@@ -1442,6 +1442,89 @@ if(!window._21B19Demo){
 
 console.log("🌍 21 B.19 Environment Emotion Layer loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.20 — EMOTION → SOUND TRIGGER =================
+// SAFE MODE: append-only
+
+// Audio context
+if(!window.audioCtx){
+  window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+// Active sound registry
+const activeSounds = {};
+
+// Simple tone generator
+function playTone(key, freq, volume=0.05){
+  if(activeSounds[key]) return;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.frequency.value = freq;
+  gain.gain.value = volume;
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+
+  activeSounds[key] = { osc, gain };
+}
+
+// Stop tone
+function stopTone(key){
+  const s = activeSounds[key];
+  if(!s) return;
+
+  s.gain.gain.exponentialRampToValueAtTime(
+    0.0001,
+    audioCtx.currentTime + 0.3
+  );
+  s.osc.stop(audioCtx.currentTime + 0.3);
+
+  delete activeSounds[key];
+}
+
+// Emotion → sound mapping
+const emotionSoundMap = {
+  panic:     { freq: 880, volume:0.07 },
+  angry:     { freq: 220, volume:0.06 },
+  shocked:   { freq: 660, volume:0.05 },
+  danger:    { freq: 440, volume:0.08 },
+  emergency: { freq: 1200, volume:0.09 },
+  calm:      { freq: 180, volume:0.03 }
+};
+
+// Apply sound based on global emotion leader
+function applyEmotionSound(){
+  const leader = chooseGlobalEmotionLeader();
+  if(!leader || !leader.emotion) return;
+
+  const state = leader.emotion.state;
+
+  // Stop unused sounds
+  Object.keys(activeSounds).forEach(k=>{
+    if(k !== state){
+      stopTone(k);
+    }
+  });
+
+  const rule = emotionSoundMap[state];
+  if(rule){
+    playTone(state, rule.freq, rule.volume);
+  }
+}
+
+// SAFE LOOP hook
+const _loop21B20 = loop;
+loop = function(){
+  applyEmotionSound();
+  _loop21B20();
+};
+
+console.log("🔊 21 B.20 Emotion → Sound Trigger loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
