@@ -1652,6 +1652,66 @@ loop = function(){
 
 console.log("🎨 21 B.22 Emotion → Color & FX loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.23 — CLIMAX ORCHESTRATION =================
+// SAFE MODE: append-only
+
+if(!window.climaxState){
+  window.climaxState = {
+    active:false,
+    timer:0,
+    emotion:null
+  };
+}
+
+// emotion kuchli bo‘lsa climax yoqiladi
+function updateClimax(){
+  const leader = chooseGlobalEmotionLeader();
+  if(!leader || !leader.emotion) return;
+
+  const e = leader.emotion;
+
+  // threshold — shorts uchun agressiv
+  if(e.intensity > 0.75){
+    climaxState.active = true;
+    climaxState.timer = Math.max(climaxState.timer, 20); // frame hold
+    climaxState.emotion = e.state;
+  }
+}
+
+// climax decay
+function decayClimax(){
+  if(!climaxState.active) return;
+
+  climaxState.timer--;
+  if(climaxState.timer <= 0){
+    climaxState.active = false;
+    climaxState.emotion = null;
+  }
+}
+
+// FX hook
+function drawClimaxFX(){
+  if(!climaxState.active) return;
+
+  fxCtx.fillStyle = "rgba(0,0,0,0.08)";
+  fxCtx.fillRect(0,0,fxCanvas.width,fxCanvas.height);
+
+  fxCtx.fillStyle = "rgba(255,255,255,0.15)";
+  fxCtx.fillRect(0,0,fxCanvas.width,fxCanvas.height);
+}
+
+// loop extend
+const _loop21B23 = loop;
+loop = function(){
+  updateClimax();
+  drawClimaxFX();
+  decayClimax();
+  _loop21B23();
+};
+
+console.log("🔥 21 B.23 Climax orchestration active (SAFE MODE)");
+</script>
 
 </body>
 </html>
