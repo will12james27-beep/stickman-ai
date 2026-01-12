@@ -5871,6 +5871,77 @@ window.previewNextAutoHook = function () {
   return generateAutoHook();
 };
 </script>
+<script>
+/* =====================================================
+   23 B.9 — EPISODE ROLL-OVER & PART INDEX SYSTEM
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 23 B.9.1 PART STATE ---------- */
+window.EpisodePartState = {
+  currentPart: 1,
+  maxChain: 3,        // 1→2→3 chain
+  rolledOver: false
+};
+
+/* ---------- 23 B.9.2 GET CURRENT PART LABEL ---------- */
+window.getEpisodePartLabel = function () {
+  return `PART ${EpisodePartState.currentPart}`;
+};
+
+/* ---------- 23 B.9.3 ROLL TO NEXT PART ---------- */
+window.rollToNextEpisodePart = function () {
+  if (EpisodePartState.rolledOver) return;
+
+  EpisodePartState.rolledOver = true;
+
+  EpisodePartState.currentPart += 1;
+
+  if (EpisodePartState.currentPart > EpisodePartState.maxChain) {
+    EpisodePartState.currentPart = 1;
+  }
+
+  /* Sync EpisodeMeta */
+  if (window.EpisodeMeta) {
+    EpisodeMeta.episodeNumber += 1;
+    EpisodeMeta.part = EpisodePartState.currentPart;
+  }
+
+  /* Regenerate Hook for next part */
+  if (window.generateAutoHook) {
+    generateAutoHook();
+  }
+
+  return getEpisodePartLabel();
+};
+
+/* ---------- 23 B.9.4 AUTO-HOOK INTO COMPLETION ---------- */
+(function attachRollOverToCompletion() {
+  if (!window.markEpisodeCompleted) return;
+
+  const originalComplete = window.markEpisodeCompleted;
+
+  window.markEpisodeCompleted = function () {
+    originalComplete.apply(this, arguments);
+    rollToNextEpisodePart();
+  };
+})();
+
+/* ---------- 23 B.9.5 CTA PART SYNC ---------- */
+(function syncCTAPartLabel() {
+  if (!window.SerialCTA || !window.EpisodePartState) return;
+
+  const originalText = SerialCTA.text;
+
+  SerialCTA.text = `${originalText} • ${getEpisodePartLabel()}`;
+})();
+
+/* ---------- 23 B.9.6 SAFE DEBUG ---------- */
+window.getEpisodePartState = function () {
+  return JSON.parse(JSON.stringify(EpisodePartState));
+};
+</script>
 
 </body>
 </html>
