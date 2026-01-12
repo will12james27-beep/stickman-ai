@@ -8112,6 +8112,123 @@ window.downloadExportJob = async function(){
   btn.onclick = downloadExportJob;
 })();
 </script>
+<script>
+/* =====================================================
+   30 C — PUBLISH / DEPLOY PIPELINE (FOUNDATION)
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+/* ---------- 30 C.1 APP MODE ---------- */
+window.AppMode = {
+  mode: "editor", // 'editor' | 'preview' | 'production'
+  set(newMode){
+    this.mode = newMode;
+    document.body.setAttribute("data-app-mode", newMode);
+    console.log("APP MODE:", newMode);
+  }
+};
+
+/* ---------- 30 C.2 SIMPLE USER CONTEXT ---------- */
+window.UserContext = {
+  id: "anon",
+  role: "creator",
+  isLoggedIn: false
+};
+
+/* ---------- 30 C.3 PUBLISH TARGETS ---------- */
+window.PublishTargets = {
+  youtube: {
+    name: "YouTube Shorts",
+    aspect: "9:16",
+    maxDuration: 60,
+    apiReady: false
+  },
+  tiktok: {
+    name: "TikTok",
+    aspect: "9:16",
+    maxDuration: 60,
+    apiReady: false
+  },
+  reels: {
+    name: "Instagram Reels",
+    aspect: "9:16",
+    maxDuration: 60,
+    apiReady: false
+  }
+};
+
+/* ---------- 30 C.4 CREATE PUBLISH JOB ---------- */
+window.createPublishJob = async function(targetKey){
+  const target = PublishTargets[targetKey];
+  if (!target) throw new Error("Publish target not found");
+
+  const exportJob = await createExportJob();
+  if (!exportJob) return;
+
+  const publishJob = {
+    user: UserContext.id,
+    target: targetKey,
+    createdAt: new Date().toISOString(),
+    export: exportJob,
+    status: "ready"
+  };
+
+  console.log("PUBLISH JOB:", publishJob);
+  alert("Publish job tayyor ✅ (" + target.name + ")");
+
+  return publishJob;
+};
+
+/* ---------- 30 C.5 PUBLISH UI ---------- */
+(function injectPublishPanel(){
+  if (document.getElementById("publishPanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "publishPanel";
+  panel.style.cssText = `
+    position: fixed;
+    top: 48px;
+    right: 0;
+    width: 240px;
+    bottom: 0;
+    background: #0e0e0e;
+    border-left: 2px solid #333;
+    z-index: 9999;
+    font-family: Arial, sans-serif;
+    padding: 10px;
+    box-sizing: border-box;
+  `;
+
+  panel.innerHTML = `
+    <div style="color:#fff;font-weight:bold;margin-bottom:8px;">
+      🚀 Publish
+    </div>
+    <button id="pubYT" style="width:100%;margin-bottom:6px;">
+      YouTube Shorts
+    </button>
+    <button id="pubTT" style="width:100%;margin-bottom:6px;">
+      TikTok
+    </button>
+    <button id="pubIG" style="width:100%;">
+      Instagram Reels
+    </button>
+    <div style="margin-top:10px;font-size:11px;color:#888;">
+      API ulash keyingi bosqichda
+    </div>
+  `;
+
+  document.body.appendChild(panel);
+
+  document.getElementById("pubYT").onclick = () => createPublishJob("youtube");
+  document.getElementById("pubTT").onclick = () => createPublishJob("tiktok");
+  document.getElementById("pubIG").onclick = () => createPublishJob("reels");
+})();
+
+/* ---------- 30 C.6 PRODUCTION MODE SWITCH ---------- */
+(function enableProductionMode(){
+  AppMode.set("production");
+})();
+</script>
 
 </body>
 </html>
