@@ -7191,6 +7191,106 @@ window.validateAllScenes = function () {
 /* ---------- 27 C.7 INITIAL SAFETY PASS ---------- */
 setTimeout(validateAllScenes, 700);
 </script>
+<script>
+/* =====================================================
+   28 A — SAVE / LOAD PROJECT (FOUNDATION)
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 28 A.1 STORAGE KEY ---------- */
+window.ProjectStorageKey = "stickman_editor_project_v1";
+
+/* ---------- 28 A.2 SERIALIZE PROJECT ---------- */
+window.serializeProject = function () {
+  if (!window.SceneStack) return null;
+
+  return {
+    scenes: JSON.parse(JSON.stringify(SceneStack)),
+    activeIndex:
+      (window.TimelineState && TimelineState.activeSceneIndex != null)
+        ? TimelineState.activeSceneIndex
+        : 0,
+    savedAt: Date.now()
+  };
+};
+
+/* ---------- 28 A.3 DESERIALIZE PROJECT ---------- */
+window.deserializeProject = function (data) {
+  if (!data || !data.scenes) return;
+
+  window.SceneStack = data.scenes;
+
+  if (window.TimelineState) {
+    TimelineState.activeSceneIndex = data.activeIndex || 0;
+  }
+
+  validateAllScenes && validateAllScenes();
+  renderTimeline && renderTimeline();
+  highlightActiveScene && highlightActiveScene();
+  renderSceneProperties && renderSceneProperties();
+};
+
+/* ---------- 28 A.4 SAVE ---------- */
+window.saveProject = function () {
+  const data = serializeProject();
+  if (!data) return;
+
+  localStorage.setItem(
+    ProjectStorageKey,
+    JSON.stringify(data)
+  );
+
+  console.log("✅ Project saved");
+};
+
+/* ---------- 28 A.5 LOAD ---------- */
+window.loadProject = function () {
+  const raw = localStorage.getItem(ProjectStorageKey);
+  if (!raw) return;
+
+  try {
+    const data = JSON.parse(raw);
+    deserializeProject(data);
+    console.log("📂 Project loaded");
+  } catch (e) {
+    console.warn("❌ Failed to load project", e);
+  }
+};
+
+/* ---------- 28 A.6 SIMPLE UI BUTTONS ---------- */
+(function injectSaveLoadUI(){
+  if (document.getElementById("saveLoadBar")) return;
+
+  const bar = document.createElement("div");
+  bar.id = "saveLoadBar";
+  bar.style.cssText = `
+    position: fixed;
+    bottom: 160px;
+    left: 0;
+    right: 0;
+    background: #1b1b1b;
+    border-top: 1px solid #333;
+    padding: 6px 10px;
+    display: flex;
+    gap: 10px;
+    z-index: 9999;
+    font-family: Arial, sans-serif;
+  `;
+
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "💾 Save";
+  saveBtn.onclick = saveProject;
+
+  const loadBtn = document.createElement("button");
+  loadBtn.textContent = "📂 Load";
+  loadBtn.onclick = loadProject;
+
+  bar.appendChild(saveBtn);
+  bar.appendChild(loadBtn);
+  document.body.appendChild(bar);
+})();
+</script>
 
 </body>
 </html>
