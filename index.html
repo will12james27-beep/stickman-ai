@@ -1042,6 +1042,68 @@ loop = function(){
 
 console.log("🎨 21 B.13 Emotion → Color & Line-weight micro-sync loaded (SAFE MODE)");
 </script>
+<script>
+// ================= 21 B.14 — MULTI-CHARACTER EMOTION PRIORITY =================
+// SAFE MODE: append-only
+
+// Emotion weight (ustuvorlik ballari)
+const EMO_WEIGHT = {
+  angry: 3,
+  shocked: 4,
+  confused: 2,
+  neutral: 0
+};
+
+// Per-character priority init
+characters.forEach(c=>{
+  if(c._emoPriority === undefined) c._emoPriority = 0;
+});
+
+// Priority hisoblash
+function calcEmotionPriority(c){
+  const w = EMO_WEIGHT[c.mood] || 0;
+
+  // Dominance bo‘lsa — qo‘shimcha ball
+  const dom = (c.psych && c.psych.dominance) ? c.psych.dominance : 0;
+
+  // Gapiryapti bo‘lsa — yana ustun
+  const talkBoost = (c.talk && c.talk > 0) ? 1.5 : 0;
+
+  return w + dom + talkBoost;
+}
+
+// Global dominant emotion character
+function chooseEmotionLeader(){
+  let best = null;
+  let max = -1;
+
+  characters.forEach(c=>{
+    const p = calcEmotionPriority(c);
+    c._emoPriority = p;
+    if(p > max){
+      max = p;
+      best = c;
+    }
+  });
+
+  return best;
+}
+
+// LOOP ga SAFE ulanish
+const _loop21B14 = loop;
+loop = function(){
+  const leader = chooseEmotionLeader();
+
+  // Flag: kim ustun
+  characters.forEach(c=>{
+    c.isEmotionLeader = (c === leader);
+  });
+
+  _loop21B14();
+};
+
+console.log("⚖️ 21 B.14 Multi-character Emotion Priority loaded (SAFE MODE)");
+</script>
 
 </body>
 </html>
