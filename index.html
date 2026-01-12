@@ -7103,6 +7103,94 @@ window.updateActiveScene = function (patch) {
   };
 })();
 </script>
+<script>
+/* =====================================================
+   27 C — SCENE VALIDATION + GUARDS
+   SAFE MODE — APPEND ONLY
+   Paste between last </script> and </body>
+===================================================== */
+
+/* ---------- 27 C.1 VALID SCENE SCHEMA ---------- */
+window.SceneSchema = {
+  type: ["scene", "cut", "text", "pause"],
+  minDuration: 0
+};
+
+/* ---------- 27 C.2 SCENE SANITIZER ---------- */
+window.sanitizeScene = function (scene) {
+  if (!scene || typeof scene !== "object") return scene;
+
+  // type guard
+  if (!SceneSchema.type.includes(scene.type)) {
+    scene.type = "scene";
+  }
+
+  // duration guard
+  if (scene.duration != null) {
+    let d = parseFloat(scene.duration);
+    if (isNaN(d) || d < SceneSchema.minDuration) {
+      scene.duration = SceneSchema.minDuration;
+    } else {
+      scene.duration = d;
+    }
+  }
+
+  // id guard (readonly but must exist)
+  if (!scene.id) {
+    scene.id = "scene_" + Math.random().toString(36).slice(2, 7);
+  }
+
+  return scene;
+};
+
+/* ---------- 27 C.3 SANITIZE ACTIVE SCENE ---------- */
+window.validateActiveScene = function () {
+  const scene = getActiveScene && getActiveScene();
+  if (!scene) return;
+
+  sanitizeScene(scene);
+
+  renderSceneProperties && renderSceneProperties();
+  renderTimeline && renderTimeline();
+};
+
+/* ---------- 27 C.4 GLOBAL SANITIZE (SAFE) ---------- */
+window.validateAllScenes = function () {
+  if (!window.SceneStack) return;
+
+  SceneStack.forEach(scene => sanitizeScene(scene));
+
+  renderSceneProperties && renderSceneProperties();
+  renderTimeline && renderTimeline();
+};
+
+/* ---------- 27 C.5 HOOK INTO UPDATES ---------- */
+(function hookValidation(){
+  if (!window.updateActiveScene) return;
+
+  const originalUpdate = window.updateActiveScene;
+
+  window.updateActiveScene = function (patch) {
+    originalUpdate.apply(this, arguments);
+    validateActiveScene();
+  };
+})();
+
+/* ---------- 27 C.6 VALIDATE ON REORDER ---------- */
+(function hookReorderValidation(){
+  if (!window.applySceneReorder) return;
+
+  const originalReorder = window.applySceneReorder;
+
+  window.applySceneReorder = function () {
+    originalReorder.apply(this, arguments);
+    validateAllScenes();
+  };
+})();
+
+/* ---------- 27 C.7 INITIAL SAFETY PASS ---------- */
+setTimeout(validateAllScenes, 700);
+</script>
 
 </body>
 </html>
