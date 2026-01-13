@@ -10002,6 +10002,47 @@ console.log("🚀 Stickman Shorts Engine — LIVE");
   };
 })();
 </script>
+<script>
+/* =========================
+   33 — FRONTEND POLISH
+   Real Progress Percentage
+   ========================= */
+
+(function () {
+  let percentText;
+
+  function ensurePercentText() {
+    if (percentText) return percentText;
+
+    const loader = document.getElementById("globalLoader");
+    if (!loader) return null;
+
+    percentText = document.createElement("div");
+    percentText.style.cssText = `
+      margin-top:10px;
+      font-size:14px;
+      opacity:0.85;
+    `;
+    percentText.textContent = "0%";
+
+    loader.appendChild(percentText);
+    return percentText;
+  }
+
+  window.setProgress = function (percent = 0) {
+    const el = ensurePercentText();
+    if (!el) return;
+
+    const p = Math.max(0, Math.min(100, Math.round(percent)));
+    el.textContent = p + "%";
+  };
+
+  // Qulaylik uchun
+  window.resetProgress = function () {
+    window.setProgress(0);
+  };
+})();
+</script>
 
 </body>
 </html>
