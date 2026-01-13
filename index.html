@@ -10253,6 +10253,39 @@ window.__REAL_HIDE_LOADER__ = function () {
 
 })();
 </script>
+<script>
+/* =====================================================
+   23 B.8.1 — PROMPT CAPTURE & NORMALIZE
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+(function () {
+  if (window.__PROMPT_CAPTURE_READY__) return;
+  window.__PROMPT_CAPTURE_READY__ = true;
+
+  window.PromptState = {
+    raw: "",
+    normalized: "",
+    timestamp: 0
+  };
+
+  // Promptni ushlash
+  window.capturePrompt = function (text) {
+    if (!text || typeof text !== "string") return;
+
+    PromptState.raw = text;
+    PromptState.normalized = text
+      .trim()
+      .replace(/\s+/g, " ")
+      .slice(0, 500); // limit
+
+    PromptState.timestamp = Date.now();
+
+    console.log("[23 B.8.1] Prompt captured:", PromptState.normalized);
+  };
+
+})();
+</script>
 
 </body>
 </html>
