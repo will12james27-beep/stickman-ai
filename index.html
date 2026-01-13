@@ -9892,15 +9892,15 @@ console.log("🚀 Stickman Shorts Engine — LIVE");
   `;
   document.head.appendChild(style);
 
-  // Global API
-  window.showLoader = function (text = "Generating…") {
-    loader.querySelector("div").textContent = "⏳ " + text;
-    loader.style.display = "flex";
-  };
+window.__REAL_SHOW_LOADER__ = function (text = "Generating…") {
+  loader.querySelector("div").textContent = "⏳ " + text;
+  loader.style.display = "flex";
+};
 
-  window.hideLoader = function () {
-    loader.style.display = "none";
-  };
+window.__REAL_HIDE_LOADER__ = function () {
+  loader.style.display = "none";
+};
+
 })();
 </script>
 <script>
