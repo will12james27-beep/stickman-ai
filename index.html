@@ -10109,6 +10109,61 @@ window.__REAL_HIDE_LOADER__ = function () {
   }
 })();
 </script>
+<script>
+/* =====================================================
+   FRONTEND POLISH — LOADER + UI + ERROR INTEGRATION
+   SAFE MODE — APPEND ONLY
+   ===================================================== */
+
+(function () {
+  if (window.__FRONTEND_POLISH_INTEGRATED__) return;
+  window.__FRONTEND_POLISH_INTEGRATED__ = true;
+
+  // 🔒 Loader + UI Lock together
+  window.showLoadingState = function (text = "Processing…") {
+    if (typeof showLoader === "function") {
+      showLoader(text);
+    }
+    if (typeof lockUI === "function") {
+      lockUI();
+    }
+  };
+
+  window.hideLoadingState = function () {
+    if (typeof hideLoader === "function") {
+      hideLoader();
+    }
+    if (typeof unlockUI === "function") {
+      unlockUI();
+    }
+  };
+
+  // ❌ Error chiqqanda hammasini tozalash
+  const originalShowError = window.showError;
+
+  if (typeof originalShowError === "function") {
+    window.showError = function (message) {
+      hideLoadingState();
+      originalShowError(message);
+    };
+  }
+
+  // 🧪 Dev test helper (keyinchalik o‘chiriladi)
+  window.__testFrontendPolish = function () {
+    showLoadingState("Testing system…");
+    let p = 0;
+    const t = setInterval(() => {
+      p += 10;
+      setProgress(p);
+      if (p >= 100) {
+        clearInterval(t);
+        hideLoadingState();
+        console.log("✅ Frontend Polish test completed");
+      }
+    }, 200);
+  };
+})();
+</script>
 
 </body>
 </html>
