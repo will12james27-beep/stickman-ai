@@ -9757,6 +9757,23 @@ window.isShortsCompliant = function(videoInfo = {}) {
   return durationOK && ratioOK;
 };
 </script>
+<script>
+/* ============================
+   37 B — FRONTEND UPLOAD PAYLOAD
+============================ */
+
+window.buildUploadPayload = async function(videoBlob) {
+  const meta = buildYouTubeMetadata();
+
+  const form = new FormData();
+  form.append("video", videoBlob, "shorts.mp4");
+  form.append("title", meta.title);
+  form.append("description", meta.description);
+  form.append("tags", JSON.stringify(meta.tags));
+
+  return form;
+};
+</script>
 
 </body>
 </html>
