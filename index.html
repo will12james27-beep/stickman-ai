@@ -10325,6 +10325,34 @@ window.__REAL_HIDE_LOADER__ = function () {
 
 })();
 </script>
+<script>
+/* =====================================================
+   23 B.8.3 — SHOT PLAN REGISTER (ENGINE BRIDGE)
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+(function () {
+  if (window.__SHOT_PLAN_REGISTERED__) return;
+  window.__SHOT_PLAN_REGISTERED__ = true;
+
+  window.ShotPlan = [];
+
+  window.buildShotPlanFromPrompt = function (promptText) {
+    window.capturePrompt(promptText);
+    window.ShotPlan = window.mapPromptToShots() || [];
+
+    console.log("[23 B.8.3] ShotPlan ready:", ShotPlan);
+
+    // Keyingi bosqichlar uchun signal
+    window.dispatchEvent(new CustomEvent("shotplan:ready", {
+      detail: { shots: ShotPlan }
+    }));
+
+    return ShotPlan;
+  };
+
+})();
+</script>
 
 </body>
 </html>
