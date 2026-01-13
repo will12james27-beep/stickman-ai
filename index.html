@@ -10286,6 +10286,45 @@ window.__REAL_HIDE_LOADER__ = function () {
 
 })();
 </script>
+<script>
+/* =====================================================
+   23 B.8.2 — PROMPT → SHOT PLAN MAPPER
+   SAFE MODE — APPEND ONLY
+===================================================== */
+
+(function () {
+  if (window.__SHOT_MAPPER_READY__) return;
+  window.__SHOT_MAPPER_READY__ = true;
+
+  window.mapPromptToShots = function () {
+    if (!window.PromptState || !PromptState.normalized) {
+      console.warn("[23 B.8.2] No prompt to map");
+      return [];
+    }
+
+    const baseDuration = (window.EpisodeMeta?.durationSec || 20);
+    const shotCount = Math.max(3, Math.min(6, Math.floor(baseDuration / 4)));
+
+    const shots = [];
+
+    for (let i = 0; i < shotCount; i++) {
+      shots.push({
+        id: "shot_" + (i + 1),
+        index: i,
+        type: i === shotCount - 1 ? "cliffhanger" : "action",
+        duration: Math.floor(baseDuration / shotCount),
+        camera: i === 0 ? "wide" : "medium",
+        emotion: i === shotCount - 1 ? "suspense" : "neutral",
+        promptHint: PromptState.normalized
+      });
+    }
+
+    console.log("[23 B.8.2] Shot plan created:", shots);
+    return shots;
+  };
+
+})();
+</script>
 
 </body>
 </html>
