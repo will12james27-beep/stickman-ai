@@ -9808,6 +9808,21 @@ window.APP_STATUS = "LIVE"; // dev | live
 Object.freeze(PromptTemplates);
 Object.freeze(PromptPresets);
 </script>
+<script>
+/* ============================
+   38 B — USER ERROR GUARD
+============================ */
+
+window.safePrompt = function(p) {
+  if (!p || typeof p !== "string") {
+    return "A confused stickman faces an unexpected problem.";
+  }
+  if (p.length < 3) {
+    return "A stickman reacts dramatically to something small.";
+  }
+  return p;
+};
+</script>
 
 </body>
 </html>
