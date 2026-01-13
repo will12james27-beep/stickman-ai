@@ -164,6 +164,27 @@ function loop(){
 }
 loop();
 </script>
+   <script>
+/* =========================
+   SAFE GLOBAL FIXES
+   (required for 21 B.2 / 21 B.3)
+========================= */
+
+// 🔗 Legacy compatibility: chars -> characters
+const chars = characters;
+
+// 🛡 Safe stub for subtitle system
+// (old hooks expect this to exist)
+if (typeof window.showSubtitle !== "function") {
+  window.showSubtitle = function () {};
+}
+
+// 🛡 Safe globals used by later systems
+if (typeof window.focusChar === "undefined") {
+  window.focusChar = null;
+}
+</script>
+
 <script>
 // ================= 21 B.2 — CHARACTER INTERACTION RULES =================
 
