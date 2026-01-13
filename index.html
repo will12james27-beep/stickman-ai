@@ -10163,6 +10163,43 @@ window.__REAL_HIDE_LOADER__ = function () {
   };
 })();
 </script>
+<script>
+/* =====================================================
+   23 B.6 — PROMPT → EPISODE SAFE BRIDGE
+   SAFE MODE — APPEND ONLY
+   Maqsad: generateEpisodeFromPrompt yo‘q bo‘lsa ham
+           engine yiqilmasligi
+===================================================== */
+
+(function () {
+  // Agar allaqachon mavjud bo‘lsa — tegmaymiz
+  if (typeof window.generateEpisodeFromPrompt === "function") return;
+
+  console.warn(
+    "[SAFE BRIDGE] generateEpisodeFromPrompt hali ulanmagan. Stub ishlayapti."
+  );
+
+  /**
+   * SAFE STUB
+   * Keyin haqiqiy generator kelganda avtomatik almashtiriladi
+   */
+  window.generateEpisodeFromPrompt = function (promptText, options = {}) {
+    console.log("[SAFE STUB] Prompt qabul qilindi:", promptText);
+
+    // Minimal episode obyekt (engine talablarini buzmaydi)
+    return {
+      prompt: promptText,
+      status: "stub",
+      createdAt: Date.now(),
+      shots: [],
+      meta: {
+        source: "safe-bridge",
+        note: "Real generator hali ulanmagan"
+      }
+    };
+  };
+})();
+</script>
 
 </body>
 </html>
