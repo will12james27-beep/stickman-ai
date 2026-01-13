@@ -9850,6 +9850,59 @@ window.LAUNCH_READY = true;
 
 console.log("🚀 Stickman Shorts Engine — LIVE");
 </script>
+<script>
+/* =========================
+   33 — FRONTEND POLISH
+   Loader / Progress Overlay
+   ========================= */
+
+(function () {
+  // Loader element yaratamiz
+  const loader = document.createElement("div");
+  loader.id = "globalLoader";
+  loader.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    color: white;
+    font-family: system-ui, sans-serif;
+    flex-direction: column;
+  `;
+
+  loader.innerHTML = `
+    <div style="font-size:22px; margin-bottom:12px;">⏳ Generating…</div>
+    <div style="width:200px;height:6px;background:#333;border-radius:3px;overflow:hidden;">
+      <div id="loaderBar" style="width:40%;height:100%;background:#4ade80;animation: loadAnim 1s infinite;"></div>
+    </div>
+  `;
+
+  document.body.appendChild(loader);
+
+  // Animatsiya
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @keyframes loadAnim {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(300%); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Global API
+  window.showLoader = function (text = "Generating…") {
+    loader.querySelector("div").textContent = "⏳ " + text;
+    loader.style.display = "flex";
+  };
+
+  window.hideLoader = function () {
+    loader.style.display = "none";
+  };
+})();
+</script>
 
 </body>
 </html>
