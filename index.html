@@ -9903,6 +9903,45 @@ console.log("🚀 Stickman Shorts Engine — LIVE");
   };
 })();
 </script>
+<script>
+/* =========================
+   33 — FRONTEND POLISH
+   UI Lock / Unlock System
+   ========================= */
+
+(function () {
+  let locked = false;
+
+  function setButtonsState(disabled) {
+    document.querySelectorAll("button").forEach(btn => {
+      if (disabled) {
+        btn.dataset._wasDisabled = btn.disabled ? "1" : "0";
+        btn.disabled = true;
+        btn.style.opacity = "0.6";
+        btn.style.cursor = "not-allowed";
+      } else {
+        if (btn.dataset._wasDisabled === "0") {
+          btn.disabled = false;
+          btn.style.opacity = "";
+          btn.style.cursor = "";
+        }
+        delete btn.dataset._wasDisabled;
+      }
+    });
+  }
+
+  window.lockUI = function () {
+    if (locked) return;
+    locked = true;
+    setButtonsState(true);
+  };
+
+  window.unlockUI = function () {
+    locked = false;
+    setButtonsState(false);
+  };
+})();
+</script>
 
 </body>
 </html>
