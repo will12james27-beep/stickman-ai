@@ -9745,6 +9745,18 @@ window.showUploadMetadata = function() {
   );
 };
 </script>
+<script>
+/* ============================
+   37 A — SHORTS CHECK
+============================ */
+
+window.isShortsCompliant = function(videoInfo = {}) {
+  const durationOK = (videoInfo.duration || 0) <= 60;
+  const ratioOK = videoInfo.ratio === "9:16";
+
+  return durationOK && ratioOK;
+};
+</script>
 
 </body>
 </html>
