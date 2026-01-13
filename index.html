@@ -10002,38 +10002,6 @@ console.log("🚀 Stickman Shorts Engine — LIVE");
   };
 })();
 </script>
-     <script>
-/* =========================
-   Loader Visibility Control
-   ========================= */
-
-window.showLoader = function (text = "Loading...") {
-  const loader = document.getElementById("globalLoader");
-  if (!loader) return;
-
-  loader.style.display = "flex";
-
-  // agar progress text bo‘lsa — yangilaymiz
-  if (typeof window.setProgress === "function") {
-    window.setProgress(0);
-  }
-
-  console.log("Loader shown:", text);
-};
-
-window.hideLoader = function () {
-  const loader = document.getElementById("globalLoader");
-  if (!loader) return;
-
-  loader.style.display = "none";
-
-  if (typeof window.resetProgress === "function") {
-    window.resetProgress();
-  }
-
-  console.log("Loader hidden");
-};
-</script>
 
 <script>
 /* =========================
