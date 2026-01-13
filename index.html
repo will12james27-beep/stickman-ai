@@ -10200,6 +10200,59 @@ window.__REAL_HIDE_LOADER__ = function () {
   };
 })();
 </script>
+<script>
+/* =====================================================
+   23 B.7 — GENERATE → LOADER TIMING SAFE FIX
+   SAFE MODE — APPEND ONLY
+   Maqsad: Loader doim to‘g‘ri vaqtda chiqib/yopilishi
+===================================================== */
+
+(function () {
+  if (window.__GENERATE_LOADER_SAFE__) return;
+  window.__GENERATE_LOADER_SAFE__ = true;
+
+  // Loader mavjudligini tekshiruvchi helper
+  function safeShowLoader() {
+    if (typeof window.showLoader === "function") {
+      window.showLoader();
+    }
+  }
+
+  function safeHideLoader() {
+    if (typeof window.hideLoader === "function") {
+      window.hideLoader();
+    }
+  }
+
+  // Generate tugmasini xavfsiz ushlash
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-generate], #generateBtn, .generate-btn");
+    if (!btn) return;
+
+    console.log("[23 B.7] Generate bosildi → Loader ON");
+    safeShowLoader();
+
+    // Har qanday holatda loader yopilishi uchun timeout
+    setTimeout(() => {
+      console.log("[23 B.7] Safety timeout → Loader OFF");
+      safeHideLoader();
+    }, 6000); // 6s — xavfsiz limit
+  });
+
+  // Episode tayyor bo‘lganda loader’ni yopish
+  window.addEventListener("episode:ready", () => {
+    console.log("[23 B.7] episode:ready → Loader OFF");
+    safeHideLoader();
+  });
+
+  // Xatolik bo‘lsa ham loader qolib ketmasin
+  window.addEventListener("episode:error", () => {
+    console.warn("[23 B.7] episode:error → Loader OFF");
+    safeHideLoader();
+  });
+
+})();
+</script>
 
 </body>
 </html>
