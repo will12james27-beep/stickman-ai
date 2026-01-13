@@ -9729,6 +9729,22 @@ Subscribe for part ${ep.episode + 1}!
   return { title, description, tags };
 };
 </script>
+<script>
+/* ============================
+   37 A — METADATA PREVIEW
+============================ */
+
+window.showUploadMetadata = function() {
+  const m = buildYouTubeMetadata();
+
+  alert(
+    "YOUTUBE UPLOAD INFO\n\n" +
+    "TITLE:\n" + m.title + "\n\n" +
+    "DESCRIPTION:\n" + m.description + "\n\n" +
+    "TAGS:\n" + m.tags.join(", ")
+  );
+};
+</script>
 
 </body>
 </html>
