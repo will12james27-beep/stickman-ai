@@ -10044,6 +10044,71 @@ console.log("🚀 Stickman Shorts Engine — LIVE");
   };
 })();
 </script>
+<script>
+/* =====================================================
+   FRONTEND POLISH — LOADER SAFE BRIDGE (APPEND-ONLY)
+   Maqsad: showLoader timing muammosini BUTUNLAY yo‘qotish
+   QOIDA: faqat oxirgi </script> bilan </body> orasiga qo‘shiladi
+   ===================================================== */
+
+(function () {
+  // Agar allaqachon qo‘shilgan bo‘lsa — qayta qo‘shmaymiz
+  if (window.__LOADER_SAFE_READY__) return;
+  window.__LOADER_SAFE_READY__ = true;
+
+  // Navbat (loader tayyor bo‘lmaganda kelgan chaqiruvlar uchun)
+  const queue = [];
+  let realShow = null;
+  let realHide = null;
+
+  // Xavfsiz wrapper — HAR QANDAY PAYTDA chaqiriladi
+  window.showLoader = function (text) {
+    if (typeof realShow === "function") {
+      realShow(text);
+    } else {
+      queue.push({ type: "show", text });
+    }
+  };
+
+  window.hideLoader = function () {
+    if (typeof realHide === "function") {
+      realHide();
+    } else {
+      queue.push({ type: "hide" });
+    }
+  };
+
+  // Loader IIFE tayyor bo‘lishini kutamiz
+  function bindRealAPIs() {
+    if (typeof window.__REAL_SHOW_LOADER__ === "function" &&
+        typeof window.__REAL_HIDE_LOADER__ === "function") {
+      realShow = window.__REAL_SHOW_LOADER__;
+      realHide = window.__REAL_HIDE_LOADER__;
+
+      // Navbatni bajarish
+      while (queue.length) {
+        const job = queue.shift();
+        if (job.type === "show") realShow(job.text);
+        else realHide();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // DOM tayyor bo‘lishi + polling (xavfsiz)
+  function waitUntilReady() {
+    if (bindRealAPIs()) return;
+    requestAnimationFrame(waitUntilReady);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", waitUntilReady);
+  } else {
+    waitUntilReady();
+  }
+})();
+</script>
 
 </body>
 </html>
