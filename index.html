@@ -9823,6 +9823,24 @@ window.safePrompt = function(p) {
   return p;
 };
 </script>
+<script>
+/* ============================
+   38 C — BASIC ANALYTICS
+============================ */
+
+window.AppStats = {
+  prompts: 0,
+  exports: 0
+};
+
+window.trackPrompt = function() {
+  AppStats.prompts++;
+};
+
+window.trackExport = function() {
+  AppStats.exports++;
+};
+</script>
 
 </body>
 </html>
