@@ -9942,6 +9942,66 @@ console.log("🚀 Stickman Shorts Engine — LIVE");
   };
 })();
 </script>
+<script>
+/* =========================
+   33 — FRONTEND POLISH
+   Error Overlay System
+   ========================= */
+
+(function () {
+  const overlay = document.createElement("div");
+  overlay.id = "errorOverlay";
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    font-family: system-ui, sans-serif;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:#111;
+      border:1px solid #ef4444;
+      border-radius:12px;
+      padding:24px;
+      max-width:420px;
+      color:white;
+      text-align:center;
+    ">
+      <div style="font-size:20px;margin-bottom:10px;">❌ Error</div>
+      <div id="errorText" style="font-size:14px;opacity:0.9;"></div>
+      <button id="errorCloseBtn" style="
+        margin-top:16px;
+        padding:8px 16px;
+        background:#ef4444;
+        border:none;
+        border-radius:6px;
+        color:white;
+        cursor:pointer;
+      ">Close</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#errorCloseBtn").onclick = () => {
+    overlay.style.display = "none";
+  };
+
+  window.showError = function (message = "Something went wrong") {
+    overlay.querySelector("#errorText").textContent = message;
+    overlay.style.display = "flex";
+  };
+
+  window.hideError = function () {
+    overlay.style.display = "none";
+  };
+})();
+</script>
 
 </body>
 </html>
