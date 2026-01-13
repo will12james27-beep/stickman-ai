@@ -9774,6 +9774,30 @@ window.buildUploadPayload = async function(videoBlob) {
   return form;
 };
 </script>
+<script>
+/* ============================
+   37 B — UPLOAD TRIGGER
+============================ */
+
+window.uploadToYouTube = async function(videoBlob) {
+  const payload = await buildUploadPayload(videoBlob);
+
+  // SERVER URL (keyin almashtiriladi)
+  const SERVER_URL = "/api/upload";
+
+  fetch(SERVER_URL, {
+    method: "POST",
+    body: payload
+  })
+  .then(r => r.json())
+  .then(res => {
+    alert("Upload started on server ✅");
+  })
+  .catch(err => {
+    alert("Upload failed ❌ (server not connected yet)");
+  });
+};
+</script>
 
 </body>
 </html>
