@@ -17111,6 +17111,110 @@ window.addEventListener("episode:ended", () => {
 
 console.log("23 H.18 — Auto A/B Testing Engine ready");
 </script>
+<script>
+/* ==========================================
+   4.1 — Character Registry & Role Binding
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   CHARACTER REGISTRY
+   ====================== */
+window.CharacterRegistry = {
+  enabled: true,
+
+  // stable IDs — NEVER CHANGE
+  characters: {
+    A: {
+      id: "A",
+      name: "LJ",
+      aliases: ["LJ"],
+      role: "protagonist",
+      visual: {
+        color: "#ffffff",
+        scale: 1
+      },
+      voice: {
+        pitch: 1,
+        speed: 1
+      }
+    },
+
+    B: {
+      id: "B",
+      name: "Faris",
+      aliases: ["Faris"],
+      role: "support",
+      visual: {
+        color: "#ffcc00",
+        scale: 1
+      },
+      voice: {
+        pitch: 0.95,
+        speed: 1
+      }
+    },
+
+    C: {
+      id: "C",
+      name: "Sander",
+      aliases: ["Sander"],
+      role: "comic",
+      visual: {
+        color: "#00ccff",
+        scale: 1
+      },
+      voice: {
+        pitch: 1.05,
+        speed: 1.05
+      }
+    }
+  },
+
+  /* ======================
+     LOOKUPS
+     ====================== */
+  getById(id) {
+    return this.characters[id] || null;
+  },
+
+  getByName(name) {
+    if (!name) return null;
+    const key = name.trim().toLowerCase();
+
+    return Object.values(this.characters).find(ch =>
+      ch.name.toLowerCase() === key ||
+      ch.aliases.some(a => a.toLowerCase() === key)
+    ) || null;
+  },
+
+  registerCharacter(def) {
+    if (!def?.id || this.characters[def.id]) return false;
+    this.characters[def.id] = def;
+    return true;
+  }
+};
+
+
+/* ======================
+   ROLE BINDING HELPERS
+   ====================== */
+window.resolveCharacter = function (token) {
+  if (!window.CharacterRegistry?.enabled) return null;
+  return CharacterRegistry.getByName(token);
+};
+
+
+/* ======================
+   DEBUG
+   ====================== */
+window.dumpCharacters = function () {
+  console.table(CharacterRegistry.characters);
+  return CharacterRegistry.characters;
+};
+
+console.log("4.1 — Character Registry ready");
+</script>
 
 </body>
 </html>
