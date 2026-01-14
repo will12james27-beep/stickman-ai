@@ -19688,6 +19688,137 @@ window.addEventListener("load", () => {
    ====================== */
 console.log("5.7 — Cloud Save + Share Link ready");
 </script>
+<script>
+/* ==========================================
+   6.0 — Release / Packaging (Production)
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   BUILD CONFIG
+   ====================== */
+window.BuildConfig = {
+  appName: "LJ Shorts Creator",
+  version: "1.0.0",
+  mode: "production", // development | production
+  aspectRatio: "9:16",
+  hideEditorUI: false, // true → export only
+  defaultExportName: "lj-short"
+};
+
+
+/* ======================
+   PRODUCTION SWITCH
+   ====================== */
+window.Production = {
+  enable() {
+    if (BuildConfig.mode !== "production") return;
+
+    // Disable console logs
+    console.log = function () {};
+    console.warn = function () {};
+
+    // Remove debug overlays
+    document
+      .querySelectorAll(
+        ".debug, .overlay-debug"
+      )
+      .forEach(el => el.remove());
+
+    // Lock aspect ratio
+    if (window.RenderLayer?.container) {
+      const c = RenderLayer.container;
+      c.style.aspectRatio = BuildConfig.aspectRatio;
+      c.style.maxWidth = "360px";
+      c.style.margin = "0 auto";
+    }
+
+    // Hide editor UI if needed
+    if (
+      BuildConfig.hideEditorUI &&
+      window.CreatorUI?.container
+    ) {
+      CreatorUI.container.style.display =
+        "none";
+    }
+
+    console.log(
+      "Production mode enabled",
+      BuildConfig
+    );
+  }
+};
+
+
+/* ======================
+   EXPORT NAME PATCH
+   ====================== */
+(function () {
+  const wait = setInterval(() => {
+    if (!window.RenderRecorder) return;
+    clearInterval(wait);
+
+    const originalDownload =
+      RenderRecorder.download;
+
+    RenderRecorder.download = function (url) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        BuildConfig.defaultExportName +
+        "-" +
+        Date.now() +
+        ".webm";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+  }, 300);
+})();
+
+
+/* ======================
+   RELEASE INFO BANNER
+   ====================== */
+(function () {
+  if (BuildConfig.mode !== "production")
+    return;
+
+  const badge = document.createElement("div");
+  badge.innerText =
+    BuildConfig.appName +
+    " v" +
+    BuildConfig.version;
+  Object.assign(badge.style, {
+    position: "fixed",
+    bottom: "6px",
+    right: "6px",
+    fontSize: "10px",
+    opacity: 0.6,
+    zIndex: 9999
+  });
+
+  document.body.appendChild(badge);
+})();
+
+
+/* ======================
+   AUTO ENABLE ON LOAD
+   ====================== */
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    Production.enable();
+  }, 300);
+});
+
+
+/* ======================
+   FINAL LOG (DEV ONLY)
+   ====================== */
+if (BuildConfig.mode !== "production") {
+  console.log("6.0 — Release system ready");
+}
+</script>
 
 </body>
 </html>
