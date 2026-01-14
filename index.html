@@ -14015,6 +14015,84 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.10 — Timeline Zoom Control
+   Visual scale adjustment
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  // expose scale globally (non-breaking)
+  if (!window.TimelineZoom) {
+    window.TimelineZoom = {
+      scale: 60,   // default px/sec
+      min: 30,
+      max: 140,
+      step: 10
+    };
+  }
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats[index]
+      : null;
+  }
+
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function applyWidth(el, duration) {
+    const s = window.TimelineZoom.scale;
+    const w = clamp(duration * s, 28, 320);
+    el.style.width = w + 'px';
+  }
+
+  function update() {
+    const els = getBeats();
+    els.forEach((el, i) => {
+      const beat = getBeatData(i);
+      if (!beat) return;
+      applyWidth(el, beat.duration || 1);
+    });
+  }
+
+  // keyboard zoom (editor friendly)
+  window.addEventListener('keydown', (e) => {
+    if (!e.altKey) return;
+
+    if (e.key === '=' || e.key === '+') {
+      TimelineZoom.scale = clamp(
+        TimelineZoom.scale + TimelineZoom.step,
+        TimelineZoom.min,
+        TimelineZoom.max
+      );
+    }
+
+    if (e.key === '-' || e.key === '_') {
+      TimelineZoom.scale = clamp(
+        TimelineZoom.scale - TimelineZoom.step,
+        TimelineZoom.min,
+        TimelineZoom.max
+      );
+    }
+  });
+
+  function loop() {
+    update();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
