@@ -14558,6 +14558,109 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 G.7 — Beat Ghost Preview
+   Drag preview + snap awareness
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats[index]
+      : null;
+  }
+
+  function snapTime(value) {
+    if (!window.TimelineGrid || !TimelineGrid.enabled) return value;
+    const step = TimelineGrid.step || 0.25;
+    return Math.round(value / step) * step;
+  }
+
+  function createGhost(el) {
+    const ghost = el.cloneNode(true);
+    ghost.classList.add('ep-beat-ghost');
+    ghost.style.pointerEvents = 'none';
+    ghost.style.opacity = '0.45';
+    ghost.style.position = 'absolute';
+    ghost.style.top = el.offsetTop + 'px';
+    ghost.style.zIndex = '999';
+    el.parentNode.appendChild(ghost);
+    return ghost;
+  }
+
+  // ghost styles
+  const style = document.createElement('style');
+  style.textContent = `
+    .ep-beat-ghost {
+      filter: grayscale(1);
+      outline: 1px dashed rgba(0,255,255,0.8);
+    }
+  `;
+  document.head.appendChild(style);
+
+  function enableGhostDrag(el, beat) {
+    if (el.__ghostBound) return;
+    el.__ghostBound = true;
+
+    let ghost = null;
+    let startX = 0;
+    let startLeft = 0;
+    let dragging = false;
+
+    el.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      startX = e.clientX;
+      startLeft = el.offsetLeft;
+      ghost = createGhost(el);
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging || !ghost) return;
+      const dx = e.clientX - startX;
+      const scale = (window.TimelineZoom && TimelineZoom.scale) || 60;
+      const rawTime = (startLeft + dx) / scale;
+      const snapped = snapTime(rawTime);
+      ghost.style.left = (snapped * scale) + 'px';
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+
+      if (ghost) {
+        ghost.remove();
+        ghost = null;
+      }
+    });
+  }
+
+  function update() {
+    const els = getBeats();
+    els.forEach((el, i) => {
+      const beat = getBeatData(i);
+      if (!beat) return;
+      enableGhostDrag(el, beat);
+    });
+  }
+
+  function loop() {
+    update();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
