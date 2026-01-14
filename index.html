@@ -12063,6 +12063,58 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.17 — Multi-Reaction Chain System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Reaction Chain Presets ---------- */
+const REACTION_CHAINS = {
+  shocked: ["exclaim", "sweat"],
+  angry: ["angry", "exclaim"],
+  surprised: ["exclaim"],
+  idea: ["idea", "exclaim"]
+};
+
+/* ---------- Trigger Reaction Chain ---------- */
+function triggerReactionChain(character, chain, gap = 260) {
+  if (!character || !Array.isArray(chain)) return;
+
+  chain.forEach((reaction, index) => {
+    setTimeout(() => {
+      triggerReactionFX(character, reaction);
+    }, index * gap);
+  });
+}
+
+/* ---------- Resolve Chain From Config ---------- */
+function resolveReactionChain(cfg) {
+  if (Array.isArray(cfg.reactionChain)) {
+    return cfg.reactionChain;
+  }
+
+  if (cfg.emotion && REACTION_CHAINS[cfg.emotion]) {
+    return REACTION_CHAINS[cfg.emotion];
+  }
+
+  return null;
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const chain = resolveReactionChain(cfg);
+    if (!chain) return;
+
+    const character = getOrCreateCharacter(cfg);
+    triggerReactionChain(character, chain);
+  });
+});
+</script>
 
 </body>
 </html>
