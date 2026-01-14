@@ -14407,6 +14407,54 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 G.5 — Auto Resolve Overlap (Ripple Push)
+   Timeline intelligent collision fix
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getBeatDataList() {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats
+      : [];
+  }
+
+  function snapTime(value) {
+    if (!window.TimelineGrid || !TimelineGrid.enabled) return value;
+    const step = TimelineGrid.step || 0.25;
+    return Math.round(value / step) * step;
+  }
+
+  function resolveOverlaps() {
+    const beats = getBeatDataList()
+      .filter(b => typeof b.start === 'number')
+      .sort((a, b) => a.start - b.start);
+
+    for (let i = 0; i < beats.length - 1; i++) {
+      const a = beats[i];
+      const b = beats[i + 1];
+
+      const aEnd = (a.start || 0) + (a.duration || 1);
+
+      if (aEnd > b.start) {
+        const pushed = snapTime(aEnd);
+        b.start = Math.max(pushed, b.start);
+      }
+    }
+  }
+
+  function loop() {
+    resolveOverlaps();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
