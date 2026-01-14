@@ -12518,6 +12518,34 @@ window.getCharacterProfile = function (id) {
   return CharacterProfiles[id] || CharacterProfiles.A;
 };
 </script>
+<script>
+/* =========================
+   23 D.8 — Profile → Renderer Adapter
+   Visual Injection Layer
+   SAFE MODE: append-only
+   ========================= */
+
+window.applyVisualProfile = function (ctx, profile) {
+  if (!ctx || !profile) return;
+
+  // stroke style
+  ctx.lineWidth = profile.stroke || ctx.lineWidth;
+  ctx.strokeStyle = profile.color || ctx.strokeStyle;
+
+  // scaling (used by renderer transform stack)
+  if (ctx.save && ctx.scale) {
+    ctx.save();
+    ctx.scale(profile.scale || 1, profile.scale || 1);
+  }
+};
+
+// optional restore helper
+window.restoreVisualProfile = function (ctx) {
+  if (ctx && ctx.restore) {
+    ctx.restore();
+  }
+};
+</script>
 
 </body>
 </html>
