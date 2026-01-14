@@ -11971,6 +11971,98 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.16 — Reaction FX System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Reaction FX Styles ---------- */
+(function injectReactionFXStyle() {
+  if (document.getElementById("reaction-fx-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "reaction-fx-style";
+  style.textContent = `
+    .reaction-fx {
+      position: absolute;
+      top: -18px;
+      right: -6px;
+      font-size: 18px;
+      pointer-events: none;
+      user-select: none;
+      animation: reaction-pop 0.9s ease-out forwards;
+    }
+
+    @keyframes reaction-pop {
+      0% {
+        transform: scale(0.5) translateY(6px);
+        opacity: 0;
+      }
+      30% {
+        transform: scale(1.2) translateY(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) translateY(-10px);
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Reaction Map ---------- */
+const REACTION_MAP = {
+  sweat: "😅",
+  exclaim: "❗",
+  angry: "😤",
+  idea: "💡"
+};
+
+/* ---------- Trigger Reaction FX ---------- */
+function triggerReactionFX(character, type) {
+  if (!character || !character.el) return;
+
+  const icon = REACTION_MAP[type];
+  if (!icon) return;
+
+  const fx = document.createElement("div");
+  fx.className = "reaction-fx";
+  fx.textContent = icon;
+
+  character.el.appendChild(fx);
+
+  setTimeout(() => {
+    fx.remove();
+  }, 900);
+}
+
+/* ---------- Auto Reaction Resolver ---------- */
+function resolveReactionFromConfig(cfg) {
+  if (cfg.reaction) return cfg.reaction;
+
+  if (cfg.emotion === "shocked") return "exclaim";
+  if (cfg.emotion === "angry") return "angry";
+  if (cfg.emotion === "surprised") return "exclaim";
+
+  return null;
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const reaction = resolveReactionFromConfig(cfg);
+    if (!reaction) return;
+
+    const character = getOrCreateCharacter(cfg);
+    triggerReactionFX(character, reaction);
+  });
+});
+</script>
 
 </body>
 </html>
