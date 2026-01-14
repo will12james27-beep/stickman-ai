@@ -12194,6 +12194,65 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =========================
+   23 D.1 — Scene Director
+   High-level Scene Flow
+   SAFE MODE: append-only
+   ========================= */
+
+window.SceneDirector = {
+  beats: [],
+  index: 0,
+  playing: false,
+
+  load(beatsArray) {
+    this.beats = beatsArray || [];
+    this.index = 0;
+  },
+
+  play() {
+    if (this.playing) return;
+    this.playing = true;
+    this._next();
+  },
+
+  pause() {
+    this.playing = false;
+  },
+
+  resume() {
+    if (this.playing) return;
+    this.playing = true;
+    this._next();
+  },
+
+  skip() {
+    this.index++;
+    this._next();
+  },
+
+  _next() {
+    if (!this.playing) return;
+    if (this.index >= this.beats.length) {
+      this.playing = false;
+      return;
+    }
+
+    const beat = this.beats[this.index];
+    this.index++;
+
+    if (window.runBeat) {
+      window.runBeat(beat, () => {
+        this._next();
+      });
+    } else {
+      // fallback safety
+      setTimeout(() => this._next(), 300);
+    }
+  }
+};
+</script>
 
 </body>
 </html>
