@@ -13067,6 +13067,65 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 E.8 — Beat Metadata Color Coding
+   Emotion & Speaker Visual Mapping
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  const emotionColors = {
+    happy: '#2ecc71',
+    angry: '#e74c3c',
+    sad: '#3498db',
+    fear: '#9b59b6',
+    surprise: '#f1c40f',
+    neutral: '#95a5a6'
+  };
+
+  const speakerColors = {};
+  const speakerPalette = [
+    '#1abc9c', '#e67e22', '#9b59b6',
+    '#3498db', '#e84393', '#16a085'
+  ];
+
+  function getSpeakerColor(name) {
+    if (!name) return '#777';
+    if (!speakerColors[name]) {
+      speakerColors[name] =
+        speakerPalette[
+          Object.keys(speakerColors).length % speakerPalette.length
+        ];
+    }
+    return speakerColors[name];
+  }
+
+  function applyColors() {
+    const s = document.getElementById('bmSpeaker');
+    const e = document.getElementById('bmEmotion');
+
+    if (s) {
+      const name = s.textContent;
+      s.style.color = getSpeakerColor(name);
+    }
+
+    if (e) {
+      const emo = e.textContent;
+      e.style.color = emotionColors[emo] || '#777';
+    }
+  }
+
+  function loop() {
+    applyColors();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
