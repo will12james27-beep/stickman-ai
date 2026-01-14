@@ -12115,6 +12115,85 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.18 — Beat Timing / Pause Control (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Beat Timing Presets ---------- */
+const BEAT_PRESETS = {
+  fast:   { delay: 0 },
+  normal: { delay: 180 },
+  pause:  { delay: 420 },
+  long:   { delay: 700 }
+};
+
+/* ---------- Apply Beat Delay ---------- */
+function applyBeatDelay(fn, beat = "normal") {
+  const preset = BEAT_PRESETS[beat] || BEAT_PRESETS.normal;
+  setTimeout(fn, preset.delay);
+}
+
+/* ---------- Beat-Aware Reaction Wrapper ---------- */
+function triggerReactionWithBeat(character, reaction, beat) {
+  applyBeatDelay(() => {
+    triggerReactionFX(character, reaction);
+  }, beat);
+}
+
+/* ---------- Beat-Aware Chain Wrapper ---------- */
+function triggerReactionChainWithBeat(character, chain, beat) {
+  applyBeatDelay(() => {
+    triggerReactionChain(character, chain);
+  }, beat);
+}
+
+/* ---------- Beat-Aware Camera Shake ---------- */
+function triggerCameraShakeWithBeat(intensity, beat) {
+  applyBeatDelay(() => {
+    triggerCameraShake(intensity);
+  }, beat);
+}
+
+/* ---------- Resolve Beat From Config ---------- */
+function resolveBeat(cfg) {
+  if (cfg.beat) return cfg.beat;
+
+  if (cfg.emotion === "shocked") return "pause";
+  if (cfg.emotion === "surprised") return "normal";
+  if (cfg.emotion === "angry") return "fast";
+
+  return "normal";
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const beat = resolveBeat(cfg);
+    const character = getOrCreateCharacter(cfg);
+
+    /* Reaction with beat */
+    if (cfg.reaction) {
+      triggerReactionWithBeat(character, cfg.reaction, beat);
+    }
+
+    /* Reaction chain with beat */
+    if (cfg.reactionChain) {
+      triggerReactionChainWithBeat(character, cfg.reactionChain, beat);
+    }
+
+    /* Camera shake with beat */
+    const shakeIntensity = shouldShakeFromConfig(cfg);
+    if (shakeIntensity) {
+      triggerCameraShakeWithBeat(shakeIntensity, beat);
+    }
+  });
+});
+</script>
 
 </body>
 </html>
