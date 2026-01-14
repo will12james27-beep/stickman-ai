@@ -13694,6 +13694,109 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.6 — Action Selector (Dropdown)
+   Beat Action Editing
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  const ACTIONS = [
+    'talk',
+    'move',
+    'react',
+    'idle'
+  ];
+
+  function getBeat(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return null;
+  }
+
+  function injectActionSelect() {
+    const panel = document.getElementById('beatInspector');
+    if (!panel || panel.__actionInjected) return;
+    panel.__actionInjected = true;
+
+    const wrap = document.createElement('div');
+    wrap.style.marginTop = '6px';
+
+    wrap.innerHTML = `
+      <div style="margin-top:6px">
+        <b>Action:</b><br/>
+        <select id="biActionSelect"
+          style="
+            width:100%;
+            background:#000;
+            color:#0f0;
+            border:1px solid #333;
+            padding:4px;
+            font-size:11px;
+            font-family:monospace;
+          ">
+        </select>
+      </div>
+    `;
+
+    panel.appendChild(wrap);
+
+    const select = wrap.querySelector('#biActionSelect');
+
+    select.addEventListener('change', () => {
+      if (!window.EditorState || EditorState.selectedBeat === null) return;
+      const beat = getBeat(EditorState.selectedBeat);
+      if (!beat) return;
+
+      const val = select.value;
+      if (val) {
+        beat.action = val;
+      } else {
+        delete beat.action;
+      }
+    });
+  }
+
+  function updateActionSelect() {
+    const select = document.getElementById('biActionSelect');
+    if (!select) return;
+
+    const isEditor =
+      window.EditorState && EditorState.selectedBeat !== null;
+
+    select.disabled = !isEditor;
+    select.style.opacity = isEditor ? '1' : '0.4';
+
+    // rebuild options
+    select.innerHTML = `<option value="">– none –</option>`;
+    ACTIONS.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a;
+      opt.textContent = a;
+      select.appendChild(opt);
+    });
+
+    if (!isEditor) {
+      select.value = '';
+      return;
+    }
+
+    const beat = getBeat(EditorState.selectedBeat);
+    select.value = (beat && beat.action) ? beat.action : '';
+  }
+
+  function loop() {
+    injectActionSelect();
+    updateActionSelect();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
