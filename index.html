@@ -12358,6 +12358,43 @@ window.SceneControl = {
   }
 };
 </script>
+<script>
+/* =========================
+   23 D.4 — Safe Jump / Reset Hooks
+   Seek Correctness Layer
+   SAFE MODE: append-only
+   ========================= */
+
+window.SceneReset = {
+  beforeSeek() {
+    // optional cleanup hooks
+    if (window.resetCamera) resetCamera();
+    if (window.resetReactions) resetReactions();
+    if (window.resetFX) resetFX();
+    if (window.resetEmotion) resetEmotion();
+    if (window.resetSpeech) resetSpeech();
+  }
+};
+
+// patch SceneControl jump / restart safely
+(function () {
+  const C = window.SceneControl;
+  if (!C) return;
+
+  const _jumpTo = C.jumpTo.bind(C);
+  const _restart = C.restart.bind(C);
+
+  C.jumpTo = function (beatIndex) {
+    if (window.SceneReset) SceneReset.beforeSeek();
+    _jumpTo(beatIndex);
+  };
+
+  C.restart = function () {
+    if (window.SceneReset) SceneReset.beforeSeek();
+    _restart();
+  };
+})();
+</script>
 
 </body>
 </html>
