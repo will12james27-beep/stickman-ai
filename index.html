@@ -15188,6 +15188,110 @@ window.addEventListener("episode:cta", e => {
 
 console.log("23 H.4 — Episode Loop / Replay / CTA ready");
 </script>
+<script>
+/* ==========================================
+   23 H.5 — Episode Queue / Series Flow
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   EPISODE QUEUE
+   ====================== */
+window.EpisodeQueue = {
+  list: [],
+  currentIndex: -1,
+
+  addEpisode(config) {
+    this.list.push(config);
+  },
+
+  clear() {
+    this.list = [];
+    this.currentIndex = -1;
+  },
+
+  hasNext() {
+    return this.currentIndex + 1 < this.list.length;
+  },
+
+  hasPrev() {
+    return this.currentIndex - 1 >= 0;
+  },
+
+  next() {
+    if (!this.hasNext()) return null;
+    this.currentIndex++;
+    return this.list[this.currentIndex];
+  },
+
+  prev() {
+    if (!this.hasPrev()) return null;
+    this.currentIndex--;
+    return this.list[this.currentIndex];
+  },
+
+  current() {
+    return this.list[this.currentIndex] || null;
+  }
+};
+
+
+/* ======================
+   SERIES FLOW
+   ====================== */
+window.SeriesFlow = {
+  startSeries() {
+    if (!EpisodeQueue.hasNext()) return;
+    const epConfig = EpisodeQueue.next();
+    EpisodeFlow.createEpisode(epConfig);
+    EpisodeFlow.play();
+  },
+
+  playNextEpisode() {
+    if (!EpisodeQueue.hasNext()) {
+      console.log("Series ended");
+      return;
+    }
+    const epConfig = EpisodeQueue.next();
+    EpisodeFlow.createEpisode(epConfig);
+    EpisodeFlow.play();
+  },
+
+  playPrevEpisode() {
+    if (!EpisodeQueue.hasPrev()) return;
+    const epConfig = EpisodeQueue.prev();
+    EpisodeFlow.createEpisode(epConfig);
+    EpisodeFlow.play();
+  }
+};
+
+
+/* ======================
+   AUTO NEXT ON END
+   ====================== */
+window.addEventListener("episode:ended", () => {
+  if (!EpisodeQueue.hasNext()) return;
+
+  // Shorts-style delay before next episode
+  setTimeout(() => {
+    SeriesFlow.playNextEpisode();
+  }, 500);
+});
+
+
+/* ======================
+   PUBLIC SERIES API
+   ====================== */
+window.startSeries = () => SeriesFlow.startSeries();
+window.nextEpisode = () => SeriesFlow.playNextEpisode();
+window.prevEpisode = () => SeriesFlow.playPrevEpisode();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("23 H.5 — Episode Queue / Series Flow ready");
+</script>
 
 </body>
 </html>
