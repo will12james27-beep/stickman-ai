@@ -15914,6 +15914,172 @@ window.addEventListener("keydown", e => {
    ====================== */
 console.log("23 H.10 — Flow Snapshot / Save–Load ready");
 </script>
+<script>
+/* ==========================================
+   23 H.11 — Branching / Choice-based Flow
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   BRANCH MODEL
+   ====================== */
+/*
+  beat.actions ichida quyidagi action bo‘lishi mumkin:
+
+  {
+    type: "choice",
+    id: "c1",
+    prompt: "WHAT SHOULD HE DO?",
+    options: [
+      { label: "RUN",  nextShot: 3 },
+      { label: "FIGHT", nextShot: 5 }
+    ],
+    timeout: 3000,       // optional
+    defaultNextShot: 3   // optional
+  }
+*/
+
+
+/* ======================
+   BRANCH RUNTIME
+   ====================== */
+window.BranchRuntime = {
+  active: false,
+  currentChoice: null,
+  timer: null
+};
+
+
+/* ======================
+   SHOW CHOICE (EVENT)
+   ====================== */
+window.showChoice = function (choice) {
+  BranchRuntime.active = true;
+  BranchRuntime.currentChoice = choice;
+
+  window.dispatchEvent(
+    new CustomEvent("choice:show", { detail: choice })
+  );
+
+  // auto-timeout fallback
+  if (choice.timeout && choice.defaultNextShot != null) {
+    BranchRuntime.timer = setTimeout(() => {
+      chooseOption(choice.defaultNextShot);
+    }, choice.timeout);
+  }
+};
+
+
+/* ======================
+   CHOOSE OPTION CORE
+   ====================== */
+window.chooseOption = function (nextShotIndex) {
+  if (!BranchRuntime.active) return;
+
+  if (BranchRuntime.timer) {
+    clearTimeout(BranchRuntime.timer);
+    BranchRuntime.timer = null;
+  }
+
+  const choice = BranchRuntime.currentChoice;
+
+  BranchRuntime.active = false;
+  BranchRuntime.currentChoice = null;
+
+  window.dispatchEvent(
+    new CustomEvent("choice:selected", {
+      detail: {
+        choiceId: choice?.id,
+        nextShot: nextShotIndex
+      }
+    })
+  );
+
+  // jump flow
+  if (typeof nextShotIndex === "number") {
+    EpisodeFlow.jumpToShot(nextShotIndex);
+  }
+};
+
+
+/* ======================
+   PATCH BEAT ACTION HANDLER
+   ====================== */
+(function () {
+  const originalDispatch = window.dispatchEvent;
+
+  window.dispatchEvent = function (event) {
+    // intercept choice action
+    if (
+      event?.type === "beat:action" &&
+      event.detail?.type === "choice"
+    ) {
+      showChoice(event.detail);
+      return true;
+    }
+    return originalDispatch.call(window, event);
+  };
+})();
+
+
+/* ======================
+   AUTO PAUSE ON CHOICE
+   ====================== */
+window.addEventListener("choice:show", () => {
+  if (EpisodeFlow?.pauseBeat) {
+    EpisodeFlow.pauseBeat();
+  }
+});
+
+
+/* ======================
+   RESUME SAFETY
+   ====================== */
+window.addEventListener("choice:selected", () => {
+  // beat is skipped by jump, ensure clean state
+  if (EpisodeFlow?._stopCurrentBeat) {
+    EpisodeFlow._stopCurrentBeat();
+  }
+});
+
+
+/* ======================
+   PUBLIC API (UI / CTA)
+   ====================== */
+window.selectChoice = index => {
+  const choice = BranchRuntime.currentChoice;
+  if (!choice || !choice.options?.[index]) return;
+
+  chooseOption(choice.options[index].nextShot);
+};
+
+
+/* ======================
+   KEYBOARD DEBUG
+   ====================== */
+// 1 / 2 / 3 keys select options
+window.addEventListener("keydown", e => {
+  if (!BranchRuntime.active) return;
+
+  if (e.code === "Digit1") selectChoice(0);
+  if (e.code === "Digit2") selectChoice(1);
+  if (e.code === "Digit3") selectChoice(2);
+});
+
+
+/* ======================
+   DEBUG
+   ====================== */
+window.addEventListener("choice:show", e => {
+  console.log("Choice shown:", e.detail);
+});
+
+window.addEventListener("choice:selected", e => {
+  console.log("Choice selected:", e.detail);
+});
+
+console.log("23 H.11 — Branching / Choice-based Flow ready");
+</script>
 
 </body>
 </html>
