@@ -10900,6 +10900,45 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.3 — Character Position & Scale System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Apply Position & Scale ---------- */
+function applyCharacterTransform(character, config) {
+  if (!character || !config) return;
+
+  const x = typeof config.x === "number" ? config.x : character.state.x;
+  const y = typeof config.y === "number" ? config.y : character.state.y;
+  const scale = typeof config.scale === "number" ? config.scale : (character.state.scale || 1);
+
+  character.state.x = x;
+  character.state.y = y;
+  character.state.scale = scale;
+
+  character.el.style.left = x + "%";
+  character.el.style.bottom = y + "%";
+  character.el.style.transform =
+    `translateX(-50%) scale(${scale})`;
+
+  /* ---------- Depth (Y-based) ---------- */
+  const depth = Math.round(1000 - y * 10);
+  character.el.style.zIndex = depth;
+}
+
+/* ---------- Extend Update Character ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+    applyCharacterTransform(character, cfg);
+  });
+});
+</script>
 
 </body>
 </html>
