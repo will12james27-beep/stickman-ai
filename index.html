@@ -10580,6 +10580,55 @@ document.addEventListener("timeline:shotChange", e => {
   ShotRenderer.applyShot(e.detail);
 });
 </script>
+<script>
+/* =====================================================
+   23 B.12 — Scene Renderer (Visual Layer) (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Scene Root ---------- */
+(function createSceneRoot() {
+  if (document.getElementById("scene-root")) return;
+
+  const scene = document.createElement("div");
+  scene.id = "scene-root";
+
+  Object.assign(scene.style, {
+    position: "fixed",
+    inset: "0",
+    overflow: "hidden",
+    backgroundColor: "#eaeaea",
+    zIndex: "0"
+  });
+
+  document.body.appendChild(scene);
+})();
+
+/* ---------- Scene Apply ---------- */
+function renderScene(sceneData) {
+  const root = document.getElementById("scene-root");
+  if (!root || !sceneData) return;
+
+  if (sceneData.color) {
+    root.style.backgroundColor = sceneData.color;
+  }
+
+  if (sceneData.image) {
+    root.style.backgroundImage = `url(${sceneData.image})`;
+    root.style.backgroundSize = "cover";
+    root.style.backgroundPosition = "center";
+  } else {
+    root.style.backgroundImage = "none";
+  }
+
+  console.log("🎨 Scene rendered:", sceneData);
+}
+
+/* ---------- Listen Scene Events ---------- */
+document.addEventListener("scene:apply", e => {
+  renderScene(e.detail);
+});
+</script>
 
 </body>
 </html>
