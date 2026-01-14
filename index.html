@@ -10939,6 +10939,50 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.4 — Character Facing Direction (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Apply Facing ---------- */
+function applyCharacterFacing(character, config) {
+  if (!character || !config) return;
+
+  let facing = config.facing;
+
+  /* Auto facing by movement */
+  if (!facing && typeof config.x === "number") {
+    if (typeof character.state.prevX === "number") {
+      facing = config.x < character.state.prevX ? "left" : "right";
+    }
+  }
+
+  if (!facing) {
+    facing = character.state.facing || "right";
+  }
+
+  character.state.facing = facing;
+  character.state.prevX = config.x ?? character.state.x;
+
+  const scale = character.state.scale || 1;
+  const flip = facing === "left" ? -1 : 1;
+
+  character.el.style.transform =
+    `translateX(-50%) scale(${flip * scale}, ${scale})`;
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+    applyCharacterFacing(character, cfg);
+  });
+});
+</script>
 
 </body>
 </html>
