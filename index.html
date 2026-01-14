@@ -17944,6 +17944,178 @@ console.log(
   "4.6 — Dialogue Bubble + Mouth Sync ready"
 );
 </script>
+<script>
+/* ==========================================
+   4.7 — Emotion Overlay & Reaction FX
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   EMOTION CONFIG
+   ====================== */
+window.EmotionFXConfig = {
+  map: {
+    happy: { emoji: "😄", fx: "bounce", color: "#fff8cc" },
+    laugh: { emoji: "😂", fx: "shake", color: "#fff0b3" },
+    angry: { emoji: "😡", fx: "shake", color: "#ffd6d6" },
+    surprised: { emoji: "😲", fx: "pop", color: "#e6f0ff" },
+    sad: { emoji: "😢", fx: "pulse", color: "#e6e6ff" },
+    neutral: { emoji: "", fx: null, color: null }
+  },
+  defaultDuration: 600
+};
+
+
+/* ======================
+   FX LAYER
+   ====================== */
+window.FXLayer = {
+  showEmoji(characterId, emoji, duration) {
+    if (!emoji) return;
+
+    const charEl = RenderLayer.characters[characterId];
+    if (!charEl) return;
+
+    const el = document.createElement("div");
+    el.innerText = emoji;
+
+    Object.assign(el.style, {
+      position: "absolute",
+      top: "-28px",
+      right: "-14px",
+      fontSize: "24px",
+      zIndex: 30,
+      animation: "fx-pop 0.3s ease-out"
+    });
+
+    charEl.appendChild(el);
+    setTimeout(() => el.remove(), duration);
+  },
+
+  applyColor(characterId, color, duration) {
+    if (!color) return;
+
+    const el = RenderLayer.characters[characterId];
+    if (!el) return;
+
+    const prev = el.style.background;
+    el.style.background = color;
+
+    setTimeout(() => {
+      el.style.background = prev;
+    }, duration);
+  },
+
+  applyFX(characterId, fx, duration) {
+    const el = RenderLayer.characters[characterId];
+    if (!el || !fx) return;
+
+    el.classList.add("fx-" + fx);
+
+    setTimeout(() => {
+      el.classList.remove("fx-" + fx);
+    }, duration);
+  }
+};
+
+
+/* ======================
+   FX STYLES (ONCE)
+   ====================== */
+(function injectFXStyles() {
+  if (document.getElementById("fx-styles")) return;
+
+  const style = document.createElement("style");
+  style.id = "fx-styles";
+  style.innerHTML = `
+    @keyframes fx-pop {
+      0% { transform: scale(0.3); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .fx-shake {
+      animation: fx-shake 0.3s linear infinite;
+    }
+    @keyframes fx-shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      50% { transform: translateX(2px); }
+      75% { transform: translateX(-2px); }
+      100% { transform: translateX(0); }
+    }
+    .fx-bounce {
+      animation: fx-bounce 0.4s ease infinite;
+    }
+    @keyframes fx-bounce {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .fx-pulse {
+      animation: fx-pulse 0.5s ease infinite;
+    }
+    @keyframes fx-pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+
+/* ======================
+   SHOT RENDER HOOK
+   ====================== */
+(function () {
+  const originalRenderShot = ShotRenderer.renderShot;
+
+  ShotRenderer.renderShot = function (shot) {
+    originalRenderShot.call(this, shot);
+
+    if (!shot?.sourceBeat) return;
+
+    shot.sourceBeat.actions.forEach(action => {
+      if (action.type === "emotion") {
+        const cfg =
+          EmotionFXConfig.map[action.value] ||
+          EmotionFXConfig.map.neutral;
+
+        const duration =
+          EmotionFXConfig.defaultDuration;
+
+        FXLayer.showEmoji(
+          action.characterId,
+          cfg.emoji,
+          duration
+        );
+        FXLayer.applyFX(
+          action.characterId,
+          cfg.fx,
+          duration
+        );
+        FXLayer.applyColor(
+          action.characterId,
+          cfg.color,
+          duration
+        );
+      }
+
+      if (action.type === "reaction") {
+        FXLayer.applyFX(
+          action.characterId,
+          "pop",
+          300
+        );
+      }
+    });
+  };
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("4.7 — Emotion Overlay & Reaction FX ready");
+</script>
 
 </body>
 </html>
