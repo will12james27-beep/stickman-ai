@@ -13126,6 +13126,54 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 E.9 — Active Beat Highlight
+   Timeline ↔ Inspector Visual Sync
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getBeatElements() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function highlightActiveBeat() {
+    if (!window.TimelineState) return;
+
+    const active = TimelineState.currentBeat;
+    const beats = getBeatElements();
+
+    beats.forEach((el, i) => {
+      if (i === active) {
+        el.classList.add('ep-beat-active');
+      } else {
+        el.classList.remove('ep-beat-active');
+      }
+    });
+  }
+
+  // style inject (SAFE)
+  const style = document.createElement('style');
+  style.textContent = `
+    .ep-beat-active {
+      outline: 2px solid #00ff99;
+      box-shadow: 0 0 6px rgba(0,255,153,0.8);
+      z-index: 2;
+    }
+  `;
+  document.head.appendChild(style);
+
+  function loop() {
+    highlightActiveBeat();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
