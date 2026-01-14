@@ -12747,6 +12747,69 @@ window.applyMicroVariation = function (value, charId, type) {
   });
 })();
 </script>
+<script>
+/* =========================
+   23 E.3 — Beat Markers & Active Highlight
+   Timeline Visual Layer
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+  const timeline = document.getElementById('epTimeline');
+  if (!timeline) return;
+
+  let markersBuilt = false;
+
+  function buildMarkers() {
+    if (!window.TimelineState) return;
+    if (markersBuilt) return;
+    if (TimelineState.totalBeats <= 0) return;
+
+    markersBuilt = true;
+
+    for (let i = 0; i < TimelineState.totalBeats; i++) {
+      const m = document.createElement('div');
+      m.className = 'epMarker';
+      m.dataset.index = i;
+      m.style.cssText = `
+        position:absolute;
+        left:${(i / TimelineState.totalBeats) * 100}%;
+        top:0;
+        width:2px;
+        height:100%;
+        background:#555;
+        opacity:0.7;
+        pointer-events:none;
+      `;
+      timeline.appendChild(m);
+    }
+  }
+
+  function updateActiveMarker() {
+    const markers = timeline.querySelectorAll('.epMarker');
+    markers.forEach(m => {
+      const idx = Number(m.dataset.index);
+      if (idx === TimelineState.currentBeat) {
+        m.style.background = '#0f0';
+        m.style.opacity = '1';
+      } else {
+        m.style.background = '#555';
+        m.style.opacity = '0.7';
+      }
+    });
+  }
+
+  function loop() {
+    if (window.TimelineState) {
+      buildMarkers();
+      updateActiveMarker();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+})();
+</script>
 
 </body>
 </html>
