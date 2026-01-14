@@ -17809,6 +17809,141 @@ window.playEpisodeRender = function () {
    ====================== */
 console.log("4.5 — Shot → Render Bridge ready");
 </script>
+<script>
+/* ==========================================
+   4.6 — Dialogue Bubble + Mouth Sync
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   BUBBLE LAYER
+   ====================== */
+window.DialogueLayer = {
+  bubbles: {},
+
+  show(characterId, text, duration) {
+    const charEl =
+      RenderLayer.characters[characterId];
+    if (!charEl) return;
+
+    let bubble = this.bubbles[characterId];
+
+    if (!bubble) {
+      bubble = document.createElement("div");
+      bubble.className = "dialogue-bubble";
+
+      Object.assign(bubble.style, {
+        position: "absolute",
+        bottom: "100%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        marginBottom: "10px",
+        padding: "8px 12px",
+        maxWidth: "200px",
+        background: "#fff",
+        border: "2px solid #000",
+        borderRadius: "14px",
+        fontFamily: "sans-serif",
+        fontSize: "14px",
+        textAlign: "center",
+        zIndex: 20,
+        opacity: "0",
+        transition: "opacity 0.2s ease"
+      });
+
+      charEl.appendChild(bubble);
+      this.bubbles[characterId] = bubble;
+    }
+
+    bubble.innerText = text;
+    bubble.style.opacity = "1";
+
+    setTimeout(() => {
+      bubble.style.opacity = "0";
+    }, duration);
+  }
+};
+
+
+/* ======================
+   MOUTH SYNC
+   ====================== */
+window.MouthSync = {
+  timers: {},
+
+  start(characterId, duration) {
+    const el =
+      RenderLayer.characters[characterId];
+    if (!el) return;
+
+    this.stop(characterId);
+
+    el.classList.add("talking");
+
+    const interval = setInterval(() => {
+      el.style.transform =
+        el.style.transform.includes("scale(1.4)")
+          ? "scale(1.35)"
+          : "scale(1.4)";
+    }, 120);
+
+    this.timers[characterId] = {
+      interval,
+      timeout: setTimeout(() => {
+        this.stop(characterId);
+      }, duration)
+    };
+  },
+
+  stop(characterId) {
+    const t = this.timers[characterId];
+    if (!t) return;
+
+    clearInterval(t.interval);
+    clearTimeout(t.timeout);
+
+    delete this.timers[characterId];
+  }
+};
+
+
+/* ======================
+   SHOT RENDER HOOK
+   ====================== */
+(function () {
+  const originalRenderShot =
+    ShotRenderer.renderShot;
+
+  ShotRenderer.renderShot = function (shot) {
+    originalRenderShot.call(this, shot);
+
+    if (!shot?.sourceBeat) return;
+
+    shot.sourceBeat.actions.forEach(action => {
+      if (action.type === "speech") {
+        DialogueLayer.show(
+          action.characterId,
+          action.text,
+          shot.duration * 1000
+        );
+
+        MouthSync.start(
+          action.characterId,
+          shot.duration * 1000
+        );
+      }
+    });
+  };
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log(
+  "4.6 — Dialogue Bubble + Mouth Sync ready"
+);
+</script>
 
 </body>
 </html>
