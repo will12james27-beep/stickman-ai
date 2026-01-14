@@ -13797,6 +13797,75 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.7 — Timeline Action Icons
+   Visual Beat Identification
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  const ACTION_ICONS = {
+    talk: '🗣️',
+    move: '🚶',
+    react: '😮',
+    idle: '•'
+  };
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return null;
+  }
+
+  function ensureIcon(el) {
+    let icon = el.querySelector('.ep-beat-icon');
+    if (!icon) {
+      icon = document.createElement('div');
+      icon.className = 'ep-beat-icon';
+      icon.style.cssText = `
+        position:absolute;
+        top:2px;
+        right:2px;
+        font-size:10px;
+        pointer-events:none;
+        opacity:0.8;
+      `;
+      el.style.position = 'relative';
+      el.appendChild(icon);
+    }
+    return icon;
+  }
+
+  function updateIcons() {
+    const beats = getBeats();
+    beats.forEach((el, i) => {
+      const beat = getBeatData(i);
+      const iconEl = ensureIcon(el);
+
+      if (beat && beat.action && ACTION_ICONS[beat.action]) {
+        iconEl.textContent = ACTION_ICONS[beat.action];
+        iconEl.style.display = 'block';
+      } else {
+        iconEl.style.display = 'none';
+      }
+    });
+  }
+
+  function loop() {
+    updateIcons();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
