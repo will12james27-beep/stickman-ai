@@ -12700,6 +12700,53 @@ window.applyMicroVariation = function (value, charId, type) {
   update();
 })();
 </script>
+<script>
+/* =========================
+   23 E.2 — Timeline Drag Scrubbing
+   Editor Interaction Layer
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+  const timeline = document.getElementById('epTimeline');
+  if (!timeline) return;
+
+  let scrubbing = false;
+
+  function scrubAt(clientX) {
+    if (!window.TimelineState || TimelineState.totalBeats <= 0) return;
+
+    const rect = timeline.getBoundingClientRect();
+    let x = clientX - rect.left;
+    x = Math.max(0, Math.min(rect.width, x));
+    const ratio = x / rect.width;
+    const beat = Math.floor(ratio * TimelineState.totalBeats);
+
+    if (window.SceneScrubber) {
+      SceneScrubber.scrubTo(beat);
+    }
+  }
+
+  timeline.addEventListener('mousedown', (e) => {
+    scrubbing = true;
+    scrubAt(e.clientX);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!scrubbing) return;
+    scrubAt(e.clientX);
+  });
+
+  window.addEventListener('mouseup', () => {
+    scrubbing = false;
+  });
+
+  // safety: stop scrubbing if mouse leaves window
+  window.addEventListener('blur', () => {
+    scrubbing = false;
+  });
+})();
+</script>
 
 </body>
 </html>
