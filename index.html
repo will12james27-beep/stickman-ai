@@ -13174,6 +13174,54 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 E.10 — Hover Beat Highlight
+   Hover vs Active Separation
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function attachHover() {
+    const beats = getBeats();
+    beats.forEach(el => {
+      if (el.__hoverBound) return;
+      el.__hoverBound = true;
+
+      el.addEventListener('mouseenter', () => {
+        el.classList.add('ep-beat-hover');
+      });
+
+      el.addEventListener('mouseleave', () => {
+        el.classList.remove('ep-beat-hover');
+      });
+    });
+  }
+
+  // hover style inject (SAFE)
+  const style = document.createElement('style');
+  style.textContent = `
+    .ep-beat-hover:not(.ep-beat-active) {
+      background: rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+    }
+  `;
+  document.head.appendChild(style);
+
+  function loop() {
+    attachHover();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
