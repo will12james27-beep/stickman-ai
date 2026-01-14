@@ -14093,6 +14093,73 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 G.1 — Timeline Snap Grid
+   Duration precision snapping
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  if (!window.TimelineGrid) {
+    window.TimelineGrid = {
+      enabled: true,
+      step: 0.25, // seconds
+      steps: [0.1, 0.25, 0.5, 1]
+    };
+  }
+
+  function snap(value) {
+    if (!TimelineGrid.enabled) return value;
+    const step = TimelineGrid.step;
+    return Math.round(value / step) * step;
+  }
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats[index]
+      : null;
+  }
+
+  function enhanceDurationSnap() {
+    const els = getBeats();
+    els.forEach((el, i) => {
+      const beat = getBeatData(i);
+      if (!beat || el.__snapBound) return;
+      el.__snapBound = true;
+
+      // hook into duration edits indirectly
+      Object.defineProperty(beat, '_duration', {
+        value: beat.duration || 1,
+        writable: true
+      });
+
+      Object.defineProperty(beat, 'duration', {
+        get() {
+          return this._duration;
+        },
+        set(v) {
+          const snapped = snap(parseFloat(v) || 0);
+          this._duration = Math.max(snapped, TimelineGrid.step);
+        }
+      });
+    });
+  }
+
+  function loop() {
+    enhanceDurationSnap();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
