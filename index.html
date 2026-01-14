@@ -16080,6 +16080,113 @@ window.addEventListener("choice:selected", e => {
 
 console.log("23 H.11 — Branching / Choice-based Flow ready");
 </script>
+<script>
+/* ==========================================
+   23 H.12 — Choice Analytics / Outcome Weighting
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   CHOICE ANALYTICS STORE
+   ====================== */
+window.ChoiceAnalytics = {
+  enabled: true,
+  data: {}, // episodeId -> choiceId -> stats
+
+  getChoice(epId, choiceId) {
+    if (!this.data[epId]) this.data[epId] = {};
+    if (!this.data[epId][choiceId]) {
+      this.data[epId][choiceId] = {
+        total: 0,
+        options: {} // nextShot -> count
+      };
+    }
+    return this.data[epId][choiceId];
+  }
+};
+
+
+/* ======================
+   RECORD SELECTION
+   ====================== */
+window.addEventListener("choice:selected", e => {
+  if (!ChoiceAnalytics.enabled) return;
+
+  const epId = EpisodeFlow?.episode?.id;
+  if (!epId) return;
+
+  const { choiceId, nextShot } = e.detail || {};
+  if (!choiceId || nextShot == null) return;
+
+  const choice = ChoiceAnalytics.getChoice(epId, choiceId);
+  choice.total++;
+
+  choice.options[nextShot] =
+    (choice.options[nextShot] || 0) + 1;
+});
+
+
+/* ======================
+   WEIGHT COMPUTATION
+   ====================== */
+window.ChoiceAnalytics.getWeightedNextShot = function (epId, choice) {
+  if (!this.enabled || !choice) return null;
+
+  const stats = this.data?.[epId]?.[choice.id];
+  if (!stats) return null;
+
+  let bestShot = null;
+  let bestScore = -Infinity;
+
+  Object.keys(stats.options).forEach(shot => {
+    const count = stats.options[shot];
+    const score = count / stats.total;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestShot = Number(shot);
+    }
+  });
+
+  return bestShot;
+};
+
+
+/* ======================
+   PATCH DEFAULT CHOICE
+   ====================== */
+(function () {
+  const originalShowChoice = window.showChoice;
+
+  window.showChoice = function (choice) {
+    const epId = EpisodeFlow?.episode?.id;
+
+    if (epId && ChoiceAnalytics.enabled) {
+      const weighted =
+        ChoiceAnalytics.getWeightedNextShot(epId, choice);
+
+      if (weighted != null) {
+        choice = Object.assign({}, choice, {
+          defaultNextShot: weighted
+        });
+      }
+    }
+
+    originalShowChoice(choice);
+  };
+})();
+
+
+/* ======================
+   DEBUG / INSPECT
+   ====================== */
+window.dumpChoiceAnalytics = function () {
+  console.table(ChoiceAnalytics.data);
+  return ChoiceAnalytics.data;
+};
+
+console.log("23 H.12 — Choice Analytics / Outcome Weighting ready");
+</script>
 
 </body>
 </html>
