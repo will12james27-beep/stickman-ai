@@ -15543,6 +15543,120 @@ window.addEventListener("keydown", e => {
    ====================== */
 console.log("23 H.7 — Flow Recorder / Playback ready");
 </script>
+<script>
+/* ==========================================
+   23 H.8 — Auto Beat Timing Optimizer
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   OPTIMIZER CONFIG
+   ====================== */
+window.BeatOptimizer = {
+  enabled: true,
+
+  // global multipliers (Shorts pacing)
+  minDuration: 120,   // ms
+  maxDuration: 1400,  // ms
+  fastFactor: 0.85,   // speed up
+  slowFactor: 1.15,   // slow down
+
+  rules: {
+    emotion: {
+      shock: 0.8,
+      angry: 0.85,
+      sad: 1.2,
+      calm: 1.1
+    },
+    dialog: {
+      short: 0.9,
+      long: 1.15
+    }
+  }
+};
+
+
+/* ======================
+   OPTIMIZE DURATION CORE
+   ====================== */
+window.BeatOptimizer.optimizeDuration = function (beat) {
+  if (!this.enabled || !beat || !beat.duration) return beat.duration;
+
+  let duration = beat.duration;
+  let factor = 1;
+
+  if (Array.isArray(beat.actions)) {
+    beat.actions.forEach(action => {
+      // Emotion-based tuning
+      if (action.type === "emotion") {
+        factor *= this.rules.emotion[action.value] || 1;
+      }
+
+      // Dialog length tuning
+      if (action.type === "dialog" && typeof action.text === "string") {
+        if (action.text.length < 15) {
+          factor *= this.rules.dialog.short;
+        } else if (action.text.length > 40) {
+          factor *= this.rules.dialog.long;
+        }
+      }
+    });
+  }
+
+  duration = Math.round(duration * factor);
+
+  // clamp
+  duration = Math.max(this.minDuration, duration);
+  duration = Math.min(this.maxDuration, duration);
+
+  return duration;
+};
+
+
+/* ======================
+   PATCH BEAT FLOW (SAFE)
+   ====================== */
+(function () {
+  const originalPlayBeat = window.BeatFlow.playBeat;
+
+  window.BeatFlow.playBeat = function (beat, onComplete) {
+    if (!beat) return;
+
+    // clone duration safely
+    const optimizedDuration = BeatOptimizer.optimizeDuration(beat);
+    const originalDuration = beat.duration;
+    beat.duration = optimizedDuration;
+
+    // call previous logic
+    originalPlayBeat.call(this, beat, onComplete);
+
+    // restore (no mutation leak)
+    beat.duration = originalDuration;
+  };
+})();
+
+
+/* ======================
+   RUNTIME TOGGLE
+   ====================== */
+window.toggleBeatOptimizer = function () {
+  BeatOptimizer.enabled = !BeatOptimizer.enabled;
+  console.log("BeatOptimizer:", BeatOptimizer.enabled ? "ON" : "OFF");
+};
+
+// Keyboard toggle (O)
+window.addEventListener("keydown", e => {
+  if (e.code === "KeyO") {
+    toggleBeatOptimizer();
+  }
+});
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("23 H.8 — Auto Beat Timing Optimizer ready");
+</script>
 
 </body>
 </html>
