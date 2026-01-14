@@ -16187,6 +16187,185 @@ window.dumpChoiceAnalytics = function () {
 
 console.log("23 H.12 — Choice Analytics / Outcome Weighting ready");
 </script>
+<script>
+/* ==========================================
+   23 H.13 — Global Series Learning
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   GLOBAL SERIES MEMORY
+   ====================== */
+window.SeriesMemory = {
+  enabled: true,
+  storageKey: "lj_series_memory",
+  data: {
+    // aggregates across episodes
+    emotionSkips: {},     // emotion -> count
+    choicePopularity: {}, // choiceId -> nextShot -> count
+    pacingFactor: 1       // global multiplier
+  },
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (raw) this.data = JSON.parse(raw);
+    } catch (e) {
+      console.warn("SeriesMemory load failed", e);
+    }
+  },
+
+  save() {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+    } catch (e) {
+      console.warn("SeriesMemory save failed", e);
+    }
+  }
+};
+
+// init
+SeriesMemory.load();
+
+
+/* ======================
+   COLLECT SIGNALS
+   ====================== */
+// Emotion skip heuristic (via beat:action with type=emotion + skip behavior)
+window.addEventListener("beat:action", e => {
+  if (!SeriesMemory.enabled) return;
+
+  const action = e.detail;
+  if (action?.type === "emotion") {
+    SeriesMemory.data.emotionSkips[action.value] =
+      (SeriesMemory.data.emotionSkips[action.value] || 0) + 0;
+  }
+});
+
+// If a beat is skipped, mark last emotion as less engaging
+window.addEventListener("keydown", e => {
+  if (e.code !== "KeyS") return; // skipBeat shortcut
+  const last = window.BeatRuntime?.currentBeat;
+  if (!last || !Array.isArray(last.actions)) return;
+
+  last.actions.forEach(a => {
+    if (a.type === "emotion") {
+      SeriesMemory.data.emotionSkips[a.value] =
+        (SeriesMemory.data.emotionSkips[a.value] || 0) + 1;
+    }
+  });
+
+  SeriesMemory.save();
+});
+
+// Choice aggregation across episodes
+window.addEventListener("choice:selected", e => {
+  if (!SeriesMemory.enabled) return;
+
+  const { choiceId, nextShot } = e.detail || {};
+  if (!choiceId || nextShot == null) return;
+
+  if (!SeriesMemory.data.choicePopularity[choiceId]) {
+    SeriesMemory.data.choicePopularity[choiceId] = {};
+  }
+
+  const map = SeriesMemory.data.choicePopularity[choiceId];
+  map[nextShot] = (map[nextShot] || 0) + 1;
+
+  SeriesMemory.save();
+});
+
+
+/* ======================
+   GLOBAL PACING UPDATE
+   ====================== */
+window.addEventListener("episode:ended", () => {
+  if (!SeriesMemory.enabled) return;
+
+  // Simple heuristic: if many skips overall, speed up globally
+  const totalEmotionSkips = Object.values(
+    SeriesMemory.data.emotionSkips
+  ).reduce((a, b) => a + b, 0);
+
+  let factor = 1;
+  if (totalEmotionSkips > 5) factor = 0.95;
+  if (totalEmotionSkips > 12) factor = 0.9;
+
+  // smooth
+  SeriesMemory.data.pacingFactor =
+    Math.round(
+      (SeriesMemory.data.pacingFactor * 0.7 + factor * 0.3) * 100
+    ) / 100;
+
+  SeriesMemory.save();
+});
+
+
+/* ======================
+   PATCH BEAT OPTIMIZER (SAFE)
+   ====================== */
+(function () {
+  if (!window.BeatOptimizer) return;
+
+  const originalOptimize = BeatOptimizer.optimizeDuration;
+
+  BeatOptimizer.optimizeDuration = function (beat) {
+    let duration = originalOptimize.call(this, beat);
+
+    if (SeriesMemory.enabled) {
+      duration = Math.round(duration * SeriesMemory.data.pacingFactor);
+    }
+
+    return duration;
+  };
+})();
+
+
+/* ======================
+   PATCH CHOICE DEFAULT (GLOBAL)
+   ====================== */
+(function () {
+  const originalShowChoice = window.showChoice;
+
+  window.showChoice = function (choice) {
+    if (!SeriesMemory.enabled || !choice?.id) {
+      return originalShowChoice(choice);
+    }
+
+    const pop = SeriesMemory.data.choicePopularity[choice.id];
+    if (pop) {
+      let best = null;
+      let bestCount = -Infinity;
+
+      Object.keys(pop).forEach(shot => {
+        if (pop[shot] > bestCount) {
+          bestCount = pop[shot];
+          best = Number(shot);
+        }
+      });
+
+      if (best != null) {
+        choice = Object.assign({}, choice, {
+          defaultNextShot: best
+        });
+      }
+    }
+
+    originalShowChoice(choice);
+  };
+})();
+
+
+/* ======================
+   DEBUG / INSPECT
+   ====================== */
+window.dumpSeriesMemory = function () {
+  console.table(SeriesMemory.data);
+  return SeriesMemory.data;
+};
+
+console.log("23 H.13 — Global Series Learning ready");
+</script>
 
 </body>
 </html>
