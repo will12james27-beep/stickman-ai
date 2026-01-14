@@ -13006,6 +13006,67 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 E.7 — Beat Metadata Preview
+   Speaker / Emotion / Action
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  const panel = document.getElementById('beatInspector');
+  if (!panel) return;
+
+  const meta = document.createElement('div');
+  meta.id = 'beatMeta';
+  meta.style.cssText = `
+    margin-top:6px;
+    padding-top:6px;
+    border-top:1px dashed #222;
+    font-size:11px;
+    color:#aaa;
+  `;
+
+  meta.innerHTML = `
+    <div><b>Speaker:</b> <span id="bmSpeaker">–</span></div>
+    <div><b>Emotion:</b> <span id="bmEmotion">–</span></div>
+    <div><b>Action:</b> <span id="bmAction">–</span></div>
+  `;
+
+  panel.appendChild(meta);
+
+  function getBeat(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return {};
+  }
+
+  function updateMeta() {
+    if (!window.TimelineState) return;
+
+    const idx = TimelineState.currentBeat;
+    const beat = getBeat(idx);
+
+    document.getElementById('bmSpeaker').textContent =
+      beat.speaker || '–';
+
+    document.getElementById('bmEmotion').textContent =
+      beat.emotion || '–';
+
+    document.getElementById('bmAction').textContent =
+      beat.action || '–';
+  }
+
+  function loop() {
+    updateMeta();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
