@@ -19410,6 +19410,159 @@ window.ProjectStorage = {
    ====================== */
 console.log("5.5 — Save / Load Projects ready");
 </script>
+<script>
+/* ==========================================
+   5.6 — Scene Props (Objects / Items)
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   PROP REGISTRY
+   ====================== */
+window.PropRegistry = {
+  types: {
+    table: {
+      label: "Table",
+      emoji: "🪑"
+    },
+    tree: {
+      label: "Tree",
+      emoji: "🌳"
+    },
+    door: {
+      label: "Door",
+      emoji: "🚪"
+    },
+    phone: {
+      label: "Phone",
+      emoji: "📱"
+    }
+  },
+  instances: []
+};
+
+
+/* ======================
+   PROP RENDERER
+   ====================== */
+window.PropRenderer = {
+  renderAll() {
+    if (!window.RenderLayer?.container) return;
+
+    // remove old props
+    RenderLayer.container
+      .querySelectorAll(".scene-prop")
+      .forEach(p => p.remove());
+
+    PropRegistry.instances.forEach(prop => {
+      const el = document.createElement("div");
+      el.className = "scene-prop";
+      el.innerText =
+        PropRegistry.types[prop.type]?.emoji ||
+        "⬛";
+
+      Object.assign(el.style, {
+        position: "absolute",
+        left: prop.x + "px",
+        top: prop.y + "px",
+        fontSize: 40 * prop.scale + "px",
+        zIndex: prop.layer === "front" ? 10 : 1,
+        pointerEvents: "none"
+      });
+
+      RenderLayer.container.appendChild(el);
+    });
+  }
+};
+
+
+/* ======================
+   PROP API
+   ====================== */
+window.SceneProps = {
+  add(type) {
+    PropRegistry.instances.push({
+      id: Date.now() + Math.random(),
+      type,
+      x: 200,
+      y: 300,
+      scale: 1,
+      layer: "back"
+    });
+    PropRenderer.renderAll();
+  },
+
+  clear() {
+    PropRegistry.instances = [];
+    PropRenderer.renderAll();
+  }
+};
+
+
+/* ======================
+   CREATOR UI EXTENSION
+   ====================== */
+(function () {
+  const waitUI = setInterval(() => {
+    if (!window.CreatorUI?.container) return;
+    clearInterval(waitUI);
+
+    const title = document.createElement("div");
+    title.innerText = "🧱 Scene Props";
+    title.style.fontWeight = "700";
+    title.style.marginTop = "12px";
+
+    const select = document.createElement("select");
+    select.style.width = "100%";
+    select.style.marginBottom = "6px";
+
+    Object.entries(PropRegistry.types).forEach(
+      ([id, t]) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.innerText = t.label;
+        select.appendChild(opt);
+      }
+    );
+
+    const addBtn = document.createElement("button");
+    addBtn.innerText = "➕ Add Prop";
+    addBtn.style.width = "100%";
+    addBtn.style.marginBottom = "6px";
+
+    const clearBtn = document.createElement("button");
+    clearBtn.innerText = "🗑 Clear Props";
+    clearBtn.style.width = "100%";
+
+    addBtn.onclick = () => {
+      SceneProps.add(select.value);
+    };
+
+    clearBtn.onclick = () => {
+      SceneProps.clear();
+    };
+
+    CreatorUI.container.appendChild(title);
+    CreatorUI.container.appendChild(select);
+    CreatorUI.container.appendChild(addBtn);
+    CreatorUI.container.appendChild(clearBtn);
+  }, 300);
+})();
+
+
+/* ======================
+   AUTO RENDER ON LOAD
+   ====================== */
+window.addEventListener("load", () => {
+  PropRenderer.renderAll();
+});
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("5.6 — Scene Props system ready");
+</script>
 
 </body>
 </html>
