@@ -14661,6 +14661,133 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* ===============================
+   23 H.1 — Episode Flow Orchestrator (Core)
+   SAFE MODE — APPEND ONLY
+   =============================== */
+
+/* =========
+   EPISODE
+   ========= */
+window.EpisodeFlow = {
+  episode: null,
+
+  createEpisode(config = {}) {
+    this.episode = {
+      id: config.id || ("ep_" + Date.now()),
+      shots: config.shots || [],
+      currentShotIndex: 0,
+      state: "idle" // idle | playing | paused | ended
+    };
+    return this.episode;
+  },
+
+  play() {
+    if (!this.episode || this.episode.state === "ended") return;
+    this.episode.state = "playing";
+    this._playCurrentShot();
+  },
+
+  pause() {
+    if (!this.episode) return;
+    this.episode.state = "paused";
+  },
+
+  resume() {
+    if (!this.episode) return;
+    if (this.episode.state === "paused") {
+      this.episode.state = "playing";
+      this._playCurrentShot();
+    }
+  },
+
+  _playCurrentShot() {
+    if (!this.episode) return;
+    const shot = this.episode.shots[this.episode.currentShotIndex];
+    if (!shot) {
+      this._endEpisode();
+      return;
+    }
+    ShotFlow.startShot(shot, () => {
+      this.episode.currentShotIndex++;
+      this._playCurrentShot();
+    });
+  },
+
+  _endEpisode() {
+    if (!this.episode) return;
+    this.episode.state = "ended";
+    console.log("Episode ended:", this.episode.id);
+  }
+};
+
+
+/* =========
+   SHOT
+   ========= */
+window.ShotFlow = {
+  startShot(shot, onFinish) {
+    if (!shot) return;
+
+    shot.currentBeatIndex = 0;
+    shot.started = true;
+    shot.finished = false;
+
+    this._playBeat(shot, onFinish);
+  },
+
+  _playBeat(shot, onFinish) {
+    const beat = shot.beats[shot.currentBeatIndex];
+
+    if (!beat) {
+      shot.finished = true;
+      if (typeof onFinish === "function") onFinish();
+      return;
+    }
+
+    BeatFlow.playBeat(beat, () => {
+      shot.currentBeatIndex++;
+      this._playBeat(shot, onFinish);
+    });
+  }
+};
+
+
+/* =========
+   BEAT
+   ========= */
+window.BeatFlow = {
+  playBeat(beat, onComplete) {
+    if (!beat) return;
+
+    const duration = beat.duration || 0;
+
+    // Fire actions (render layer tinglaydi)
+    if (Array.isArray(beat.actions)) {
+      beat.actions.forEach(action => {
+        window.dispatchEvent(
+          new CustomEvent("beat:action", { detail: action })
+        );
+      });
+    }
+
+    if (beat.autoNext === false) return;
+
+    setTimeout(() => {
+      if (typeof onComplete === "function") onComplete();
+    }, duration);
+  }
+};
+
+
+/* =========
+   DEBUG (Optional)
+   ========= */
+window.addEventListener("beat:action", e => {
+  console.log("Beat action:", e.detail);
+});
+</script>
 
 </body>
 </html>
