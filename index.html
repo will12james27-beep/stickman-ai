@@ -12313,6 +12313,51 @@ window.TimelineState = {
   };
 })();
 </script>
+<script>
+/* =========================
+   23 D.3 — External Scene Control API
+   SAFE MODE: append-only
+   ========================= */
+
+window.SceneControl = {
+  play() {
+    if (!window.SceneDirector) return;
+    SceneDirector.play();
+  },
+
+  pause() {
+    if (!window.SceneDirector) return;
+    SceneDirector.pause();
+  },
+
+  resume() {
+    if (!window.SceneDirector) return;
+    SceneDirector.resume();
+  },
+
+  restart() {
+    if (!window.SceneDirector) return;
+    if (!SceneDirector.beats) return;
+    SceneDirector.index = 0;
+    SceneDirector.playing = false;
+    SceneDirector.play();
+  },
+
+  jumpTo(beatIndex) {
+    if (!window.SceneDirector) return;
+    if (typeof beatIndex !== 'number') return;
+    if (beatIndex < 0 || beatIndex >= SceneDirector.beats.length) return;
+
+    SceneDirector.index = beatIndex;
+    SceneDirector.playing = false;
+    SceneDirector.play();
+  },
+
+  status() {
+    return window.TimelineState || null;
+  }
+};
+</script>
 
 </body>
 </html>
