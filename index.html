@@ -16652,6 +16652,170 @@ window.dumpAdaptiveDirector = function () {
 
 console.log("23 H.15 — Adaptive Director ONLINE");
 </script>
+<script>
+/* ==========================================
+   23 H.16 — Visual Debug Overlay (Director View)
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+(function () {
+  if (window.DirectorDebugOverlay) return;
+
+  window.DirectorDebugOverlay = {
+    enabled: true,
+    el: null,
+    lastUpdate: 0,
+
+    init() {
+      const box = document.createElement("div");
+      box.style.position = "fixed";
+      box.style.right = "10px";
+      box.style.bottom = "10px";
+      box.style.width = "280px";
+      box.style.maxHeight = "70vh";
+      box.style.overflow = "auto";
+      box.style.background = "rgba(0,0,0,0.75)";
+      box.style.color = "#0f0";
+      box.style.font = "12px monospace";
+      box.style.padding = "10px";
+      box.style.borderRadius = "8px";
+      box.style.zIndex = "99999";
+      box.style.pointerEvents = "none";
+      box.style.display = this.enabled ? "block" : "none";
+
+      box.innerHTML = "<b>🎬 Director Debug</b><hr>";
+      document.body.appendChild(box);
+      this.el = box;
+    },
+
+    toggle(force) {
+      this.enabled =
+        typeof force === "boolean" ? force : !this.enabled;
+      if (this.el) {
+        this.el.style.display = this.enabled ? "block" : "none";
+      }
+    },
+
+    render(data) {
+      if (!this.el || !this.enabled) return;
+
+      const now = performance.now();
+      if (now - this.lastUpdate < 100) return; // throttle
+      this.lastUpdate = now;
+
+      this.el.innerHTML = `
+<b>🎬 Director Debug</b>
+<hr>
+<b>Episode:</b> ${data.epId ?? "-"}<br>
+<b>Shot:</b> ${data.shotId ?? "-"}<br>
+<b>Choice:</b> ${data.choiceId ?? "-"}<br>
+<hr>
+<b>Decision:</b><br>
+• Final NextShot: <b>${data.finalShot ?? "-"}</b><br>
+<hr>
+<b>Weights:</b><br>
+• Local: ${data.weights?.choiceLocal}<br>
+• Global: ${data.weights?.choiceGlobal}<br>
+• Safety: ${data.weights?.safetyBias}<br>
+<hr>
+<b>Scores:</b><br>
+${Object.entries(data.scores || {})
+  .map(
+    ([k, v]) => `• ${k}: ${v.toFixed(3)}`
+  )
+  .join("<br>")}
+<hr>
+<b>Pacing:</b><br>
+• Global factor: ${data.pacingFactor ?? 1}
+`;
+    }
+  };
+
+  DirectorDebugOverlay.init();
+})();
+
+
+/* ======================
+   DIRECTOR ↔ OVERLAY LINK
+   ====================== */
+(function () {
+  if (!window.AdaptiveDirector) return;
+
+  const originalDecide =
+    AdaptiveDirector.decideNextShot.bind(AdaptiveDirector);
+
+  AdaptiveDirector.decideNextShot = function (ctx) {
+    const epId = ctx?.epId;
+    const choice = ctx?.choice;
+
+    const scores = {};
+    let finalShot = null;
+
+    /* ---- copy of decision logic (read-only) ---- */
+    if (window.ChoiceAnalytics && epId) {
+      const local =
+        ChoiceAnalytics.data?.[epId]?.[choice?.id];
+      if (local?.options && local.total > 0) {
+        Object.keys(local.options).forEach(shot => {
+          scores[shot] =
+            (scores[shot] || 0) +
+            (local.options[shot] / local.total) *
+              AdaptiveDirector.weights.choiceLocal;
+        });
+      }
+    }
+
+    if (window.SeriesMemory) {
+      const global =
+        SeriesMemory.data.choicePopularity?.[choice?.id];
+      if (global) {
+        const total = Object.values(global)
+          .reduce((a, b) => a + b, 0);
+
+        Object.keys(global).forEach(shot => {
+          scores[shot] =
+            (scores[shot] || 0) +
+            (global[shot] / total) *
+              AdaptiveDirector.weights.choiceGlobal;
+        });
+      }
+    }
+
+    Object.keys(scores).forEach(shot => {
+      if (scores[shot] > (scores[finalShot] ?? -Infinity)) {
+        finalShot = shot;
+      }
+    });
+
+    /* ---- render overlay ---- */
+    if (window.DirectorDebugOverlay) {
+      DirectorDebugOverlay.render({
+        epId,
+        shotId: AdaptiveDirector.lastShot,
+        choiceId: choice?.id,
+        finalShot,
+        scores,
+        weights: AdaptiveDirector.weights,
+        pacingFactor: window.SeriesMemory?.data?.pacingFactor
+      });
+    }
+
+    return originalDecide(ctx);
+  };
+})();
+
+
+/* ======================
+   HOTKEY TOGGLE (D)
+   ====================== */
+window.addEventListener("keydown", e => {
+  if (e.code === "KeyD" && e.ctrlKey) {
+    window.DirectorDebugOverlay?.toggle();
+  }
+});
+
+console.log("23 H.16 — Director Debug Overlay ready (Ctrl+D)");
+</script>
 
 </body>
 </html>
