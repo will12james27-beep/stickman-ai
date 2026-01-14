@@ -15657,6 +15657,111 @@ window.addEventListener("keydown", e => {
    ====================== */
 console.log("23 H.8 — Auto Beat Timing Optimizer ready");
 </script>
+<script>
+/* ==========================================
+   23 H.9 — Adaptive Flow Memory / Learning Hook
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   FLOW MEMORY STORAGE
+   ====================== */
+window.FlowMemory = {
+  enabled: true,
+  memory: {}, // episodeId -> stats
+
+  getEpisode(epId) {
+    if (!this.memory[epId]) {
+      this.memory[epId] = {
+        plays: 0,
+        pauses: 0,
+        skips: 0,
+        avgBeatDurationFactor: 1
+      };
+    }
+    return this.memory[epId];
+  }
+};
+
+
+/* ======================
+   LEARNING SIGNALS
+   ====================== */
+window.addEventListener("episode:ended", e => {
+  if (!FlowMemory.enabled) return;
+  const ep = FlowMemory.getEpisode(e.detail.id);
+  ep.plays++;
+});
+
+window.addEventListener("beat:paused", () => {
+  if (!FlowMemory.enabled) return;
+  const epId = EpisodeFlow?.episode?.id;
+  if (!epId) return;
+  FlowMemory.getEpisode(epId).pauses++;
+});
+
+window.addEventListener("beat:action", action => {
+  if (!FlowMemory.enabled) return;
+  const epId = EpisodeFlow?.episode?.id;
+  if (!epId) return;
+
+  // heuristic: skip action marks impatience
+  if (action?.detail?.type === "skip") {
+    FlowMemory.getEpisode(epId).skips++;
+  }
+});
+
+
+/* ======================
+   ADAPTIVE FACTOR CORE
+   ====================== */
+window.FlowMemory.computeFactor = function (epId) {
+  const data = this.getEpisode(epId);
+
+  let factor = 1;
+
+  if (data.pauses > 3) factor *= 1.05; // too fast → slow slightly
+  if (data.skips > 2) factor *= 0.9;  // boring → speed up
+
+  data.avgBeatDurationFactor =
+    Math.round((data.avgBeatDurationFactor * 0.7 + factor * 0.3) * 100) / 100;
+
+  return data.avgBeatDurationFactor;
+};
+
+
+/* ======================
+   PATCH OPTIMIZER (SAFE)
+   ====================== */
+(function () {
+  if (!window.BeatOptimizer) return;
+
+  const originalOptimize = BeatOptimizer.optimizeDuration;
+
+  BeatOptimizer.optimizeDuration = function (beat) {
+    let duration = originalOptimize.call(this, beat);
+
+    const epId = EpisodeFlow?.episode?.id;
+    if (!epId || !FlowMemory.enabled) return duration;
+
+    const adaptiveFactor = FlowMemory.computeFactor(epId);
+    duration = Math.round(duration * adaptiveFactor);
+
+    return duration;
+  };
+})();
+
+
+/* ======================
+   DEBUG / INSPECTOR
+   ====================== */
+window.dumpFlowMemory = function () {
+  console.table(FlowMemory.memory);
+  return FlowMemory.memory;
+};
+
+console.log("23 H.9 — Adaptive Flow Memory / Learning ready");
+</script>
 
 </body>
 </html>
