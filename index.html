@@ -16366,6 +16366,154 @@ window.dumpSeriesMemory = function () {
 
 console.log("23 H.13 — Global Series Learning ready");
 </script>
+<script>
+/* ==========================================
+   23 H.14 — Hard Rules / Safety Constraints
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   GLOBAL SAFETY CONFIG
+   ====================== */
+window.EngineSafety = {
+  enabled: true,
+
+  pacing: {
+    min: 300,   // ms
+    max: 6000,  // ms
+    globalMinFactor: 0.85,
+    globalMaxFactor: 1.15
+  },
+
+  choice: {
+    maxSameDefault: 3 // same defaultNextShot repetition limit
+  },
+
+  loop: {
+    maxRepeats: 2 // same shot repeated N times
+  }
+};
+
+
+/* ======================
+   PACING CLAMP
+   ====================== */
+(function () {
+  if (!window.BeatOptimizer) return;
+
+  const originalOptimize = BeatOptimizer.optimizeDuration;
+
+  BeatOptimizer.optimizeDuration = function (beat) {
+    let duration = originalOptimize.call(this, beat);
+
+    if (!EngineSafety.enabled) return duration;
+
+    const min = EngineSafety.pacing.min;
+    const max = EngineSafety.pacing.max;
+
+    duration = Math.max(min, Math.min(max, duration));
+    return duration;
+  };
+})();
+
+
+/* ======================
+   GLOBAL PACING LIMITER
+   ====================== */
+(function () {
+  if (!window.SeriesMemory) return;
+
+  const mem = SeriesMemory.data;
+  if (!mem) return;
+
+  mem.pacingFactor = Math.max(
+    EngineSafety.pacing.globalMinFactor,
+    Math.min(
+      EngineSafety.pacing.globalMaxFactor,
+      mem.pacingFactor || 1
+    )
+  );
+})();
+
+
+/* ======================
+   CHOICE REPETITION GUARD
+   ====================== */
+(function () {
+  const originalShowChoice = window.showChoice;
+  const defaultHistory = {};
+
+  window.showChoice = function (choice) {
+    if (!EngineSafety.enabled || !choice?.defaultNextShot) {
+      return originalShowChoice(choice);
+    }
+
+    const id = choice.id || "_global";
+    defaultHistory[id] = defaultHistory[id] || [];
+
+    defaultHistory[id].push(choice.defaultNextShot);
+
+    const recent = defaultHistory[id].slice(
+      -EngineSafety.choice.maxSameDefault
+    );
+
+    const allSame = recent.every(
+      s => s === recent[0]
+    );
+
+    if (allSame && recent.length >= EngineSafety.choice.maxSameDefault) {
+      // disable forced default, let normal randomness happen
+      choice = Object.assign({}, choice);
+      delete choice.defaultNextShot;
+    }
+
+    originalShowChoice(choice);
+  };
+})();
+
+
+/* ======================
+   LOOP GUARD (SHOT LEVEL)
+   ====================== */
+(function () {
+  const history = [];
+
+  window.addEventListener("shot:enter", e => {
+    if (!EngineSafety.enabled) return;
+
+    const shot = e.detail?.id;
+    if (shot == null) return;
+
+    history.push(shot);
+
+    const recent = history.slice(
+      -EngineSafety.loop.maxRepeats
+    );
+
+    if (
+      recent.length === EngineSafety.loop.maxRepeats &&
+      recent.every(s => s === recent[0])
+    ) {
+      console.warn("Loop guard triggered, forcing advance");
+
+      window.dispatchEvent(
+        new CustomEvent("shot:forceAdvance")
+      );
+    }
+  });
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+window.dumpEngineSafety = function () {
+  console.table(EngineSafety);
+  return EngineSafety;
+};
+
+console.log("23 H.14 — Hard Safety Constraints active");
+</script>
 
 </body>
 </html>
