@@ -13361,6 +13361,114 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.3 — Editable Beat Label
+   Inspector Input (Enter to Save)
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getEffectiveBeatIndex() {
+    if (window.EditorState && EditorState.selectedBeat !== null) {
+      return EditorState.selectedBeat;
+    }
+    if (window.TimelineState) {
+      return TimelineState.currentBeat;
+    }
+    return null;
+  }
+
+  function getBeat(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return null;
+  }
+
+  // create input once
+  function injectLabelInput() {
+    const panel = document.getElementById('beatInspector');
+    if (!panel || panel.__labelInjected) return;
+    panel.__labelInjected = true;
+
+    const row = document.createElement('div');
+    row.style.marginTop = '6px';
+
+    row.innerHTML = `
+      <div style="margin-top:4px">
+        <b>Label edit:</b><br/>
+        <input id="biLabelInput"
+          type="text"
+          placeholder="type label + Enter"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            background:#000;
+            color:#0f0;
+            border:1px solid #333;
+            padding:4px;
+            font-size:11px;
+            font-family:monospace;
+          "
+        />
+      </div>
+    `;
+
+    panel.appendChild(row);
+
+    const input = row.querySelector('#biLabelInput');
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const idx = getEffectiveBeatIndex();
+        const beat = getBeat(idx);
+        if (!beat) return;
+
+        const val = input.value.trim();
+        if (val) {
+          beat.label = val;
+        } else {
+          delete beat.label;
+        }
+        input.blur();
+      }
+
+      if (e.key === 'Escape') {
+        input.blur();
+      }
+    });
+  }
+
+  function updateInputState() {
+    const input = document.getElementById('biLabelInput');
+    if (!input) return;
+
+    const isEditor =
+      window.EditorState && EditorState.selectedBeat !== null;
+
+    input.disabled = !isEditor;
+    input.style.opacity = isEditor ? '1' : '0.4';
+
+    if (!isEditor) {
+      input.value = '';
+      return;
+    }
+
+    const beat = getBeat(EditorState.selectedBeat);
+    input.value = beat && beat.label ? beat.label : '';
+  }
+
+  function loop() {
+    injectLabelInput();
+    updateInputState();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
