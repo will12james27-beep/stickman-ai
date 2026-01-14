@@ -15762,6 +15762,158 @@ window.dumpFlowMemory = function () {
 
 console.log("23 H.9 — Adaptive Flow Memory / Learning ready");
 </script>
+<script>
+/* ==========================================
+   23 H.10 — Flow Snapshot / Save–Load
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   SNAPSHOT CORE
+   ====================== */
+window.FlowSnapshot = {
+  enabled: true,
+  storageKey: "lj_flow_snapshot",
+
+  create() {
+    if (!this.enabled || !window.EpisodeFlow?.episode) return null;
+
+    const ep = EpisodeFlow.episode;
+    const shot = ep.shots?.[ep.currentShotIndex] || null;
+
+    return {
+      timestamp: Date.now(),
+      episodeId: ep.id,
+      episodeState: ep.state,
+      currentShotIndex: ep.currentShotIndex,
+      currentBeatIndex: shot ? shot.currentBeatIndex : 0,
+      beatRemaining: window.BeatRuntime?.remaining || 0,
+      optimizerEnabled: window.BeatOptimizer?.enabled ?? true,
+      memory: window.FlowMemory?.memory || {}
+    };
+  },
+
+  save() {
+    const snap = this.create();
+    if (!snap) return;
+
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(snap));
+      console.log("FlowSnapshot saved", snap);
+    } catch (e) {
+      console.warn("FlowSnapshot save failed", e);
+    }
+  },
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      console.warn("FlowSnapshot load failed", e);
+      return null;
+    }
+  },
+
+  clear() {
+    localStorage.removeItem(this.storageKey);
+    console.log("FlowSnapshot cleared");
+  }
+};
+
+
+/* ======================
+   RESTORE ENGINE
+   ====================== */
+window.FlowSnapshot.restore = function () {
+  const snap = this.load();
+  if (!snap || !EpisodeFlow?.episode) return;
+
+  const ep = EpisodeFlow.episode;
+
+  // stop current activity safely
+  if (EpisodeFlow._stopCurrentBeat) EpisodeFlow._stopCurrentBeat();
+
+  // restore episode indices
+  ep.currentShotIndex = snap.currentShotIndex || 0;
+  ep.state = snap.episodeState || "paused";
+
+  // restore shots
+  ep.shots.forEach((shot, i) => {
+    shot.started = i < ep.currentShotIndex;
+    shot.finished = i < ep.currentShotIndex;
+    shot.currentBeatIndex = 0;
+  });
+
+  const currentShot = ep.shots[ep.currentShotIndex];
+  if (currentShot) {
+    currentShot.currentBeatIndex = snap.currentBeatIndex || 0;
+    currentShot.started = true;
+    currentShot.finished = false;
+  }
+
+  // restore optimizer + memory
+  if (window.BeatOptimizer) {
+    BeatOptimizer.enabled = snap.optimizerEnabled;
+  }
+
+  if (window.FlowMemory) {
+    FlowMemory.memory = snap.memory || {};
+  }
+
+  console.log("FlowSnapshot restored", snap);
+
+  // resume beat if possible
+  if (ep.state === "playing" && currentShot) {
+    ShotFlow._playBeat(currentShot, () => {
+      ep.currentShotIndex++;
+      EpisodeFlow._playCurrentShot();
+    });
+  }
+};
+
+
+/* ======================
+   AUTO SAVE HOOKS
+   ====================== */
+window.addEventListener("beat:paused", () => {
+  FlowSnapshot.save();
+});
+
+window.addEventListener("episode:ended", () => {
+  FlowSnapshot.clear(); // clean snapshot on normal end
+});
+
+
+/* ======================
+   PUBLIC API
+   ====================== */
+window.saveFlow = () => FlowSnapshot.save();
+window.loadFlow = () => FlowSnapshot.restore();
+window.clearFlow = () => FlowSnapshot.clear();
+
+
+/* ======================
+   KEYBOARD SHORTCUTS
+   ====================== */
+// Ctrl + Shift + S — Save
+// Ctrl + Shift + L — Load
+// Ctrl + Shift + C — Clear
+window.addEventListener("keydown", e => {
+  if (!e.ctrlKey || !e.shiftKey) return;
+
+  if (e.code === "KeyS") saveFlow();
+  if (e.code === "KeyL") loadFlow();
+  if (e.code === "KeyC") clearFlow();
+});
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("23 H.10 — Flow Snapshot / Save–Load ready");
+</script>
 
 </body>
 </html>
