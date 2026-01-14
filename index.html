@@ -14326,6 +14326,87 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 G.4 — Beat Overlap Detection
+   Collision warning system
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats[index]
+      : null;
+  }
+
+  function clearOverlapStyles(el) {
+    el.classList.remove('ep-beat-overlap');
+  }
+
+  function markOverlap(el) {
+    el.classList.add('ep-beat-overlap');
+  }
+
+  // inject overlap styles (SAFE)
+  const style = document.createElement('style');
+  style.textContent = `
+    .ep-beat-overlap {
+      box-shadow: inset 0 0 0 2px rgba(255,0,0,0.9);
+      background: rgba(255,0,0,0.15) !important;
+    }
+  `;
+  document.head.appendChild(style);
+
+  function checkOverlaps() {
+    const els = getBeats();
+    const beats = [];
+
+    els.forEach((el, i) => {
+      const beat = getBeatData(i);
+      if (!beat) return;
+
+      const start = beat.start || 0;
+      const dur = beat.duration || 1;
+      beats.push({
+        el,
+        start,
+        end: start + dur
+      });
+    });
+
+    // sort by start time
+    beats.sort((a, b) => a.start - b.start);
+
+    // clear all first
+    beats.forEach(b => clearOverlapStyles(b.el));
+
+    // detect overlaps
+    for (let i = 0; i < beats.length - 1; i++) {
+      const a = beats[i];
+      const b = beats[i + 1];
+
+      if (a.end > b.start) {
+        markOverlap(a.el);
+        markOverlap(b.el);
+      }
+    }
+  }
+
+  function loop() {
+    checkOverlaps();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
