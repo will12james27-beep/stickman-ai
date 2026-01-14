@@ -10766,6 +10766,91 @@ document.addEventListener("text:apply", e => {
   renderText(e.detail);
 });
 </script>
+<script>
+/* =====================================================
+   23 C.1 — Character Spawn System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Character Layer ---------- */
+(function createCharacterLayer() {
+  const scene = document.getElementById("camera-wrapper") || 
+                document.getElementById("scene-root");
+  if (!scene) return;
+
+  if (document.getElementById("character-layer")) return;
+
+  const layer = document.createElement("div");
+  layer.id = "character-layer";
+
+  Object.assign(layer.style, {
+    position: "absolute",
+    inset: "0",
+    pointerEvents: "none",
+    zIndex: "5"
+  });
+
+  scene.appendChild(layer);
+})();
+
+/* ---------- Character Registry ---------- */
+window.Characters = {};
+
+/* ---------- Spawn Character ---------- */
+function spawnCharacter(config) {
+  if (!config || !config.id) return;
+
+  if (Characters[config.id]) {
+    console.warn("Character already exists:", config.id);
+    return Characters[config.id];
+  }
+
+  const layer = document.getElementById("character-layer");
+  if (!layer) return;
+
+  const el = document.createElement("div");
+  el.className = "stickman";
+  el.dataset.id = config.id;
+
+  Object.assign(el.style, {
+    position: "absolute",
+    width: "40px",
+    height: "80px",
+    left: (config.x || 50) + "%",
+    bottom: (config.y || 10) + "%",
+    transform: "translateX(-50%)",
+    background: "#000",
+    borderRadius: "8px"
+  });
+
+  layer.appendChild(el);
+
+  const character = {
+    id: config.id,
+    el,
+    state: {
+      x: config.x || 50,
+      y: config.y || 10,
+      emotion: "neutral"
+    }
+  };
+
+  Characters[config.id] = character;
+
+  console.log("🧍 Character spawned:", config.id);
+  return character;
+}
+
+/* ---------- Shot Character Apply ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    spawnCharacter(cfg);
+  });
+});
+</script>
 
 </body>
 </html>
