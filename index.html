@@ -16514,6 +16514,144 @@ window.dumpEngineSafety = function () {
 
 console.log("23 H.14 — Hard Safety Constraints active");
 </script>
+<script>
+/* ==========================================
+   23 H.15 — Adaptive Director (Final Layer)
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   DIRECTOR CORE
+   ====================== */
+window.AdaptiveDirector = {
+  enabled: true,
+
+  weights: {
+    choiceLocal: 0.4,   // ChoiceAnalytics (episode)
+    choiceGlobal: 0.4,  // SeriesMemory (all episodes)
+    safetyBias: 0.2     // EngineSafety influence
+  },
+
+  decideNextShot({ epId, choice }) {
+    if (!this.enabled || !choice) return null;
+
+    const scores = {};
+
+    /* ---------- LOCAL (episode) ---------- */
+    if (window.ChoiceAnalytics && epId) {
+      const local =
+        ChoiceAnalytics.data?.[epId]?.[choice.id];
+      if (local?.options && local.total > 0) {
+        Object.keys(local.options).forEach(shot => {
+          scores[shot] =
+            (scores[shot] || 0) +
+            (local.options[shot] / local.total) *
+              this.weights.choiceLocal;
+        });
+      }
+    }
+
+    /* ---------- GLOBAL (series) ---------- */
+    if (window.SeriesMemory) {
+      const global =
+        SeriesMemory.data.choicePopularity?.[choice.id];
+      if (global) {
+        const total = Object.values(global)
+          .reduce((a, b) => a + b, 0);
+
+        Object.keys(global).forEach(shot => {
+          scores[shot] =
+            (scores[shot] || 0) +
+            (global[shot] / total) *
+              this.weights.choiceGlobal;
+        });
+      }
+    }
+
+    /* ---------- SAFETY BIAS ---------- */
+    if (window.EngineSafety) {
+      Object.keys(scores).forEach(shot => {
+        // penalize recent loops
+        if (
+          window.EngineSafety.loop &&
+          window.EngineSafety.loop.maxRepeats <= 2
+        ) {
+          scores[shot] *= 0.95;
+        }
+      });
+    }
+
+    /* ---------- FINAL PICK ---------- */
+    let bestShot = null;
+    let bestScore = -Infinity;
+
+    Object.keys(scores).forEach(shot => {
+      if (scores[shot] > bestScore) {
+        bestScore = scores[shot];
+        bestShot = Number(shot);
+      }
+    });
+
+    return bestShot;
+  }
+};
+
+
+/* ======================
+   PATCH CHOICE ENTRY
+   ====================== */
+(function () {
+  const originalShowChoice = window.showChoice;
+
+  window.showChoice = function (choice) {
+    if (!AdaptiveDirector.enabled) {
+      return originalShowChoice(choice);
+    }
+
+    const epId = EpisodeFlow?.episode?.id;
+
+    const decided =
+      AdaptiveDirector.decideNextShot({
+        epId,
+        choice
+      });
+
+    if (decided != null) {
+      choice = Object.assign({}, choice, {
+        defaultNextShot: decided
+      });
+    }
+
+    originalShowChoice(choice);
+  };
+})();
+
+
+/* ======================
+   DIRECTOR FEEDBACK LOOP
+   ====================== */
+window.addEventListener("shot:enter", e => {
+  if (!AdaptiveDirector.enabled) return;
+
+  // feedback hook for future expansion
+  AdaptiveDirector.lastShot = e.detail?.id;
+});
+
+
+/* ======================
+   DEBUG / INSPECT
+   ====================== */
+window.dumpAdaptiveDirector = function () {
+  console.table({
+    enabled: AdaptiveDirector.enabled,
+    weights: AdaptiveDirector.weights,
+    lastShot: AdaptiveDirector.lastShot
+  });
+  return AdaptiveDirector;
+};
+
+console.log("23 H.15 — Adaptive Director ONLINE");
+</script>
 
 </body>
 </html>
