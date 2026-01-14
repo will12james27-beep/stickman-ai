@@ -11706,6 +11706,91 @@ document.addEventListener("timeline:shotChange", e => {
   }
 });
 </script>
+<script>
+/* =====================================================
+   23 C.13 — Subtitle Priority & Speaker Highlight (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Speaker Highlight Styles ---------- */
+(function injectSpeakerStyle() {
+  if (document.getElementById("speaker-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "speaker-style";
+  style.textContent = `
+    .speaker-active {
+      filter: drop-shadow(0 0 6px rgba(255,255,0,0.9));
+    }
+
+    .speaker-dim {
+      opacity: 0.55;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Resolve Speaker Priority ---------- */
+function resolveMainSpeaker(characters) {
+  if (!characters || !characters.length) return null;
+
+  // 1) Explicit priority
+  let main = characters.find(c => c.priority === "main");
+  if (main) return main;
+
+  // 2) First character with dialog
+  main = characters.find(c => c.dialog);
+  if (main) return main;
+
+  // 3) First speaking flag
+  main = characters.find(c => c.speaking);
+  if (main) return main;
+
+  // 4) Fallback: first character
+  return characters[0];
+}
+
+/* ---------- Apply Speaker Highlight ---------- */
+function applySpeakerHighlight(allCharacters, activeCharacter) {
+  allCharacters.forEach(character => {
+    character.el.classList.remove("speaker-active", "speaker-dim");
+
+    if (character === activeCharacter) {
+      character.el.classList.add("speaker-active");
+    } else {
+      character.el.classList.add("speaker-dim");
+    }
+  });
+}
+
+/* ---------- Clear Speaker Highlight ---------- */
+function clearSpeakerHighlight(allCharacters) {
+  allCharacters.forEach(character => {
+    character.el.classList.remove("speaker-active", "speaker-dim");
+  });
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  const cfgList = shot.data.characters;
+  const charObjects = cfgList.map(cfg => getOrCreateCharacter(cfg));
+
+  const mainCfg = resolveMainSpeaker(cfgList);
+
+  if (!mainCfg || !mainCfg.dialog) {
+    clearSpeakerHighlight(charObjects);
+    return;
+  }
+
+  const activeCharacter =
+    charObjects.find(c => c.id === mainCfg.id) || charObjects[0];
+
+  applySpeakerHighlight(charObjects, activeCharacter);
+});
+</script>
 
 </body>
 </html>
