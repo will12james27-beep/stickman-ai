@@ -13866,6 +13866,103 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.8 — Inline Beat Duration Editor
+   Timeline Duration Control
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats[index]
+      : null;
+  }
+
+  function ensureDurationLabel(el) {
+    let lbl = el.querySelector('.ep-beat-duration');
+    if (!lbl) {
+      lbl = document.createElement('div');
+      lbl.className = 'ep-beat-duration';
+      lbl.style.cssText = `
+        position:absolute;
+        bottom:2px;
+        left:2px;
+        font-size:9px;
+        background:rgba(0,0,0,0.55);
+        color:#fff;
+        padding:1px 3px;
+        border-radius:3px;
+        cursor:pointer;
+        user-select:none;
+      `;
+      el.style.position = 'relative';
+      el.appendChild(lbl);
+    }
+    return lbl;
+  }
+
+  function makeEditable(label, beat) {
+    label.onclick = (e) => {
+      e.stopPropagation();
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0.1';
+      input.step = '0.1';
+      input.value = beat.duration || 1;
+
+      input.style.cssText = `
+        width:32px;
+        font-size:9px;
+      `;
+
+      label.textContent = '';
+      label.appendChild(input);
+      input.focus();
+
+      function commit() {
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val > 0) {
+          beat.duration = val;
+        }
+        label.textContent = (beat.duration || 1).toFixed(1) + 's';
+      }
+
+      input.onblur = commit;
+      input.onkeydown = (ev) => {
+        if (ev.key === 'Enter') commit();
+      };
+    };
+  }
+
+  function update() {
+    const els = getBeats();
+    els.forEach((el, i) => {
+      const beat = getBeatData(i);
+      if (!beat) return;
+
+      const lbl = ensureDurationLabel(el);
+      lbl.textContent = (beat.duration || 1).toFixed(1) + 's';
+      makeEditable(lbl, beat);
+    });
+  }
+
+  function loop() {
+    update();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
