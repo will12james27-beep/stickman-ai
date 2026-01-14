@@ -16961,6 +16961,156 @@ window.addEventListener("keydown", e => {
 
 console.log("23 H.17 — Creator Control Panel ready (Ctrl+C)");
 </script>
+<script>
+/* ==========================================
+   23 H.18 — Auto A/B Testing Engine
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+(function () {
+  if (window.AutoABTest) return;
+
+  const STORAGE_KEY = "lj_ab_tests";
+
+  window.AutoABTest = {
+    enabled: true,
+
+    tests: {
+      // example structure:
+      // pacingProfile: {
+      //   variants: {
+      //     A: { pacingFactor: 1.0 },
+      //     B: { pacingFactor: 0.9 }
+      //   },
+      //   stats: { A: 0, B: 0 },
+      //   winner: null
+      // }
+    },
+
+    load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) this.tests = JSON.parse(raw);
+      } catch (e) {
+        console.warn("AutoABTest load failed", e);
+      }
+    },
+
+    save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.tests));
+      } catch (e) {
+        console.warn("AutoABTest save failed", e);
+      }
+    },
+
+    initDefaultTests() {
+      if (this.tests.pacingProfile) return;
+
+      this.tests.pacingProfile = {
+        variants: {
+          A: { pacingFactor: 1.0 },
+          B: { pacingFactor: 0.9 }
+        },
+        stats: { A: 0, B: 0 },
+        winner: null
+      };
+
+      this.save();
+    },
+
+    assignVariant(testId) {
+      const test = this.tests[testId];
+      if (!test) return null;
+
+      if (test.winner) return test.winner;
+
+      return Math.random() < 0.5 ? "A" : "B";
+    },
+
+    applyVariant(testId, variantId) {
+      const test = this.tests[testId];
+      if (!test) return;
+
+      const variant = test.variants[variantId];
+      if (!variant) return;
+
+      if (variant.pacingFactor && window.SeriesMemory) {
+        SeriesMemory.data.pacingFactor *= variant.pacingFactor;
+      }
+    },
+
+    recordResult(testId, variantId, score = 1) {
+      const test = this.tests[testId];
+      if (!test || test.winner) return;
+
+      test.stats[variantId] =
+        (test.stats[variantId] || 0) + score;
+
+      const total =
+        (test.stats.A || 0) + (test.stats.B || 0);
+
+      // simple win condition
+      if (total >= 10) {
+        test.winner =
+          test.stats.A >= test.stats.B ? "A" : "B";
+      }
+
+      this.save();
+    }
+  };
+
+  AutoABTest.load();
+  AutoABTest.initDefaultTests();
+})();
+
+
+/* ======================
+   APPLY TEST ON EPISODE START
+   ====================== */
+window.addEventListener("episode:start", () => {
+  if (!window.AutoABTest?.enabled) return;
+
+  const testId = "pacingProfile";
+  const variant =
+    AutoABTest.assignVariant(testId);
+
+  if (variant) {
+    AutoABTest.applyVariant(testId, variant);
+    window.__abVariant = variant;
+  }
+});
+
+
+/* ======================
+   SCORE TEST ON EPISODE END
+   ====================== */
+window.addEventListener("episode:ended", () => {
+  if (!window.AutoABTest?.enabled) return;
+
+  const testId = "pacingProfile";
+  const variant = window.__abVariant;
+  if (!variant) return;
+
+  // heuristic score: fewer skips = better
+  const skips =
+    Object.values(
+      SeriesMemory?.data?.emotionSkips || {}
+    ).reduce((a, b) => a + b, 0);
+
+  const score = Math.max(1, 10 - skips);
+
+  AutoABTest.recordResult(
+    testId,
+    variant,
+    score
+  );
+
+  window.__abVariant = null;
+});
+
+console.log("23 H.18 — Auto A/B Testing Engine ready");
+</script>
 
 </body>
 </html>
