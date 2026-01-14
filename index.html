@@ -19563,6 +19563,131 @@ window.addEventListener("load", () => {
    ====================== */
 console.log("5.6 — Scene Props system ready");
 </script>
+<script>
+/* ==========================================
+   5.7 — Cloud Save + Share Link
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   CLOUD SERIALIZER
+   ====================== */
+window.CloudProject = {
+  encode(state) {
+    try {
+      const json = JSON.stringify(state);
+      return btoa(
+        encodeURIComponent(json)
+      );
+    } catch (e) {
+      console.error("Encode failed", e);
+      return null;
+    }
+  },
+
+  decode(encoded) {
+    try {
+      const json = decodeURIComponent(
+        atob(encoded)
+      );
+      return JSON.parse(json);
+    } catch (e) {
+      console.error("Decode failed", e);
+      return null;
+    }
+  }
+};
+
+
+/* ======================
+   SHARE LINK API
+   ====================== */
+window.CloudShare = {
+  generateLink() {
+    const state = ProjectManager.getState();
+    const encoded = CloudProject.encode(state);
+    if (!encoded) return null;
+
+    const url =
+      location.origin +
+      location.pathname +
+      "#project=" +
+      encoded;
+
+    return url;
+  },
+
+  loadFromURL() {
+    if (!location.hash.includes("project="))
+      return;
+
+    const encoded =
+      location.hash.split("project=")[1];
+
+    const state = CloudProject.decode(encoded);
+    if (!state) return;
+
+    ProjectManager.applyState(state);
+    console.log("Cloud project loaded from link");
+  }
+};
+
+
+/* ======================
+   AUTO LOAD ON OPEN
+   ====================== */
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    CloudShare.loadFromURL();
+  }, 300);
+});
+
+
+/* ======================
+   CREATOR UI EXTENSION
+   ====================== */
+(function () {
+  const waitUI = setInterval(() => {
+    if (!window.CreatorUI?.container) return;
+    clearInterval(waitUI);
+
+    const title = document.createElement("div");
+    title.innerText = "☁️ Cloud / Share";
+    title.style.fontWeight = "700";
+    title.style.marginTop = "12px";
+
+    const shareBtn = document.createElement("button");
+    shareBtn.innerText = "🔗 Generate Share Link";
+    shareBtn.style.width = "100%";
+    shareBtn.style.marginBottom = "6px";
+
+    const linkBox = document.createElement("input");
+    linkBox.style.width = "100%";
+    linkBox.placeholder = "Share link will appear here";
+    linkBox.readOnly = true;
+
+    shareBtn.onclick = () => {
+      const link = CloudShare.generateLink();
+      if (link) {
+        linkBox.value = link;
+        linkBox.select();
+        navigator.clipboard?.writeText(link);
+        alert("Share link copied!");
+      }
+    };
+
+    CreatorUI.container.appendChild(title);
+    CreatorUI.container.appendChild(shareBtn);
+    CreatorUI.container.appendChild(linkBox);
+  }, 300);
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("5.7 — Cloud Save + Share Link ready");
+</script>
 
 </body>
 </html>
