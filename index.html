@@ -14788,6 +14788,149 @@ window.addEventListener("beat:action", e => {
   console.log("Beat action:", e.detail);
 });
 </script>
+<script>
+/* ==========================================
+   23 H.2 — Beat Pause / Resume + Triggers
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   GLOBAL BEAT CONTEXT
+   ====================== */
+window.BeatRuntime = {
+  currentBeat: null,
+  timer: null,
+  remaining: 0,
+  startedAt: 0,
+  paused: false
+};
+
+
+/* ======================
+   EXTEND BEAT FLOW
+   ====================== */
+window.BeatFlow.pause = function () {
+  if (!BeatRuntime.currentBeat || BeatRuntime.paused) return;
+
+  BeatRuntime.paused = true;
+
+  if (BeatRuntime.timer) {
+    clearTimeout(BeatRuntime.timer);
+    BeatRuntime.timer = null;
+  }
+
+  const elapsed = Date.now() - BeatRuntime.startedAt;
+  BeatRuntime.remaining =
+    Math.max(0, (BeatRuntime.currentBeat.duration || 0) - elapsed);
+
+  window.dispatchEvent(
+    new CustomEvent("beat:paused", { detail: BeatRuntime.currentBeat })
+  );
+};
+
+
+window.BeatFlow.resume = function (onComplete) {
+  if (!BeatRuntime.currentBeat || !BeatRuntime.paused) return;
+
+  BeatRuntime.paused = false;
+  BeatRuntime.startedAt = Date.now();
+
+  BeatRuntime.timer = setTimeout(() => {
+    BeatRuntime.currentBeat = null;
+    if (typeof onComplete === "function") onComplete();
+  }, BeatRuntime.remaining);
+
+  window.dispatchEvent(
+    new CustomEvent("beat:resumed", { detail: BeatRuntime.currentBeat })
+  );
+};
+
+
+/* ======================
+   OVERRIDE playBeat (SAFE)
+   ====================== */
+(function () {
+  const originalPlayBeat = window.BeatFlow.playBeat;
+
+  window.BeatFlow.playBeat = function (beat, onComplete) {
+    if (!beat) return;
+
+    BeatRuntime.currentBeat = beat;
+    BeatRuntime.paused = false;
+    BeatRuntime.remaining = beat.duration || 0;
+    BeatRuntime.startedAt = Date.now();
+
+    // Fire actions (render layer listens)
+    if (Array.isArray(beat.actions)) {
+      beat.actions.forEach(action => {
+        window.dispatchEvent(
+          new CustomEvent("beat:action", { detail: action })
+        );
+      });
+    }
+
+    if (beat.autoNext === false) return;
+
+    BeatRuntime.timer = setTimeout(() => {
+      BeatRuntime.currentBeat = null;
+      if (typeof onComplete === "function") onComplete();
+    }, BeatRuntime.remaining);
+  };
+})();
+
+
+/* ======================
+   EPISODE → BEAT CONTROL
+   ====================== */
+window.EpisodeFlow.pauseBeat = function () {
+  BeatFlow.pause();
+};
+
+window.EpisodeFlow.resumeBeat = function () {
+  const shot = this.episode?.shots[this.episode.currentShotIndex];
+  if (!shot) return;
+
+  BeatFlow.resume(() => {
+    shot.currentBeatIndex++;
+    ShotFlow._playBeat(shot, () => {
+      this.episode.currentShotIndex++;
+      this._playCurrentShot();
+    });
+  });
+};
+
+
+/* ======================
+   EXTERNAL TRIGGERS
+   ====================== */
+
+// Space — pause / resume beat
+window.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    if (BeatRuntime.paused) {
+      EpisodeFlow.resumeBeat();
+    } else {
+      EpisodeFlow.pauseBeat();
+    }
+  }
+});
+
+// Public trigger API
+window.triggerBeatPause = () => EpisodeFlow.pauseBeat();
+window.triggerBeatResume = () => EpisodeFlow.resumeBeat();
+
+
+/* ======================
+   DEBUG EVENTS
+   ====================== */
+window.addEventListener("beat:paused", e => {
+  console.log("Beat paused:", e.detail);
+});
+
+window.addEventListener("beat:resumed", e => {
+  console.log("Beat resumed:", e.detail);
+});
+</script>
 
 </body>
 </html>
