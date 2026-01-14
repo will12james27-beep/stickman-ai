@@ -18742,6 +18742,157 @@ window.recordEpisode = function () {
    ====================== */
 console.log("5.1 — Export / Record system ready");
 </script>
+<script>
+/* ==========================================
+   5.2 — Scene / Background Editor
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   SCENE REGISTRY
+   ====================== */
+window.SceneRegistry = {
+  scenes: {
+    studio: {
+      name: "Studio",
+      background: "#f2f2f2"
+    },
+    home: {
+      name: "Home",
+      background: "linear-gradient(#ffe0b2, #fff3e0)"
+    },
+    street: {
+      name: "Street",
+      background: "linear-gradient(#cfd8dc, #eceff1)"
+    },
+    park: {
+      name: "Park",
+      background: "linear-gradient(#c8e6c9, #e8f5e9)"
+    }
+  },
+  current: "studio",
+
+  apply(sceneId) {
+    const scene = this.scenes[sceneId];
+    if (!scene) return;
+
+    this.current = sceneId;
+    SceneRenderer.apply(scene);
+    console.log("Scene applied:", scene.name);
+  }
+};
+
+
+/* ======================
+   SCENE RENDERER
+   ====================== */
+window.SceneRenderer = {
+  apply(scene) {
+    if (!window.RenderLayer?.container) return;
+
+    const bg = scene.background;
+
+    const container = RenderLayer.container;
+    container.style.background = bg;
+
+    // reset image if any
+    container.style.backgroundSize = "cover";
+    container.style.backgroundPosition = "center";
+  },
+
+  applyImage(url) {
+    if (!window.RenderLayer?.container) return;
+
+    const c = RenderLayer.container;
+    c.style.backgroundImage = `url(${url})`;
+    c.style.backgroundSize = "cover";
+    c.style.backgroundPosition = "center";
+  },
+
+  applyColor(color) {
+    if (!window.RenderLayer?.container) return;
+    RenderLayer.container.style.background = color;
+    RenderLayer.container.style.backgroundImage = "none";
+  }
+};
+
+
+/* ======================
+   CREATOR UI EXTENSION
+   ====================== */
+(function () {
+  const waitUI = setInterval(() => {
+    if (!window.CreatorUI?.container) return;
+    clearInterval(waitUI);
+
+    const divider = document.createElement("div");
+    divider.style.margin = "10px 0";
+    divider.style.borderTop = "1px solid #333";
+
+    const label = document.createElement("div");
+    label.innerText = "🌆 Scene / Background";
+    label.style.fontWeight = "700";
+    label.style.marginBottom = "6px";
+
+    const select = document.createElement("select");
+    select.style.width = "100%";
+    select.style.marginBottom = "6px";
+
+    Object.entries(SceneRegistry.scenes).forEach(
+      ([id, s]) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.innerText = s.name;
+        select.appendChild(opt);
+      }
+    );
+
+    select.value = SceneRegistry.current;
+    select.onchange = () => {
+      SceneRegistry.apply(select.value);
+    };
+
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.style.width = "100%";
+    colorInput.style.marginBottom = "6px";
+    colorInput.oninput = () => {
+      SceneRenderer.applyColor(colorInput.value);
+    };
+
+    const imgInput = document.createElement("input");
+    imgInput.placeholder = "Background image URL";
+    imgInput.style.width = "100%";
+    imgInput.onchange = () => {
+      if (imgInput.value.trim()) {
+        SceneRenderer.applyImage(imgInput.value.trim());
+      }
+    };
+
+    CreatorUI.container.appendChild(divider);
+    CreatorUI.container.appendChild(label);
+    CreatorUI.container.appendChild(select);
+    CreatorUI.container.appendChild(colorInput);
+    CreatorUI.container.appendChild(imgInput);
+  }, 300);
+})();
+
+
+/* ======================
+   AUTO APPLY DEFAULT
+   ====================== */
+window.addEventListener("load", () => {
+  if (window.RenderLayer?.container) {
+    SceneRegistry.apply(SceneRegistry.current);
+  }
+});
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("5.2 — Scene / Background Editor ready");
+</script>
 
 </body>
 </html>
