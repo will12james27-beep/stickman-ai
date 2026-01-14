@@ -15292,6 +15292,119 @@ window.prevEpisode = () => SeriesFlow.playPrevEpisode();
    ====================== */
 console.log("23 H.5 — Episode Queue / Series Flow ready");
 </script>
+<script>
+/* ==========================================
+   23 H.6 — Global Timeline HUD / Debug Overlay
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   HUD STATE
+   ====================== */
+window.FlowHUD = {
+  enabled: true,
+  el: null
+};
+
+
+/* ======================
+   CREATE HUD ELEMENT
+   ====================== */
+(function createFlowHUD() {
+  const hud = document.createElement("div");
+  hud.id = "flow-hud";
+  hud.style.position = "fixed";
+  hud.style.bottom = "12px";
+  hud.style.left = "12px";
+  hud.style.zIndex = "99999";
+  hud.style.background = "rgba(0,0,0,0.75)";
+  hud.style.color = "#0f0";
+  hud.style.fontFamily = "monospace";
+  hud.style.fontSize = "12px";
+  hud.style.padding = "10px 12px";
+  hud.style.borderRadius = "8px";
+  hud.style.minWidth = "220px";
+  hud.style.pointerEvents = "none";
+  hud.style.lineHeight = "1.45";
+
+  hud.innerHTML = `
+    <div><strong>FLOW HUD</strong></div>
+    <div id="hud-episode"></div>
+    <div id="hud-shot"></div>
+    <div id="hud-beat"></div>
+    <div id="hud-state"></div>
+  `;
+
+  document.body.appendChild(hud);
+  FlowHUD.el = hud;
+})();
+
+
+/* ======================
+   UPDATE HUD CONTENT
+   ====================== */
+window.FlowHUD.update = function () {
+  if (!this.enabled || !this.el) return;
+
+  const ep = window.EpisodeFlow?.episode;
+  const shot = ep?.shots?.[ep.currentShotIndex];
+  const beat = window.BeatRuntime?.currentBeat;
+
+  this.el.querySelector("#hud-episode").textContent =
+    "Episode: " + (ep ? ep.id : "-");
+
+  this.el.querySelector("#hud-shot").textContent =
+    "Shot: " + (shot ? ep.currentShotIndex : "-");
+
+  this.el.querySelector("#hud-beat").textContent =
+    "Beat: " + (shot && beat ? shot.currentBeatIndex : "-");
+
+  this.el.querySelector("#hud-state").textContent =
+    "State: " + (ep ? ep.state : "-");
+};
+
+
+/* ======================
+   AUTO UPDATE LOOP
+   ====================== */
+(function hudLoop() {
+  FlowHUD.update();
+  requestAnimationFrame(hudLoop);
+})();
+
+
+/* ======================
+   TOGGLE HUD
+   ====================== */
+window.toggleFlowHUD = function () {
+  FlowHUD.enabled = !FlowHUD.enabled;
+  if (FlowHUD.el) {
+    FlowHUD.el.style.display = FlowHUD.enabled ? "block" : "none";
+  }
+};
+
+// Keyboard toggle (H)
+window.addEventListener("keydown", e => {
+  if (e.code === "KeyH") {
+    toggleFlowHUD();
+  }
+});
+
+
+/* ======================
+   EVENT HOOKS (OPTIONAL)
+   ====================== */
+window.addEventListener("beat:action", () => FlowHUD.update());
+window.addEventListener("beat:paused", () => FlowHUD.update());
+window.addEventListener("beat:resumed", () => FlowHUD.update());
+window.addEventListener("episode:ended", () => FlowHUD.update());
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("23 H.6 — Flow HUD / Debug Overlay ready");
+</script>
 
 </body>
 </html>
