@@ -14233,6 +14233,99 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 G.3 — Beat Drag + Position Snap
+   Start time grid snapping
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats[index]
+      : null;
+  }
+
+  function snapTime(value) {
+    if (!window.TimelineGrid || !TimelineGrid.enabled) return value;
+    const step = TimelineGrid.step || 0.25;
+    return Math.round(value / step) * step;
+  }
+
+  function enableDrag(el, beat) {
+    if (el.__dragBound) return;
+    el.__dragBound = true;
+
+    let startX = 0;
+    let startLeft = 0;
+    let dragging = false;
+
+    el.style.position = 'relative';
+    el.style.cursor = 'grab';
+
+    el.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      el.style.cursor = 'grabbing';
+      startX = e.clientX;
+      startLeft = el.offsetLeft;
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      el.style.left = startLeft + dx + 'px';
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      el.style.cursor = 'grab';
+
+      // convert px → time
+      const scale = (window.TimelineZoom && TimelineZoom.scale) || 60;
+      const rawTime = el.offsetLeft / scale;
+      const snapped = snapTime(rawTime);
+
+      beat.start = Math.max(0, snapped);
+      el.style.left = (beat.start * scale) + 'px';
+    });
+  }
+
+  function update() {
+    const els = getBeats();
+    els.forEach((el, i) => {
+      const beat = getBeatData(i);
+      if (!beat) return;
+
+      if (typeof beat.start !== 'number') {
+        beat.start = i * (beat.duration || 1);
+      }
+
+      enableDrag(el, beat);
+
+      // sync visual position
+      const scale = (window.TimelineZoom && TimelineZoom.scale) || 60;
+      el.style.left = (beat.start * scale) + 'px';
+    });
+  }
+
+  function loop() {
+    update();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
