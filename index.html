@@ -11118,6 +11118,84 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.7 — Run Animation System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Run Animation Style ---------- */
+(function injectRunStyle() {
+  if (document.getElementById("run-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "run-style";
+  style.textContent = `
+    @keyframes stickman-run {
+      0%   { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(0deg); }
+      20%  { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(5deg); }
+      40%  { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(-4deg); }
+      60%  { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(6deg); }
+      80%  { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(-5deg); }
+      100% { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(0deg); }
+    }
+
+    .stickman.run {
+      animation: stickman-run 0.35s linear infinite;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Apply Run State ---------- */
+function applyRunState(character) {
+  if (!character) return;
+
+  character.el.classList.remove("idle", "walk");
+  character.el.classList.add("run");
+}
+
+/* ---------- Remove Run State ---------- */
+function removeRunState(character) {
+  if (!character) return;
+  character.el.classList.remove("run");
+}
+
+/* ---------- Run Detection Logic ---------- */
+function updateRunState(character, config) {
+  if (!character || !config) return;
+
+  if (config.action === "run") {
+    applyRunState(character);
+    return;
+  }
+
+  removeRunState(character);
+}
+
+/* ---------- Priority Resolver ---------- */
+/*
+   Priority:
+   run > walk > idle
+*/
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+
+    if (cfg.action === "run") {
+      applyRunState(character);
+    } else if (cfg.action === "walk") {
+      removeRunState(character);
+      applyWalkState(character);
+    } else {
+      removeRunState(character);
+    }
+  });
+});
+</script>
 
 </body>
 </html>
