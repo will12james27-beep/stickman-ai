@@ -17335,6 +17335,183 @@ window.testPromptParse = function (text) {
 
 console.log("4.2 — Prompt Parser ready");
 </script>
+<script>
+/* ==========================================
+   4.3 — Prompt → Beat Builder
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+window.PromptBeatBuilder = {
+  enabled: true,
+
+  /* ======================
+     CONFIG
+     ====================== */
+  defaults: {
+    speechDurationPerChar: 45, // ms
+    minBeat: 600,
+    reactionPause: 250,
+    cameraFocus: true
+  },
+
+  /* ======================
+     MAIN BUILD
+     ====================== */
+  build(promptText) {
+    if (!this.enabled) return [];
+
+    const actions = window.PromptParser?.parse(promptText) || [];
+    const beats = [];
+
+    actions.forEach((action, idx) => {
+      switch (action.type) {
+        case "speech":
+          beats.push(
+            ...this.buildSpeechBeat(action)
+          );
+          break;
+
+        case "gaze":
+          beats.push(this.buildGazeBeat(action));
+          break;
+
+        case "emotion":
+          beats.push(this.buildEmotionBeat(action));
+          break;
+      }
+    });
+
+    return beats;
+  },
+
+  /* ======================
+     SPEECH BEAT
+     ====================== */
+  buildSpeechBeat(action) {
+    const beats = [];
+    const ch = CharacterRegistry.getById(action.characterId);
+    if (!ch) return beats;
+
+    const duration = Math.max(
+      this.defaults.minBeat,
+      action.text.length * this.defaults.speechDurationPerChar
+    );
+
+    // Main speech beat
+    beats.push({
+      type: "beat",
+      duration,
+      speaker: ch.id,
+      actions: [
+        {
+          type: "speech",
+          characterId: ch.id,
+          text: action.text
+        },
+        ...(this.defaults.cameraFocus
+          ? [{ type: "cameraFocus", target: ch.id }]
+          : [])
+      ]
+    });
+
+    // Reaction beat (others)
+    Object.values(CharacterRegistry.characters).forEach(other => {
+      if (other.id === ch.id) return;
+
+      beats.push({
+        type: "beat",
+        duration: this.defaults.reactionPause,
+        actions: [
+          {
+            type: "reaction",
+            characterId: other.id,
+            to: ch.id
+          }
+        ]
+      });
+    });
+
+    return beats;
+  },
+
+  /* ======================
+     GAZE BEAT
+     ====================== */
+  buildGazeBeat(action) {
+    return {
+      type: "beat",
+      duration: this.defaults.minBeat / 2,
+      actions: [
+        {
+          type: "gaze",
+          from: action.from,
+          to: action.to
+        }
+      ]
+    };
+  },
+
+  /* ======================
+     EMOTION BEAT
+     ====================== */
+  buildEmotionBeat(action) {
+    return {
+      type: "beat",
+      duration: this.defaults.minBeat / 1.5,
+      actions: [
+        {
+          type: "emotion",
+          characterId: action.characterId,
+          value: action.emotion
+        }
+      ]
+    };
+  }
+};
+
+
+/* ======================
+   TIMELINE INJECTION
+   ====================== */
+window.injectPromptTimeline = function (promptText) {
+  const beats = PromptBeatBuilder.build(promptText);
+
+  if (!window.EpisodeFlow?.episode) {
+    console.warn("No active episode");
+    return beats;
+  }
+
+  // SAFE: append beats at end
+  EpisodeFlow.episode.timeline =
+    EpisodeFlow.episode.timeline || [];
+
+  EpisodeFlow.episode.timeline.push(...beats);
+
+  console.log(
+    `Prompt injected: ${beats.length} beats`
+  );
+
+  return beats;
+};
+
+
+/* ======================
+   DEBUG
+   ====================== */
+window.testPromptToBeats = function (text) {
+  const beats = PromptBeatBuilder.build(text);
+  console.table(
+    beats.map((b, i) => ({
+      i,
+      duration: b.duration,
+      actions: b.actions.map(a => a.type).join(",")
+    }))
+  );
+  return beats;
+};
+
+console.log("4.3 — Prompt → Beat Builder ready");
+</script>
 
 </body>
 </html>
