@@ -18116,6 +18116,108 @@ window.FXLayer = {
    ====================== */
 console.log("4.7 — Emotion Overlay & Reaction FX ready");
 </script>
+<script>
+/* ==========================================
+   4.8 — Subtitle + Global Caption System
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   SUBTITLE LAYER
+   ====================== */
+window.SubtitleLayer = {
+  container: null,
+  hideTimer: null,
+
+  init() {
+    if (this.container) return;
+
+    const el = document.createElement("div");
+    el.id = "subtitle-layer";
+
+    Object.assign(el.style, {
+      position: "fixed",
+      bottom: "6%",
+      left: "50%",
+      transform: "translateX(-50%)",
+      maxWidth: "90%",
+      padding: "10px 16px",
+      background: "rgba(0,0,0,0.75)",
+      color: "#fff",
+      fontFamily: "sans-serif",
+      fontSize: "18px",
+      fontWeight: "600",
+      textAlign: "center",
+      borderRadius: "14px",
+      lineHeight: "1.3",
+      zIndex: 100,
+      opacity: "0",
+      transition: "opacity 0.2s ease"
+    });
+
+    document.body.appendChild(el);
+    this.container = el;
+  },
+
+  show(text, duration) {
+    this.init();
+    clearTimeout(this.hideTimer);
+
+    this.container.innerText =
+      this.format(text);
+    this.container.style.opacity = "1";
+
+    this.hideTimer = setTimeout(() => {
+      this.container.style.opacity = "0";
+    }, duration);
+  },
+
+  format(text) {
+    // simple auto line-break
+    if (text.length < 40) return text;
+
+    const words = text.split(" ");
+    const mid = Math.ceil(words.length / 2);
+    return (
+      words.slice(0, mid).join(" ") +
+      "\n" +
+      words.slice(mid).join(" ")
+    );
+  }
+};
+
+
+/* ======================
+   SHOT RENDER HOOK
+   ====================== */
+(function () {
+  const originalRenderShot =
+    ShotRenderer.renderShot;
+
+  ShotRenderer.renderShot = function (shot) {
+    originalRenderShot.call(this, shot);
+
+    if (!shot?.sourceBeat) return;
+
+    shot.sourceBeat.actions.forEach(action => {
+      if (action.type === "speech") {
+        SubtitleLayer.show(
+          action.text,
+          shot.duration * 1000
+        );
+      }
+    });
+  };
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log(
+  "4.8 — Subtitle + Global Caption System ready"
+);
+</script>
 
 </body>
 </html>
