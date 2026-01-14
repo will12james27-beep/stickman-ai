@@ -15066,6 +15066,128 @@ window.skipBeat = () => EpisodeFlow.skipBeat();
    ====================== */
 console.log("23 H.3 — Shot Jump / Skip / Rewind ready");
 </script>
+<script>
+/* ==========================================
+   23 H.4 — Episode Loop / Replay / Auto-End CTA
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   EPISODE END OPTIONS
+   ====================== */
+window.EpisodeEndConfig = {
+  mode: "cta", // "cta" | "loop" | "replay"
+  loopDelay: 400,   // ms
+  replayDelay: 300 // ms
+};
+
+
+/* ======================
+   EXTEND EPISODE END
+   ====================== */
+(function () {
+  const originalEnd = window.EpisodeFlow._endEpisode;
+
+  window.EpisodeFlow._endEpisode = function () {
+    if (!this.episode) return;
+
+    this.episode.state = "ended";
+
+    // Fire end event (UI / CTA tinglaydi)
+    window.dispatchEvent(
+      new CustomEvent("episode:ended", { detail: this.episode })
+    );
+
+    switch (EpisodeEndConfig.mode) {
+      case "loop":
+        setTimeout(() => {
+          EpisodeFlow.restartEpisode();
+        }, EpisodeEndConfig.loopDelay);
+        break;
+
+      case "replay":
+        setTimeout(() => {
+          EpisodeFlow.replayEpisode();
+        }, EpisodeEndConfig.replayDelay);
+        break;
+
+      case "cta":
+      default:
+        // CTA external layer handles
+        break;
+    }
+  };
+})();
+
+
+/* ======================
+   RESTART / REPLAY CORE
+   ====================== */
+window.EpisodeFlow.restartEpisode = function () {
+  if (!this.episode) return;
+
+  // stop any running beat
+  if (this._stopCurrentBeat) this._stopCurrentBeat();
+
+  this.episode.currentShotIndex = 0;
+  this.episode.state = "playing";
+
+  // reset shots
+  this.episode.shots.forEach(shot => {
+    shot.currentBeatIndex = 0;
+    shot.started = false;
+    shot.finished = false;
+  });
+
+  this._playCurrentShot();
+};
+
+window.EpisodeFlow.replayEpisode = function () {
+  // alias for clarity (Shorts semantics)
+  this.restartEpisode();
+};
+
+
+/* ======================
+   EXTERNAL CTA API
+   ====================== */
+window.showEpisodeCTA = function (payload = {}) {
+  window.dispatchEvent(
+    new CustomEvent("episode:cta", { detail: payload })
+  );
+};
+
+window.replayEpisode = () => EpisodeFlow.replayEpisode();
+window.loopEpisode = () => {
+  EpisodeEndConfig.mode = "loop";
+  EpisodeFlow.restartEpisode();
+};
+
+
+/* ======================
+   AUTO CTA ON END
+   ====================== */
+window.addEventListener("episode:ended", e => {
+  if (EpisodeEndConfig.mode !== "cta") return;
+
+  // Default CTA payload (UI layer can override)
+  showEpisodeCTA({
+    type: "replay",
+    text: "WATCH AGAIN",
+    episodeId: e.detail.id
+  });
+});
+
+
+/* ======================
+   DEBUG
+   ====================== */
+window.addEventListener("episode:cta", e => {
+  console.log("Episode CTA:", e.detail);
+});
+
+console.log("23 H.4 — Episode Loop / Replay / CTA ready");
+</script>
 
 </body>
 </html>
