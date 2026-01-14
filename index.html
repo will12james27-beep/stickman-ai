@@ -13222,6 +13222,77 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.1 — Beat Selection (Editor Core)
+   Click to Select Beat
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  // global editor state (SAFE)
+  if (!window.EditorState) {
+    window.EditorState = {
+      selectedBeat: null
+    };
+  }
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function attachClick() {
+    const beats = getBeats();
+    beats.forEach((el, i) => {
+      if (el.__selectBound) return;
+      el.__selectBound = true;
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        EditorState.selectedBeat = i;
+      });
+    });
+  }
+
+  // clear selection if click outside timeline
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#epTimeline')) {
+      EditorState.selectedBeat = null;
+    }
+  });
+
+  // style for selected beat
+  const style = document.createElement('style');
+  style.textContent = `
+    .ep-beat-selected {
+      outline: 2px solid #ffd700;
+      box-shadow: 0 0 6px rgba(255,215,0,0.9);
+    }
+  `;
+  document.head.appendChild(style);
+
+  function updateSelectionVisual() {
+    const beats = getBeats();
+    beats.forEach((el, i) => {
+      if (i === EditorState.selectedBeat) {
+        el.classList.add('ep-beat-selected');
+      } else {
+        el.classList.remove('ep-beat-selected');
+      }
+    });
+  }
+
+  function loop() {
+    attachClick();
+    updateSelectionVisual();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
