@@ -15405,6 +15405,144 @@ window.addEventListener("episode:ended", () => FlowHUD.update());
    ====================== */
 console.log("23 H.6 — Flow HUD / Debug Overlay ready");
 </script>
+<script>
+/* ==========================================
+   23 H.7 — Flow Recorder / Playback System
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   RECORDER STATE
+   ====================== */
+window.FlowRecorder = {
+  enabled: true,
+  recording: false,
+  startTime: 0,
+  records: []
+};
+
+
+/* ======================
+   START / STOP RECORDING
+   ====================== */
+window.FlowRecorder.start = function () {
+  this.records = [];
+  this.startTime = performance.now();
+  this.recording = true;
+  console.log("FlowRecorder started");
+};
+
+window.FlowRecorder.stop = function () {
+  this.recording = false;
+  console.log("FlowRecorder stopped", this.records);
+  return this.records;
+};
+
+
+/* ======================
+   INTERNAL RECORD
+   ====================== */
+window.FlowRecorder._record = function (type, payload) {
+  if (!this.recording || !this.enabled) return;
+
+  this.records.push({
+    t: Math.round(performance.now() - this.startTime),
+    type,
+    payload
+  });
+};
+
+
+/* ======================
+   EVENT LISTENERS
+   ====================== */
+window.addEventListener("beat:action", e => {
+  FlowRecorder._record("beat:action", e.detail);
+});
+
+window.addEventListener("beat:paused", () => {
+  FlowRecorder._record("beat:paused", {});
+});
+
+window.addEventListener("beat:resumed", () => {
+  FlowRecorder._record("beat:resumed", {});
+});
+
+window.addEventListener("episode:ended", () => {
+  FlowRecorder._record("episode:ended", {});
+});
+
+
+/* ======================
+   PLAYBACK ENGINE
+   ====================== */
+window.FlowPlayback = {
+  play(records = []) {
+    if (!Array.isArray(records) || records.length === 0) return;
+
+    const start = performance.now();
+
+    records.forEach(rec => {
+      setTimeout(() => {
+        this._apply(rec);
+      }, rec.t);
+    });
+
+    console.log("FlowPlayback started");
+  },
+
+  _apply(rec) {
+    switch (rec.type) {
+      case "beat:action":
+        window.dispatchEvent(
+          new CustomEvent("beat:action", { detail: rec.payload })
+        );
+        break;
+
+      case "beat:paused":
+        EpisodeFlow.pauseBeat();
+        break;
+
+      case "beat:resumed":
+        EpisodeFlow.resumeBeat();
+        break;
+
+      case "episode:ended":
+        // analytics only (no auto restart)
+        break;
+    }
+  }
+};
+
+
+/* ======================
+   QUICK DEBUG CONTROLS
+   ====================== */
+// Start recording: Ctrl + R
+// Stop recording:  Ctrl + S
+// Playback:        Ctrl + P
+window.addEventListener("keydown", e => {
+  if (!e.ctrlKey) return;
+
+  if (e.code === "KeyR") {
+    FlowRecorder.start();
+  }
+
+  if (e.code === "KeyS") {
+    FlowRecorder.stop();
+  }
+
+  if (e.code === "KeyP") {
+    FlowPlayback.play(FlowRecorder.records);
+  }
+});
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("23 H.7 — Flow Recorder / Playback ready");
+</script>
 
 </body>
 </html>
