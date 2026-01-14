@@ -17512,6 +17512,139 @@ window.testPromptToBeats = function (text) {
 
 console.log("4.3 — Prompt → Beat Builder ready");
 </script>
+<script>
+/* ==========================================
+   4.4 — Shot Auto Builder
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+window.ShotAutoBuilder = {
+  enabled: true,
+
+  /* ======================
+     CONFIG
+     ====================== */
+  rules: {
+    speech: "close",
+    reaction: "reaction",
+    gaze: "medium",
+    emotion: "close",
+    multi: "wide"
+  },
+
+  durations: {
+    close: 1.0,
+    medium: 1.2,
+    wide: 1.5,
+    reaction: 0.6
+  },
+
+  /* ======================
+     BUILD SHOTS
+     ====================== */
+  build(beats) {
+    if (!this.enabled || !Array.isArray(beats)) return [];
+
+    const shots = [];
+
+    beats.forEach((beat, index) => {
+      const shotType = this.detectShotType(beat);
+      const shot = this.createShot(beat, shotType, index);
+      shots.push(shot);
+    });
+
+    return shots;
+  },
+
+  /* ======================
+     DETECT SHOT TYPE
+     ====================== */
+  detectShotType(beat) {
+    if (!beat.actions || beat.actions.length === 0)
+      return "wide";
+
+    if (beat.actions.length > 1)
+      return this.rules.multi;
+
+    const action = beat.actions[0];
+
+    return this.rules[action.type] || "wide";
+  },
+
+  /* ======================
+     CREATE SHOT
+     ====================== */
+  createShot(beat, type, index) {
+    const target =
+      beat.speaker ||
+      beat.actions?.[0]?.characterId ||
+      null;
+
+    return {
+      id: `shot_${index}_${Date.now()}`,
+      type,
+      target,
+      duration:
+        this.durations[type] *
+        (beat.duration / 1000),
+      sourceBeat: beat,
+      camera: {
+        mode: type,
+        target
+      }
+    };
+  }
+};
+
+
+/* ======================
+   SHOT TIMELINE INJECTION
+   ====================== */
+window.buildShotsFromEpisode = function () {
+  if (!window.EpisodeFlow?.episode) {
+    console.warn("No active episode");
+    return [];
+  }
+
+  const timeline =
+    EpisodeFlow.episode.timeline || [];
+
+  const shots = ShotAutoBuilder.build(timeline);
+
+  EpisodeFlow.episode.shots =
+    EpisodeFlow.episode.shots || [];
+
+  // SAFE: append only
+  EpisodeFlow.episode.shots.push(...shots);
+
+  console.log(
+    `ShotAutoBuilder: ${shots.length} shots created`
+  );
+
+  return shots;
+};
+
+
+/* ======================
+   DEBUG
+   ====================== */
+window.testShotBuilder = function () {
+  if (!EpisodeFlow?.episode) {
+    console.warn("No episode");
+    return;
+  }
+
+  console.table(
+    (EpisodeFlow.episode.shots || []).map(s => ({
+      type: s.type,
+      target: s.target,
+      duration: s.duration.toFixed(2)
+    }))
+  );
+};
+
+console.log("4.4 — Shot Auto Builder ready");
+</script>
 
 </body>
 </html>
