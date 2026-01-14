@@ -11196,6 +11196,86 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.8 — Jump Animation System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Jump Animation Style ---------- */
+(function injectJumpStyle() {
+  if (document.getElementById("jump-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "jump-style";
+  style.textContent = `
+    @keyframes stickman-jump {
+      0% {
+        transform: translateX(-50%) translateY(0)
+                   scale(calc(var(--sx) * 1.05), calc(var(--sy) * 0.9));
+      }
+      30% {
+        transform: translateX(-50%) translateY(-60px)
+                   scale(calc(var(--sx) * 0.9), calc(var(--sy) * 1.1));
+      }
+      60% {
+        transform: translateX(-50%) translateY(-80px)
+                   scale(calc(var(--sx) * 0.95), calc(var(--sy) * 1.05));
+      }
+      100% {
+        transform: translateX(-50%) translateY(0)
+                   scale(calc(var(--sx) * 1), calc(var(--sy) * 1));
+      }
+    }
+
+    .stickman.jump {
+      animation: stickman-jump 0.7s ease-out forwards;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Apply Jump State ---------- */
+function applyJumpState(character) {
+  if (!character) return;
+
+  character.el.classList.remove("idle", "walk", "run");
+  character.el.classList.add("jump");
+
+  /* Jump tugagach idle’ga qaytish */
+  setTimeout(() => {
+    if (character.el.classList.contains("jump")) {
+      character.el.classList.remove("jump");
+      applyIdleState(character);
+    }
+  }, 700);
+}
+
+/* ---------- Remove Jump State ---------- */
+function removeJumpState(character) {
+  if (!character) return;
+  character.el.classList.remove("jump");
+}
+
+/* ---------- Jump Resolver (Highest Priority) ---------- */
+/*
+   Priority:
+   jump > run > walk > idle
+*/
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+
+    if (cfg.action === "jump") {
+      applyJumpState(character);
+      return;
+    }
+  });
+});
+</script>
 
 </body>
 </html>
