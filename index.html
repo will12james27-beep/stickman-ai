@@ -12464,6 +12464,60 @@ window.SceneScrubber = {
   }
 };
 </script>
+<script>
+/* =========================
+   23 D.7 — Character Visual Identity
+   Engine-side Profiles
+   SAFE MODE: append-only
+   ========================= */
+
+window.CharacterProfiles = {
+  // example base profiles
+  A: {
+    scale: 1.0,
+    stroke: 3,
+    headSize: 1.0,
+    limbRatio: 1.0,
+    color: '#000',
+    motion: {
+      speed: 1.0,
+      reaction: 1.0,
+      shake: 1.0
+    }
+  },
+
+  B: {
+    scale: 0.9,
+    stroke: 2,
+    headSize: 1.1,
+    limbRatio: 0.9,
+    color: '#333',
+    motion: {
+      speed: 1.2,
+      reaction: 1.4,
+      shake: 0.8
+    }
+  },
+
+  C: {
+    scale: 1.1,
+    stroke: 4,
+    headSize: 0.9,
+    limbRatio: 1.2,
+    color: '#111',
+    motion: {
+      speed: 0.8,
+      reaction: 0.9,
+      shake: 1.3
+    }
+  }
+};
+
+// helper
+window.getCharacterProfile = function (id) {
+  return CharacterProfiles[id] || CharacterProfiles.A;
+};
+</script>
 
 </body>
 </html>
