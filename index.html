@@ -13963,6 +13963,58 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.9 — Timeline Autoscale by Duration
+   Beat width reflects real time
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  const SCALE = 60; // px per second (key tuning value)
+  const MIN_W = 28; // minimum beat width
+  const MAX_W = 320; // safety cap
+
+  function getBeats() {
+    return document.querySelectorAll('.ep-beat');
+  }
+
+  function getBeatData(index) {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats[index]
+      : null;
+  }
+
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function applyWidth(el, duration) {
+    const w = clamp(duration * SCALE, MIN_W, MAX_W);
+    el.style.width = w + 'px';
+  }
+
+  function update() {
+    const els = getBeats();
+    els.forEach((el, i) => {
+      const beat = getBeatData(i);
+      if (!beat) return;
+
+      const d = beat.duration || 1;
+      applyWidth(el, d);
+    });
+  }
+
+  function loop() {
+    update();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
