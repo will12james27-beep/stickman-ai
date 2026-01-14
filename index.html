@@ -10983,6 +10983,68 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.5 — Idle Pose System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Idle Animation Style ---------- */
+(function injectIdleStyle() {
+  if (document.getElementById("idle-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "idle-style";
+  style.textContent = `
+    @keyframes stickman-idle {
+      0%   { transform: translateX(-50%) scale(var(--sx, 1), var(--sy, 1)); }
+      50%  { transform: translateX(-50%) scale(var(--sx, 1), calc(var(--sy, 1) * 1.03)); }
+      100% { transform: translateX(-50%) scale(var(--sx, 1), var(--sy, 1)); }
+    }
+
+    .stickman.idle {
+      animation: stickman-idle 1.8s ease-in-out infinite;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Apply Idle State ---------- */
+function applyIdleState(character) {
+  if (!character) return;
+
+  const scale = character.state.scale || 1;
+  const facing = character.state.facing === "left" ? -1 : 1;
+
+  character.el.style.setProperty("--sx", facing * scale);
+  character.el.style.setProperty("--sy", scale);
+
+  character.el.classList.add("idle");
+}
+
+/* ---------- Remove Idle State ---------- */
+function removeIdleState(character) {
+  if (!character) return;
+  character.el.classList.remove("idle");
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+
+    // default: idle
+    if (!cfg.action || cfg.action === "idle") {
+      applyIdleState(character);
+    } else {
+      removeIdleState(character);
+    }
+  });
+});
+</script>
 
 </body>
 </html>
