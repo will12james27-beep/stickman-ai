@@ -12866,6 +12866,79 @@ window.applyMicroVariation = function (value, charId, type) {
   timeline.addEventListener('mouseleave', hideTip);
 })();
 </script>
+<script>
+/* =========================
+   23 E.5 — Beat Labels on Timeline
+   Shot / Action Naming Layer
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+  const timeline = document.getElementById('epTimeline');
+  if (!timeline) return;
+
+  let labelsBuilt = false;
+
+  function getBeatLabel(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index] && beats[index].label) {
+      return beats[index].label;
+    }
+    return 'B' + index;
+  }
+
+  function buildLabels() {
+    if (labelsBuilt) return;
+    if (!window.TimelineState || TimelineState.totalBeats <= 0) return;
+
+    labelsBuilt = true;
+
+    for (let i = 0; i < TimelineState.totalBeats; i++) {
+      const label = document.createElement('div');
+      label.className = 'epLabel';
+      label.dataset.index = i;
+      label.textContent = getBeatLabel(i);
+
+      label.style.cssText = `
+        position:absolute;
+        top:8px;
+        left:${(i / TimelineState.totalBeats) * 100}%;
+        transform:translateX(-50%);
+        font-size:9px;
+        color:#aaa;
+        white-space:nowrap;
+        pointer-events:none;
+      `;
+
+      timeline.appendChild(label);
+    }
+  }
+
+  function updateActiveLabel() {
+    const labels = timeline.querySelectorAll('.epLabel');
+    labels.forEach(l => {
+      const idx = Number(l.dataset.index);
+      if (idx === TimelineState.currentBeat) {
+        l.style.color = '#0f0';
+        l.style.fontWeight = 'bold';
+      } else {
+        l.style.color = '#aaa';
+        l.style.fontWeight = 'normal';
+      }
+    });
+  }
+
+  function loop() {
+    if (window.TimelineState) {
+      buildLabels();
+      updateActiveLabel();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+})();
+</script>
 
 </body>
 </html>
