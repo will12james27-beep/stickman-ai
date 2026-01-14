@@ -10512,6 +10512,74 @@ window.TimelineControls = {
   state: () => ({ ...TimelinePlayer })
 };
 </script>
+<script>
+/* =====================================================
+   23 B.11 — Shot Renderer Bridge (SAFE MODE)
+   Append-only. Existing systems untouched.
+   ===================================================== */
+
+/* ---------- Renderer Bridge ---------- */
+window.ShotRenderer = {
+  currentShot: null,
+
+  applyShot(shot) {
+    if (!shot) return;
+    this.currentShot = shot;
+
+    console.group("🎬 Applying Shot:", shot.shotId);
+
+    applySceneLayer(shot);
+    applyCameraLayer(shot);
+    applyTextLayer(shot);
+
+    console.groupEnd();
+  }
+};
+
+/* ---------- Scene Layer ---------- */
+function applySceneLayer(shot) {
+  if (!shot.data.scene) return;
+
+  document.dispatchEvent(
+    new CustomEvent("scene:apply", {
+      detail: shot.data.scene
+    })
+  );
+
+  console.log("🖼 Scene applied:", shot.data.scene);
+}
+
+/* ---------- Camera Layer ---------- */
+function applyCameraLayer(shot) {
+  if (!shot.data.camera) return;
+
+  document.dispatchEvent(
+    new CustomEvent("camera:apply", {
+      detail: shot.data.camera
+    })
+  );
+
+  console.log("📷 Camera applied:", shot.data.camera);
+}
+
+/* ---------- Text Layer ---------- */
+function applyTextLayer(shot) {
+  if (!shot.data.text) return;
+
+  document.dispatchEvent(
+    new CustomEvent("text:apply", {
+      detail: shot.data.text
+    })
+  );
+
+  console.log("📝 Text applied:", shot.data.text);
+}
+
+/* ---------- Listen Timeline Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  ShotRenderer.applyShot(e.detail);
+});
+</script>
 
 </body>
 </html>
