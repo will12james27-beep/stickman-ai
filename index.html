@@ -12546,6 +12546,37 @@ window.restoreVisualProfile = function (ctx) {
   }
 };
 </script>
+<script>
+/* =========================
+   23 D.9 — Motion Signature Binding
+   Character → Behavior Layer
+   SAFE MODE: append-only
+   ========================= */
+
+window.applyMotionProfile = function (value, charId, type) {
+  const profile = window.getCharacterProfile
+    ? getCharacterProfile(charId)
+    : null;
+
+  if (!profile || !profile.motion) return value;
+
+  const m = profile.motion;
+
+  switch (type) {
+    case 'speed':
+      return value * (m.speed || 1);
+
+    case 'reaction':
+      return value * (m.reaction || 1);
+
+    case 'shake':
+      return value * (m.shake || 1);
+
+    default:
+      return value;
+  }
+};
+</script>
 
 </body>
 </html>
