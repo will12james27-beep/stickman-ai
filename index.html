@@ -17645,6 +17645,170 @@ window.testShotBuilder = function () {
 
 console.log("4.4 — Shot Auto Builder ready");
 </script>
+<script>
+/* ==========================================
+   4.5 — Shot → Render Bridge
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   BASIC RENDER LAYER
+   ====================== */
+window.RenderLayer = {
+  container: null,
+  characters: {},
+
+  init() {
+    if (this.container) return;
+
+    this.container = document.createElement("div");
+    this.container.id = "render-layer";
+    Object.assign(this.container.style, {
+      position: "relative",
+      width: "100%",
+      height: "100%",
+      overflow: "hidden",
+      background: "#f2f2f2"
+    });
+
+    document.body.appendChild(this.container);
+  },
+
+  registerCharacter(character) {
+    if (!this.container) this.init();
+
+    if (this.characters[character.id]) return;
+
+    const el = document.createElement("div");
+    el.className = "character";
+    el.dataset.id = character.id;
+    el.innerText = character.name;
+
+    Object.assign(el.style, {
+      position: "absolute",
+      left: character.x + "px",
+      top: character.y + "px",
+      transform: "scale(1)",
+      transition: "all 0.3s ease",
+      padding: "8px 12px",
+      background: "#fff",
+      border: "2px solid #000",
+      borderRadius: "12px",
+      fontFamily: "sans-serif",
+      fontWeight: "bold"
+    });
+
+    this.container.appendChild(el);
+    this.characters[character.id] = el;
+  },
+
+  focus(targetId, mode) {
+    Object.values(this.characters).forEach(el => {
+      el.style.opacity = "0.4";
+      el.style.transform = "scale(0.9)";
+      el.style.zIndex = 1;
+    });
+
+    const target = this.characters[targetId];
+    if (!target) return;
+
+    target.style.opacity = "1";
+    target.style.zIndex = 10;
+
+    switch (mode) {
+      case "close":
+        target.style.transform = "scale(1.4)";
+        break;
+      case "medium":
+        target.style.transform = "scale(1.2)";
+        break;
+      case "reaction":
+        target.style.transform = "scale(1.1)";
+        break;
+      default:
+        target.style.transform = "scale(1)";
+    }
+  },
+
+  reset() {
+    Object.values(this.characters).forEach(el => {
+      el.style.opacity = "1";
+      el.style.transform = "scale(1)";
+      el.style.zIndex = 1;
+    });
+  }
+};
+
+
+/* ======================
+   SHOT PLAYER
+   ====================== */
+window.ShotRenderer = {
+  playing: false,
+
+  playShots(shots) {
+    if (!Array.isArray(shots) || shots.length === 0) return;
+    this.playing = true;
+
+    let index = 0;
+
+    const playNext = () => {
+      if (index >= shots.length) {
+        this.playing = false;
+        window.dispatchEvent(
+          new CustomEvent("episode:ended")
+        );
+        return;
+      }
+
+      const shot = shots[index];
+      this.renderShot(shot);
+
+      index++;
+      setTimeout(playNext, shot.duration * 1000);
+    };
+
+    playNext();
+  },
+
+  renderShot(shot) {
+    if (!shot) return;
+
+    if (shot.target) {
+      RenderLayer.focus(shot.target, shot.type);
+    } else {
+      RenderLayer.reset();
+    }
+  }
+};
+
+
+/* ======================
+   EPISODE → RENDER BIND
+   ====================== */
+window.playEpisodeRender = function () {
+  if (!EpisodeFlow?.episode) {
+    console.warn("No active episode");
+    return;
+  }
+
+  RenderLayer.init();
+
+  // Register characters
+  Object.values(CharacterRegistry.characters).forEach(c => {
+    RenderLayer.registerCharacter(c);
+  });
+
+  const shots = EpisodeFlow.episode.shots || [];
+  ShotRenderer.playShots(shots);
+};
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("4.5 — Shot → Render Bridge ready");
+</script>
 
 </body>
 </html>
