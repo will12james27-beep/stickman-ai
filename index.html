@@ -17215,6 +17215,126 @@ window.dumpCharacters = function () {
 
 console.log("4.1 — Character Registry ready");
 </script>
+<script>
+/* ==========================================
+   4.2 — Prompt Parser (Character-aware)
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   PARSER CORE
+   ====================== */
+window.PromptParser = {
+  enabled: true,
+
+  parse(promptText) {
+    if (!promptText || typeof promptText !== "string") return [];
+
+    const lines = promptText
+      .split("\n")
+      .map(l => l.trim())
+      .filter(Boolean);
+
+    const actions = [];
+
+    lines.forEach((line, index) => {
+      // 1️⃣ Speech format: NAME: text
+      const speechMatch = line.match(/^([^:]+):\s*(.+)$/);
+      if (speechMatch) {
+        const name = speechMatch[1];
+        const text = speechMatch[2];
+
+        const ch = resolveCharacter(name);
+        if (ch) {
+          actions.push({
+            type: "speech",
+            characterId: ch.id,
+            text,
+            line: index
+          });
+        }
+        return;
+      }
+
+      // 2️⃣ Looks at / gaze
+      const lookMatch = line.match(
+        /^(\w+)\s+looks?\s+at\s+(\w+)/i
+      );
+      if (lookMatch) {
+        const from = resolveCharacter(lookMatch[1]);
+        const to = resolveCharacter(lookMatch[2]);
+
+        if (from && to) {
+          actions.push({
+            type: "gaze",
+            from: from.id,
+            to: to.id,
+            line: index
+          });
+        }
+      }
+
+      // 3️⃣ Says (inline)
+      const saysMatch = line.match(
+        /^(\w+).+says?:\s*(.+)$/i
+      );
+      if (saysMatch) {
+        const from = resolveCharacter(saysMatch[1]);
+        const text = saysMatch[2];
+
+        if (from) {
+          actions.push({
+            type: "speech",
+            characterId: from.id,
+            text,
+            line: index
+          });
+        }
+      }
+
+      // 4️⃣ Emotions / actions
+      const emotionMap = {
+        laughs: "laugh",
+        laughing: "laugh",
+        angry: "angry",
+        smiles: "smile",
+        smiling: "smile",
+        shocked: "shock",
+        surprised: "surprise"
+      };
+
+      Object.keys(emotionMap).forEach(word => {
+        if (line.toLowerCase().includes(word)) {
+          const who = line.split(" ")[0];
+          const ch = resolveCharacter(who);
+          if (ch) {
+            actions.push({
+              type: "emotion",
+              characterId: ch.id,
+              emotion: emotionMap[word],
+              line: index
+            });
+          }
+        }
+      });
+    });
+
+    return actions;
+  }
+};
+
+
+/* ======================
+   DEBUG HELPER
+   ====================== */
+window.testPromptParse = function (text) {
+  const result = PromptParser.parse(text);
+  console.table(result);
+  return result;
+};
+
+console.log("4.2 — Prompt Parser ready");
+</script>
 
 </body>
 </html>
