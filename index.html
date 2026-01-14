@@ -11382,6 +11382,110 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.10 — Mouth Sync System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Mouth Styles ---------- */
+(function injectMouthStyle() {
+  if (document.getElementById("mouth-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "mouth-style";
+  style.textContent = `
+    .stickman-mouth {
+      position: absolute;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    @keyframes mouth-talk {
+      0%   { transform: translateX(-50%) scaleY(0.4); }
+      50%  { transform: translateX(-50%) scaleY(1); }
+      100% { transform: translateX(-50%) scaleY(0.4); }
+    }
+
+    .mouth-talking {
+      animation: mouth-talk 0.18s infinite;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Mouth Shapes ---------- */
+const MOUTH_MAP = {
+  neutral: "—",
+  open: "◯",
+  smile: "ᴗ",
+  angry: "︶"
+};
+
+/* ---------- Ensure Mouth Element ---------- */
+function ensureMouth(character) {
+  if (!character || character.mouthEl) return;
+
+  const mouth = document.createElement("div");
+  mouth.className = "stickman-mouth";
+  mouth.textContent = MOUTH_MAP.neutral;
+
+  character.el.appendChild(mouth);
+  character.mouthEl = mouth;
+}
+
+/* ---------- Start Talking ---------- */
+function startTalking(character, emotion) {
+  ensureMouth(character);
+
+  let shape = MOUTH_MAP.open;
+  if (emotion === "happy" || emotion === "laugh") shape = MOUTH_MAP.smile;
+  if (emotion === "angry") shape = MOUTH_MAP.angry;
+
+  character.mouthEl.textContent = shape;
+  character.mouthEl.classList.add("mouth-talking");
+  character.state.talking = true;
+}
+
+/* ---------- Stop Talking ---------- */
+function stopTalking(character) {
+  if (!character || !character.mouthEl) return;
+
+  character.mouthEl.classList.remove("mouth-talking");
+  character.mouthEl.textContent = MOUTH_MAP.neutral;
+  character.state.talking = false;
+}
+
+/* ---------- Auto Talk Duration ---------- */
+function autoTalk(character, duration = 800) {
+  startTalking(character, character.state.emotion);
+  setTimeout(() => stopTalking(character), duration);
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+
+    if (cfg.dialog || cfg.speaking) {
+      const length = cfg.dialog
+        ? Math.min(2000, Math.max(600, cfg.dialog.length * 40))
+        : 800;
+
+      autoTalk(character, length);
+    } else {
+      stopTalking(character);
+    }
+  });
+});
+</script>
 
 </body>
 </html>
