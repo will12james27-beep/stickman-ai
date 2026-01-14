@@ -18893,6 +18893,182 @@ window.addEventListener("load", () => {
    ====================== */
 console.log("5.2 — Scene / Background Editor ready");
 </script>
+<script>
+/* ==========================================
+   5.3 — Multi-language (EN + UZ)
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   LANGUAGE STATE
+   ====================== */
+window.LanguageState = {
+  current: "EN", // EN | UZ
+  set(lang) {
+    this.current = lang;
+    console.log("Language set:", lang);
+  }
+};
+
+
+/* ======================
+   BASIC TRANSLATION MAP
+   ====================== */
+window.BasicI18n = {
+  UZ: {
+    said: "dedi",
+    looksAt: "qarab",
+    thinks: "o‘yladi"
+  },
+  EN: {
+    dedi: "said",
+    qarab: "looked at",
+    oyladi: "thought"
+  },
+
+  normalize(text) {
+    let t = text;
+    const map = this[LanguageState.current === "EN" ? "UZ" : "EN"];
+    Object.keys(map).forEach(k => {
+      t = t.replaceAll(k, map[k]);
+    });
+    return t;
+  }
+};
+
+
+/* ======================
+   PROMPT LANGUAGE DETECT
+   ====================== */
+window.detectPromptLanguage = function (text) {
+  const uzWords = ["dedi", "qarab", "o‘yladi"];
+  const enWords = ["said", "looked", "thought"];
+
+  const uzScore = uzWords.filter(w => text.includes(w)).length;
+  const enScore = enWords.filter(w => text.includes(w)).length;
+
+  return uzScore >= enScore ? "UZ" : "EN";
+};
+
+
+/* ======================
+   PROMPT PREPROCESSOR
+   ====================== */
+window.processPromptLanguage = function (prompt) {
+  const detected = detectPromptLanguage(prompt);
+  LanguageState.set(detected);
+
+  // normalize mixed language
+  return BasicI18n.normalize(prompt);
+};
+
+
+/* ======================
+   HOOK INTO PROMPT PIPE
+   ====================== */
+(function () {
+  const wait = setInterval(() => {
+    if (!window.PromptParser) return;
+    clearInterval(wait);
+
+    const originalParse = PromptParser.parse;
+
+    PromptParser.parse = function (prompt) {
+      const cleanPrompt = processPromptLanguage(prompt);
+      return originalParse.call(this, cleanPrompt);
+    };
+
+    console.log("PromptParser language hook attached");
+  }, 300);
+})();
+
+
+/* ======================
+   SUBTITLE LANGUAGE HOOK
+   ====================== */
+(function () {
+  const wait = setInterval(() => {
+    if (!window.SubtitleSystem) return;
+    clearInterval(wait);
+
+    const originalShow = SubtitleSystem.show;
+
+    SubtitleSystem.show = function (text, options = {}) {
+      const lang = LanguageState.current;
+      const normalized = BasicI18n.normalize(text);
+
+      return originalShow.call(
+        this,
+        normalized,
+        { ...options, lang }
+      );
+    };
+
+    console.log("Subtitle language hook attached");
+  }, 300);
+})();
+
+
+/* ======================
+   GLOBAL CAPTION HOOK
+   ====================== */
+(function () {
+  const wait = setInterval(() => {
+    if (!window.GlobalCaption) return;
+    clearInterval(wait);
+
+    const originalSet = GlobalCaption.set;
+
+    GlobalCaption.set = function (text) {
+      const normalized = BasicI18n.normalize(text);
+      return originalSet.call(this, normalized);
+    };
+
+    console.log("Global caption language hook attached");
+  }, 300);
+})();
+
+
+/* ======================
+   CREATOR UI — LANGUAGE
+   ====================== */
+(function () {
+  const waitUI = setInterval(() => {
+    if (!window.CreatorUI?.container) return;
+    clearInterval(waitUI);
+
+    const label = document.createElement("div");
+    label.innerText = "🌍 Language";
+    label.style.fontWeight = "700";
+    label.style.marginTop = "10px";
+
+    const select = document.createElement("select");
+    select.style.width = "100%";
+    select.style.marginTop = "6px";
+
+    ["EN", "UZ"].forEach(l => {
+      const opt = document.createElement("option");
+      opt.value = l;
+      opt.innerText = l;
+      select.appendChild(opt);
+    });
+
+    select.value = LanguageState.current;
+    select.onchange = () => {
+      LanguageState.set(select.value);
+    };
+
+    CreatorUI.container.appendChild(label);
+    CreatorUI.container.appendChild(select);
+  }, 300);
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("5.3 — Multi-language system ready");
+</script>
 
 </body>
 </html>
