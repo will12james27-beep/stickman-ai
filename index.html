@@ -11276,6 +11276,112 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.9 — Emotion System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Emotion Styles ---------- */
+(function injectEmotionStyle() {
+  if (document.getElementById("emotion-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "emotion-style";
+  style.textContent = `
+    .stickman-face {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    @keyframes emotion-pop {
+      0%   { transform: translateX(-50%) scale(0.6); opacity: 0; }
+      60%  { transform: translateX(-50%) scale(1.2); opacity: 1; }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
+    .emotion-pop {
+      animation: emotion-pop 0.35s ease-out;
+    }
+
+    @keyframes emotion-shake {
+      0% { transform: translateX(-50%) translateX(0); }
+      25% { transform: translateX(-50%) translateX(-2px); }
+      50% { transform: translateX(-50%) translateX(2px); }
+      75% { transform: translateX(-50%) translateX(-2px); }
+      100% { transform: translateX(-50%) translateX(0); }
+    }
+
+    .emotion-shake {
+      animation: emotion-shake 0.4s linear;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Emotion Map ---------- */
+const EMOTION_MAP = {
+  neutral: "🙂",
+  happy: "😄",
+  angry: "😡",
+  sad: "😢",
+  surprised: "😲",
+  shocked: "😱",
+  laugh: "😂"
+};
+
+/* ---------- Ensure Face Element ---------- */
+function ensureFace(character) {
+  if (!character || character.faceEl) return;
+
+  const face = document.createElement("div");
+  face.className = "stickman-face";
+  face.textContent = EMOTION_MAP.neutral;
+
+  character.el.appendChild(face);
+  character.faceEl = face;
+}
+
+/* ---------- Apply Emotion ---------- */
+function applyEmotion(character, emotion) {
+  if (!character) return;
+
+  ensureFace(character);
+
+  const emo = EMOTION_MAP[emotion] || EMOTION_MAP.neutral;
+  character.faceEl.textContent = emo;
+
+  character.faceEl.classList.remove("emotion-pop", "emotion-shake");
+  void character.faceEl.offsetWidth; // restart animation
+
+  if (emotion === "shocked" || emotion === "surprised") {
+    character.faceEl.classList.add("emotion-pop");
+  } else if (emotion === "angry") {
+    character.faceEl.classList.add("emotion-shake");
+  }
+
+  character.state.emotion = emotion;
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+
+    if (cfg.emotion) {
+      applyEmotion(character, cfg.emotion);
+    }
+  });
+});
+</script>
 
 </body>
 </html>
