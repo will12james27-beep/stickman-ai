@@ -14931,6 +14931,141 @@ window.addEventListener("beat:resumed", e => {
   console.log("Beat resumed:", e.detail);
 });
 </script>
+<script>
+/* ==========================================
+   23 H.3 — Shot Jump / Skip / Rewind Control
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   INTERNAL HELPERS
+   ====================== */
+window.EpisodeFlow.getCurrentShot = function () {
+  if (!this.episode) return null;
+  return this.episode.shots[this.episode.currentShotIndex] || null;
+};
+
+
+/* ======================
+   STOP CURRENT BEAT SAFE
+   ====================== */
+window.EpisodeFlow._stopCurrentBeat = function () {
+  if (window.BeatRuntime && BeatRuntime.timer) {
+    clearTimeout(BeatRuntime.timer);
+    BeatRuntime.timer = null;
+  }
+  if (window.BeatRuntime) {
+    BeatRuntime.currentBeat = null;
+    BeatRuntime.paused = false;
+  }
+};
+
+
+/* ======================
+   SHOT JUMP CORE
+   ====================== */
+window.EpisodeFlow.jumpToShot = function (index) {
+  if (!this.episode) return;
+  if (index < 0 || index >= this.episode.shots.length) return;
+
+  this._stopCurrentBeat();
+
+  const currentShot = this.getCurrentShot();
+  if (currentShot) {
+    currentShot.finished = true;
+  }
+
+  this.episode.currentShotIndex = index;
+  this.episode.state = "playing";
+
+  this._playCurrentShot();
+};
+
+
+/* ======================
+   NEXT / PREV SHOT
+   ====================== */
+window.EpisodeFlow.nextShot = function () {
+  this.jumpToShot(this.episode.currentShotIndex + 1);
+};
+
+window.EpisodeFlow.prevShot = function () {
+  this.jumpToShot(this.episode.currentShotIndex - 1);
+};
+
+
+/* ======================
+   RESTART CURRENT SHOT
+   ====================== */
+window.EpisodeFlow.restartShot = function () {
+  const shot = this.getCurrentShot();
+  if (!shot) return;
+
+  this._stopCurrentBeat();
+
+  shot.currentBeatIndex = 0;
+  shot.started = false;
+  shot.finished = false;
+
+  this._playCurrentShot();
+};
+
+
+/* ======================
+   SHORTS-STYLE SKIP BEAT
+   ====================== */
+window.EpisodeFlow.skipBeat = function () {
+  const shot = this.getCurrentShot();
+  if (!shot) return;
+
+  this._stopCurrentBeat();
+
+  shot.currentBeatIndex++;
+  ShotFlow._playBeat(shot, () => {
+    this.episode.currentShotIndex++;
+    this._playCurrentShot();
+  });
+};
+
+
+/* ======================
+   EXTERNAL TRIGGERS
+   ====================== */
+window.addEventListener("keydown", e => {
+  if (!window.EpisodeFlow || !EpisodeFlow.episode) return;
+
+  switch (e.code) {
+    case "ArrowRight":
+      EpisodeFlow.nextShot();
+      break;
+    case "ArrowLeft":
+      EpisodeFlow.prevShot();
+      break;
+    case "KeyR":
+      EpisodeFlow.restartShot();
+      break;
+    case "KeyS":
+      EpisodeFlow.skipBeat();
+      break;
+  }
+});
+
+
+/* ======================
+   PUBLIC API (CTA / UI)
+   ====================== */
+window.jumpToShot = i => EpisodeFlow.jumpToShot(i);
+window.nextShot = () => EpisodeFlow.nextShot();
+window.prevShot = () => EpisodeFlow.prevShot();
+window.restartShot = () => EpisodeFlow.restartShot();
+window.skipBeat = () => EpisodeFlow.skipBeat();
+
+
+/* ======================
+   DEBUG LOG
+   ====================== */
+console.log("23 H.3 — Shot Jump / Skip / Rewind ready");
+</script>
 
 </body>
 </html>
