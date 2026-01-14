@@ -10629,6 +10629,56 @@ document.addEventListener("scene:apply", e => {
   renderScene(e.detail);
 });
 </script>
+<script>
+/* =====================================================
+   23 B.13 — Camera Renderer (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Camera Wrapper ---------- */
+(function createCameraWrapper() {
+  const scene = document.getElementById("scene-root");
+  if (!scene) return;
+
+  if (document.getElementById("camera-wrapper")) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.id = "camera-wrapper";
+
+  Object.assign(wrapper.style, {
+    position: "absolute",
+    inset: "0",
+    transformOrigin: "center center",
+    transition: "transform 0.6s ease"
+  });
+
+  while (scene.firstChild) {
+    wrapper.appendChild(scene.firstChild);
+  }
+
+  scene.appendChild(wrapper);
+})();
+
+/* ---------- Apply Camera ---------- */
+function applyCamera(cameraData) {
+  const wrapper = document.getElementById("camera-wrapper");
+  if (!wrapper || !cameraData) return;
+
+  const zoom = cameraData.zoom ?? 1;
+  const x = cameraData.x ?? 0;
+  const y = cameraData.y ?? 0;
+
+  wrapper.style.transform =
+    `translate(${x}px, ${y}px) scale(${zoom})`;
+
+  console.log("📷 Camera rendered:", cameraData);
+}
+
+/* ---------- Listen Camera Events ---------- */
+document.addEventListener("camera:apply", e => {
+  applyCamera(e.detail);
+});
+</script>
 
 </body>
 </html>
