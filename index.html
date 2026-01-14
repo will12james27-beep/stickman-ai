@@ -12810,6 +12810,62 @@ window.applyMicroVariation = function (value, charId, type) {
   loop();
 })();
 </script>
+<script>
+/* =========================
+   23 E.4 — Timeline Hover Tooltip
+   Beat Index Feedback
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+  const timeline = document.getElementById('epTimeline');
+  if (!timeline) return;
+
+  const tip = document.createElement('div');
+  tip.id = 'epTooltip';
+  tip.style.cssText = `
+    position:fixed;
+    padding:4px 6px;
+    background:#000;
+    color:#0f0;
+    font-size:11px;
+    border-radius:4px;
+    pointer-events:none;
+    opacity:0;
+    z-index:10000;
+  `;
+  document.body.appendChild(tip);
+
+  function showTip(x, y, text) {
+    tip.textContent = text;
+    tip.style.left = x + 'px';
+    tip.style.top = (y - 24) + 'px';
+    tip.style.opacity = '1';
+  }
+
+  function hideTip() {
+    tip.style.opacity = '0';
+  }
+
+  timeline.addEventListener('mousemove', (e) => {
+    if (!window.TimelineState || TimelineState.totalBeats <= 0) return;
+
+    const rect = timeline.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < 0 || x > rect.width) {
+      hideTip();
+      return;
+    }
+
+    const ratio = x / rect.width;
+    const beat = Math.floor(ratio * TimelineState.totalBeats);
+
+    showTip(e.clientX, rect.top, 'Beat ' + beat);
+  });
+
+  timeline.addEventListener('mouseleave', hideTip);
+})();
+</script>
 
 </body>
 </html>
