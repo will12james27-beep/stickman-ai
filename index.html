@@ -13293,6 +13293,74 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.2 — Inspector Editor Binding
+   SelectedBeat has priority
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getEffectiveBeatIndex() {
+    if (window.EditorState && EditorState.selectedBeat !== null) {
+      return EditorState.selectedBeat;
+    }
+    if (window.TimelineState) {
+      return TimelineState.currentBeat;
+    }
+    return null;
+  }
+
+  function getBeatData(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return {};
+  }
+
+  function updateInspectorOverride() {
+    const idx = getEffectiveBeatIndex();
+    if (idx === null) return;
+
+    const beat = getBeatData(idx);
+
+    // index
+    const bi = document.getElementById('biIndex');
+    if (bi) bi.textContent = idx;
+
+    // label
+    const bl = document.getElementById('biLabel');
+    if (bl) bl.textContent = beat.label || ('B' + idx);
+
+    // metadata
+    const sp = document.getElementById('bmSpeaker');
+    if (sp) sp.textContent = beat.speaker || '–';
+
+    const em = document.getElementById('bmEmotion');
+    if (em) em.textContent = beat.emotion || '–';
+
+    const ac = document.getElementById('bmAction');
+    if (ac) ac.textContent = beat.action || '–';
+
+    // status hint
+    const st = document.getElementById('biStatus');
+    if (st) {
+      st.textContent =
+        (window.EditorState && EditorState.selectedBeat !== null)
+          ? 'editor'
+          : (TimelineState && TimelineState.isPlaying ? 'playing' : 'paused');
+    }
+  }
+
+  function loop() {
+    updateInspectorOverride();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
