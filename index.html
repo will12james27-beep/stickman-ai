@@ -11045,6 +11045,79 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.6 — Walk Animation Bind (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Walk Animation Style ---------- */
+(function injectWalkStyle() {
+  if (document.getElementById("walk-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "walk-style";
+  style.textContent = `
+    @keyframes stickman-walk {
+      0%   { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(0deg); }
+      25%  { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(2deg); }
+      50%  { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(0deg); }
+      75%  { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(-2deg); }
+      100% { transform: translateX(-50%) scale(var(--sx), var(--sy)) rotate(0deg); }
+    }
+
+    .stickman.walk {
+      animation: stickman-walk 0.6s linear infinite;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Apply Walk State ---------- */
+function applyWalkState(character) {
+  if (!character) return;
+
+  character.el.classList.remove("idle");
+  character.el.classList.add("walk");
+}
+
+/* ---------- Remove Walk State ---------- */
+function removeWalkState(character) {
+  if (!character) return;
+  character.el.classList.remove("walk");
+}
+
+/* ---------- Walk Detection Logic ---------- */
+function updateWalkState(character, config) {
+  if (!character || !config) return;
+
+  const prevX = character.state.prevX;
+  const currX = typeof config.x === "number" ? config.x : prevX;
+
+  const isMoving =
+    typeof prevX === "number" &&
+    typeof currX === "number" &&
+    Math.abs(currX - prevX) > 0.1;
+
+  if (config.action === "walk" || isMoving) {
+    applyWalkState(character);
+  } else {
+    removeWalkState(character);
+    applyIdleState(character);
+  }
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+    updateWalkState(character, cfg);
+  });
+});
+</script>
 
 </body>
 </html>
