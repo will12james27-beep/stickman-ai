@@ -13469,6 +13469,126 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.4 — Speaker Selector (Dropdown)
+   Character Identity Binding
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  function getCharacters() {
+    if (window.CharacterRegistry && CharacterRegistry.list) {
+      return CharacterRegistry.list;
+    }
+    if (window.Characters && Array.isArray(Characters)) {
+      return Characters;
+    }
+    if (window.SceneDirector && SceneDirector.characters) {
+      return SceneDirector.characters;
+    }
+
+    // fallback: collect from beats
+    const set = new Set();
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats) {
+      beats.forEach(b => {
+        if (b.speaker) set.add(b.speaker);
+      });
+    }
+    return Array.from(set);
+  }
+
+  function getBeat(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return null;
+  }
+
+  function injectSpeakerSelect() {
+    const panel = document.getElementById('beatInspector');
+    if (!panel || panel.__speakerInjected) return;
+    panel.__speakerInjected = true;
+
+    const wrap = document.createElement('div');
+    wrap.style.marginTop = '6px';
+
+    wrap.innerHTML = `
+      <div style="margin-top:6px">
+        <b>Speaker:</b><br/>
+        <select id="biSpeakerSelect"
+          style="
+            width:100%;
+            background:#000;
+            color:#0f0;
+            border:1px solid #333;
+            padding:4px;
+            font-size:11px;
+            font-family:monospace;
+          ">
+        </select>
+      </div>
+    `;
+
+    panel.appendChild(wrap);
+
+    const select = wrap.querySelector('#biSpeakerSelect');
+
+    select.addEventListener('change', () => {
+      if (!window.EditorState || EditorState.selectedBeat === null) return;
+      const beat = getBeat(EditorState.selectedBeat);
+      if (!beat) return;
+
+      const val = select.value;
+      if (val) {
+        beat.speaker = val;
+      } else {
+        delete beat.speaker;
+      }
+    });
+  }
+
+  function updateSpeakerSelect() {
+    const select = document.getElementById('biSpeakerSelect');
+    if (!select) return;
+
+    const isEditor =
+      window.EditorState && EditorState.selectedBeat !== null;
+
+    select.disabled = !isEditor;
+    select.style.opacity = isEditor ? '1' : '0.4';
+
+    const chars = getCharacters();
+
+    // rebuild options safely
+    select.innerHTML = `<option value="">– none –</option>`;
+    chars.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      select.appendChild(opt);
+    });
+
+    if (!isEditor) {
+      select.value = '';
+      return;
+    }
+
+    const beat = getBeat(EditorState.selectedBeat);
+    select.value = (beat && beat.speaker) ? beat.speaker : '';
+  }
+
+  function loop() {
+    injectSpeakerSelect();
+    updateSpeakerSelect();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
