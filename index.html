@@ -11791,6 +11791,105 @@ document.addEventListener("timeline:shotChange", e => {
   applySpeakerHighlight(charObjects, activeCharacter);
 });
 </script>
+<script>
+/* =====================================================
+   23 C.14 — Camera Focus on Speaker (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Camera Focus Styles ---------- */
+(function injectCameraFocusStyle() {
+  if (document.getElementById("camera-focus-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "camera-focus-style";
+  style.textContent = `
+    .camera-focus-wrapper {
+      transition: transform 0.45s ease-out;
+      will-change: transform;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Camera Focus State ---------- */
+let cameraFocusTarget = null;
+let cameraWrapper = null;
+
+/* ---------- Ensure Camera Wrapper ---------- */
+function ensureCameraWrapper() {
+  if (cameraWrapper) return cameraWrapper;
+
+  // Assume stage/root container exists
+  const stage =
+    document.querySelector(".stage") ||
+    document.querySelector("#stage") ||
+    document.body;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "camera-focus-wrapper";
+
+  // Move all stage children into wrapper
+  while (stage.firstChild) {
+    wrapper.appendChild(stage.firstChild);
+  }
+
+  stage.appendChild(wrapper);
+  cameraWrapper = wrapper;
+  return wrapper;
+}
+
+/* ---------- Focus Camera On Character ---------- */
+function focusCameraOnCharacter(character, zoom = 1.12) {
+  if (!character || !character.el) return;
+
+  const wrapper = ensureCameraWrapper();
+  const rect = character.el.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  const viewportX = window.innerWidth / 2;
+  const viewportY = window.innerHeight / 2;
+
+  const offsetX = (viewportX - centerX) * zoom;
+  const offsetY = (viewportY - centerY) * zoom;
+
+  wrapper.style.transform =
+    `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
+
+  cameraFocusTarget = character;
+}
+
+/* ---------- Reset Camera ---------- */
+function resetCameraFocus() {
+  if (!cameraWrapper) return;
+  cameraWrapper.style.transform = "translate(0px, 0px) scale(1)";
+  cameraFocusTarget = null;
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) {
+    resetCameraFocus();
+    return;
+  }
+
+  // Reuse same priority logic as 23 C.13
+  const cfgList = shot.data.characters;
+  const mainCfg =
+    cfgList.find(c => c.priority === "main" && c.dialog) ||
+    cfgList.find(c => c.dialog);
+
+  if (!mainCfg) {
+    resetCameraFocus();
+    return;
+  }
+
+  const character = getOrCreateCharacter(mainCfg);
+  focusCameraOnCharacter(character, 1.12);
+});
+</script>
 
 </body>
 </html>
