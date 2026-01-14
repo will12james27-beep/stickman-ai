@@ -12939,6 +12939,73 @@ window.applyMicroVariation = function (value, charId, type) {
   loop();
 })();
 </script>
+<script>
+/* =========================
+   23 E.6 — Active Beat Detail Panel
+   Timeline Inspector (Read-only)
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  const timeline = document.getElementById('epTimeline');
+  if (!timeline) return;
+
+  let panel;
+
+  function createPanel() {
+    panel = document.createElement('div');
+    panel.id = 'beatInspector';
+
+    panel.style.cssText = `
+      margin-top:8px;
+      padding:8px 10px;
+      background:#111;
+      border:1px solid #222;
+      font-size:11px;
+      color:#ccc;
+      font-family:monospace;
+    `;
+
+    panel.innerHTML = `
+      <div><b>Beat:</b> <span id="biIndex">–</span></div>
+      <div><b>Label:</b> <span id="biLabel">–</span></div>
+      <div><b>Status:</b> <span id="biStatus">idle</span></div>
+    `;
+
+    timeline.parentNode.appendChild(panel);
+  }
+
+  function getBeatData(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return {};
+  }
+
+  function updatePanel() {
+    if (!window.TimelineState) return;
+    if (!panel) createPanel();
+
+    const idx = TimelineState.currentBeat;
+    const data = getBeatData(idx);
+
+    document.getElementById('biIndex').textContent = idx;
+    document.getElementById('biLabel').textContent =
+      data.label || 'B' + idx;
+
+    document.getElementById('biStatus').textContent =
+      TimelineState.isPlaying ? 'playing' : 'paused';
+  }
+
+  function loop() {
+    updatePanel();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
