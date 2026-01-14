@@ -18362,6 +18362,142 @@ window.stopMusic = function () {
    ====================== */
 console.log("4.9 — Music / Beat Sync ready");
 </script>
+<script>
+/* ==========================================
+   4.10 — Prompt Presets + Templates
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   PRESET REGISTRY
+   ====================== */
+window.PromptPresets = {
+  presets: {
+    comedy: {
+      name: "Comedy",
+      energy: "hype",
+      defaultEmotion: "laugh",
+      cameraBias: "reaction",
+      subtitleStyle: "bold"
+    },
+    drama: {
+      name: "Drama",
+      energy: "normal",
+      defaultEmotion: "sad",
+      cameraBias: "close",
+      subtitleStyle: "soft"
+    },
+    roast: {
+      name: "Roast",
+      energy: "hype",
+      defaultEmotion: "angry",
+      cameraBias: "close",
+      subtitleStyle: "bold"
+    },
+    chill: {
+      name: "Chill",
+      energy: "calm",
+      defaultEmotion: "neutral",
+      cameraBias: "wide",
+      subtitleStyle: "soft"
+    }
+  },
+
+  current: null,
+
+  apply(presetId) {
+    const p = this.presets[presetId];
+    if (!p) return;
+
+    this.current = p;
+
+    // Energy
+    EnergyController.apply(p.energy);
+
+    console.log(
+      "Preset applied:",
+      p.name
+    );
+  }
+};
+
+
+/* ======================
+   TEMPLATE BUILDER
+   ====================== */
+window.PromptTemplate = {
+  applyTemplate(text) {
+    const preset = PromptPresets.current;
+    if (!preset) return text;
+
+    // auto emotion hint
+    if (!/\(.*?\)/.test(text)) {
+      text = text.replace(
+        /:/g,
+        ` (${preset.defaultEmotion}):`
+      );
+    }
+
+    return text;
+  }
+};
+
+
+/* ======================
+   SUBTITLE STYLE HOOK
+   ====================== */
+(function () {
+  const originalShow =
+    SubtitleLayer.show;
+
+  SubtitleLayer.show = function (text, duration) {
+    const preset = PromptPresets.current;
+
+    if (preset?.subtitleStyle === "bold") {
+      this.container.style.fontWeight = "800";
+      this.container.style.textTransform = "uppercase";
+    } else {
+      this.container.style.fontWeight = "600";
+      this.container.style.textTransform = "none";
+    }
+
+    originalShow.call(this, text, duration);
+  };
+})();
+
+
+/* ======================
+   PUBLIC SHORTS API
+   ====================== */
+window.createShortFromPrompt = function ({
+  preset,
+  music,
+  prompt
+}) {
+  if (preset) {
+    PromptPresets.apply(preset);
+  }
+
+  if (music) {
+    startMusic(music);
+  }
+
+  const finalPrompt =
+    PromptTemplate.applyTemplate(prompt);
+
+  injectPromptTimeline(finalPrompt);
+  buildShotsFromEpisode();
+  playEpisodeRender();
+};
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log(
+  "4.10 — Prompt Presets + Templates ready"
+);
+</script>
 
 </body>
 </html>
