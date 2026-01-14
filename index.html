@@ -10679,6 +10679,93 @@ document.addEventListener("camera:apply", e => {
   applyCamera(e.detail);
 });
 </script>
+<script>
+/* =====================================================
+   23 B.14 — Text Renderer (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Text Root ---------- */
+(function createTextRoot() {
+  if (document.getElementById("text-root")) return;
+
+  const textRoot = document.createElement("div");
+  textRoot.id = "text-root";
+
+  Object.assign(textRoot.style, {
+    position: "fixed",
+    inset: "0",
+    pointerEvents: "none",
+    zIndex: "10",
+    fontFamily: "Arial, sans-serif"
+  });
+
+  document.body.appendChild(textRoot);
+})();
+
+/* ---------- Clear Text ---------- */
+function clearText() {
+  const root = document.getElementById("text-root");
+  if (root) root.innerHTML = "";
+}
+
+/* ---------- Render Text ---------- */
+function renderText(textData) {
+  const root = document.getElementById("text-root");
+  if (!root || !textData) return;
+
+  clearText();
+
+  const el = document.createElement("div");
+
+  const type = textData.type || "subtitle";
+
+  Object.assign(el.style, {
+    position: "absolute",
+    maxWidth: "90%",
+    padding: "8px 14px",
+    borderRadius: "14px",
+    background: "rgba(0,0,0,0.75)",
+    color: "#fff",
+    fontSize: "22px",
+    lineHeight: "1.3",
+    textAlign: "center",
+    whiteSpace: "pre-wrap"
+  });
+
+  el.textContent = textData.text || "";
+
+  if (type === "subtitle") {
+    el.style.left = "50%";
+    el.style.bottom = "6%";
+    el.style.transform = "translateX(-50%)";
+  }
+
+  if (type === "caption") {
+    el.style.left = "50%";
+    el.style.top = "6%";
+    el.style.transform = "translateX(-50%)";
+  }
+
+  if (type === "bubble") {
+    el.style.left = "50%";
+    el.style.top = "45%";
+    el.style.transform = "translate(-50%, -50%)";
+    el.style.background = "#fff";
+    el.style.color = "#000";
+    el.style.border = "2px solid #000";
+  }
+
+  root.appendChild(el);
+
+  console.log("📝 Text rendered:", textData);
+}
+
+/* ---------- Listen Text Events ---------- */
+document.addEventListener("text:apply", e => {
+  renderText(e.detail);
+});
+</script>
 
 </body>
 </html>
