@@ -10353,6 +10353,73 @@ window.__REAL_HIDE_LOADER__ = function () {
 
 })();
 </script>
+<script>
+/* =====================================================
+   23 B.9 — ShotPlan → Timeline Injection (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Timeline Global Object ---------- */
+window.Timeline = {
+  duration: 0,
+  tracks: []   // injected shots
+};
+
+/* ---------- Shot → Timeline Segment ---------- */
+function createTimelineSegment(shot, startTime) {
+  return {
+    shotId: shot.id,
+    type: shot.type,
+    start: startTime,
+    end: startTime + shot.duration,
+    duration: shot.duration,
+    data: shot.data || {}
+  };
+}
+
+/* ---------- Inject ShotPlan Into Timeline ---------- */
+function injectShotPlanIntoTimeline(shotPlan) {
+  if (!Array.isArray(shotPlan)) {
+    console.warn("ShotPlan not found or invalid");
+    return;
+  }
+
+  let cursor = 0;
+  Timeline.tracks.length = 0;
+
+  shotPlan.forEach(shot => {
+    if (!shot || typeof shot.duration !== "number") return;
+
+    const segment = createTimelineSegment(shot, cursor);
+    Timeline.tracks.push(segment);
+    cursor += shot.duration;
+  });
+
+  Timeline.duration = cursor;
+}
+
+/* ---------- Debug Helper ---------- */
+function debugTimeline() {
+  console.group("🎬 Timeline Debug");
+  console.table(
+    Timeline.tracks.map(seg => ({
+      shot: seg.shotId,
+      type: seg.type,
+      start: seg.start,
+      end: seg.end,
+      duration: seg.duration
+    }))
+  );
+  console.log("⏱ Total Timeline Duration:", Timeline.duration);
+  console.groupEnd();
+}
+
+/* ---------- Auto Inject If ShotPlan Exists ---------- */
+if (window.ShotPlan) {
+  injectShotPlanIntoTimeline(window.ShotPlan);
+  debugTimeline();
+}
+</script>
 
 </body>
 </html>
