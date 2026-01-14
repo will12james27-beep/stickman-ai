@@ -13589,6 +13589,111 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 F.5 — Emotion Selector (Dropdown)
+   Beat Emotion Editing
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  const EMOTIONS = [
+    'happy',
+    'angry',
+    'sad',
+    'fear',
+    'surprise',
+    'neutral'
+  ];
+
+  function getBeat(index) {
+    const beats = window.SceneDirector && SceneDirector.beats;
+    if (beats && beats[index]) return beats[index];
+    return null;
+  }
+
+  function injectEmotionSelect() {
+    const panel = document.getElementById('beatInspector');
+    if (!panel || panel.__emotionInjected) return;
+    panel.__emotionInjected = true;
+
+    const wrap = document.createElement('div');
+    wrap.style.marginTop = '6px';
+
+    wrap.innerHTML = `
+      <div style="margin-top:6px">
+        <b>Emotion:</b><br/>
+        <select id="biEmotionSelect"
+          style="
+            width:100%;
+            background:#000;
+            color:#0f0;
+            border:1px solid #333;
+            padding:4px;
+            font-size:11px;
+            font-family:monospace;
+          ">
+        </select>
+      </div>
+    `;
+
+    panel.appendChild(wrap);
+
+    const select = wrap.querySelector('#biEmotionSelect');
+
+    select.addEventListener('change', () => {
+      if (!window.EditorState || EditorState.selectedBeat === null) return;
+      const beat = getBeat(EditorState.selectedBeat);
+      if (!beat) return;
+
+      const val = select.value;
+      if (val) {
+        beat.emotion = val;
+      } else {
+        delete beat.emotion;
+      }
+    });
+  }
+
+  function updateEmotionSelect() {
+    const select = document.getElementById('biEmotionSelect');
+    if (!select) return;
+
+    const isEditor =
+      window.EditorState && EditorState.selectedBeat !== null;
+
+    select.disabled = !isEditor;
+    select.style.opacity = isEditor ? '1' : '0.4';
+
+    // rebuild options
+    select.innerHTML = `<option value="">– none –</option>`;
+    EMOTIONS.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e;
+      opt.textContent = e;
+      select.appendChild(opt);
+    });
+
+    if (!isEditor) {
+      select.value = '';
+      return;
+    }
+
+    const beat = getBeat(EditorState.selectedBeat);
+    select.value = (beat && beat.emotion) ? beat.emotion : '';
+  }
+
+  function loop() {
+    injectEmotionSelect();
+    updateEmotionSelect();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
