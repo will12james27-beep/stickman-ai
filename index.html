@@ -11486,6 +11486,119 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.11 — Subtitle / Speech Bubble System (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Inject Bubble Styles ---------- */
+(function injectBubbleStyle() {
+  if (document.getElementById("bubble-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "bubble-style";
+  style.textContent = `
+    .speech-bubble {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 160px;
+      padding: 6px 10px;
+      background: white;
+      color: black;
+      font-size: 13px;
+      line-height: 1.2;
+      border-radius: 10px;
+      border: 2px solid black;
+      text-align: center;
+      pointer-events: none;
+      user-select: none;
+      animation: bubble-pop 0.25s ease-out;
+    }
+
+    .speech-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid white;
+      filter: drop-shadow(0 -1px 0 black);
+    }
+
+    @keyframes bubble-pop {
+      from {
+        transform: translateX(-50%) scale(0.7);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* ---------- Ensure Bubble ---------- */
+function ensureSpeechBubble(character) {
+  if (!character || character.bubbleEl) return;
+
+  const bubble = document.createElement("div");
+  bubble.className = "speech-bubble";
+  bubble.style.display = "none";
+
+  character.el.appendChild(bubble);
+  character.bubbleEl = bubble;
+}
+
+/* ---------- Show Bubble ---------- */
+function showSpeech(character, text, duration) {
+  ensureSpeechBubble(character);
+
+  character.bubbleEl.textContent = text;
+  character.bubbleEl.style.display = "block";
+
+  clearTimeout(character.state.bubbleTimer);
+
+  character.state.bubbleTimer = setTimeout(() => {
+    character.bubbleEl.style.display = "none";
+  }, duration);
+}
+
+/* ---------- Hide Bubble ---------- */
+function hideSpeech(character) {
+  if (!character || !character.bubbleEl) return;
+  character.bubbleEl.style.display = "none";
+}
+
+/* ---------- Hook Into Shot Change ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+
+    if (cfg.dialog) {
+      const duration = Math.min(
+        3000,
+        Math.max(1000, cfg.dialog.length * 50)
+      );
+
+      showSpeech(character, cfg.dialog, duration);
+    } else {
+      hideSpeech(character);
+    }
+  });
+});
+</script>
 
 </body>
 </html>
