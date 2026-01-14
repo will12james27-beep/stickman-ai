@@ -10420,6 +10420,98 @@ if (window.ShotPlan) {
   debugTimeline();
 }
 </script>
+<script>
+/* =====================================================
+   23 B.10 — Timeline Playback Engine (SAFE MODE)
+   Append-only. No existing code modified.
+   ===================================================== */
+
+/* ---------- Playback State ---------- */
+window.TimelinePlayer = {
+  playing: false,
+  startTimestamp: 0,
+  currentTime: 0,
+  rafId: null,
+  activeShotId: null
+};
+
+/* ---------- Internal Tick ---------- */
+function timelineTick(timestamp) {
+  if (!TimelinePlayer.playing) return;
+
+  if (!TimelinePlayer.startTimestamp) {
+    TimelinePlayer.startTimestamp = timestamp;
+  }
+
+  const elapsed = (timestamp - TimelinePlayer.startTimestamp) / 1000;
+  TimelinePlayer.currentTime = elapsed;
+
+  if (TimelinePlayer.currentTime >= Timeline.duration) {
+    TimelinePlayer.currentTime = Timeline.duration;
+    timelinePause();
+    return;
+  }
+
+  updateActiveShot(TimelinePlayer.currentTime);
+  TimelinePlayer.rafId = requestAnimationFrame(timelineTick);
+}
+
+/* ---------- Active Shot Resolver ---------- */
+function updateActiveShot(time) {
+  const shot = Timeline.tracks.find(
+    s => time >= s.start && time < s.end
+  );
+
+  if (!shot) return;
+
+  if (TimelinePlayer.activeShotId !== shot.shotId) {
+    TimelinePlayer.activeShotId = shot.shotId;
+
+    console.log("🎯 Active Shot:", shot.shotId);
+    document.dispatchEvent(
+      new CustomEvent("timeline:shotChange", { detail: shot })
+    );
+  }
+}
+
+/* ---------- Controls ---------- */
+function timelinePlay() {
+  if (TimelinePlayer.playing) return;
+
+  TimelinePlayer.playing = true;
+  TimelinePlayer.startTimestamp =
+    performance.now() - TimelinePlayer.currentTime * 1000;
+
+  TimelinePlayer.rafId = requestAnimationFrame(timelineTick);
+}
+
+function timelinePause() {
+  TimelinePlayer.playing = false;
+  cancelAnimationFrame(TimelinePlayer.rafId);
+  TimelinePlayer.rafId = null;
+  TimelinePlayer.startTimestamp = 0;
+}
+
+function timelineSeek(time) {
+  TimelinePlayer.currentTime = Math.max(
+    0,
+    Math.min(time, Timeline.duration)
+  );
+
+  TimelinePlayer.startTimestamp =
+    performance.now() - TimelinePlayer.currentTime * 1000;
+
+  updateActiveShot(TimelinePlayer.currentTime);
+}
+
+/* ---------- Debug Helpers ---------- */
+window.TimelineControls = {
+  play: timelinePlay,
+  pause: timelinePause,
+  seek: timelineSeek,
+  state: () => ({ ...TimelinePlayer })
+};
+</script>
 
 </body>
 </html>
