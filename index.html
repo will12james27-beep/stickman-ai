@@ -12395,6 +12395,46 @@ window.SceneReset = {
   };
 })();
 </script>
+<script>
+/* =========================
+   23 D.5 — Single Beat Preview
+   Editor-style Beat Play
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+  const D = window.SceneDirector;
+  if (!D) return;
+
+  // play a single beat and pause after
+  D.playSingleBeat = function (beatIndex) {
+    if (!this.beats || !this.beats.length) return;
+    if (beatIndex < 0 || beatIndex >= this.beats.length) return;
+
+    if (window.SceneReset) SceneReset.beforeSeek();
+
+    this.index = beatIndex;
+    this.playing = true;
+
+    TimelineState.status = 'playing';
+    TimelineState.currentBeat = beatIndex;
+
+    const beat = this.beats[beatIndex];
+
+    if (window.runBeat) {
+      window.runBeat(beat, () => {
+        this.playing = false;
+        TimelineState.status = 'paused';
+      });
+    }
+  };
+
+  // preview current beat without moving forward
+  D.previewCurrentBeat = function () {
+    this.playSingleBeat(this.index);
+  };
+})();
+</script>
 
 </body>
 </html>
