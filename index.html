@@ -19228,6 +19228,188 @@ window.speakLine = function ({
    ====================== */
 console.log("5.4 — AI Voice / TTS system ready");
 </script>
+<script>
+/* ==========================================
+   5.5 — Save / Load Projects
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+const PROJECT_STORAGE_KEY = "LJ_SHORTS_PROJECTS";
+
+/* ======================
+   PROJECT SERIALIZER
+   ====================== */
+window.ProjectManager = {
+  getState() {
+    return {
+      prompt: window.CreatorUI?.promptInput?.value || "",
+      language: window.LanguageState?.current || "EN",
+      scene: window.SceneRegistry?.current || "studio",
+      characters: window.CharacterRegistry?.bindings || {},
+      preset: window.PromptPresets?.current || null,
+      timestamp: Date.now()
+    };
+  },
+
+  applyState(state) {
+    if (!state) return;
+
+    // Prompt
+    if (window.CreatorUI?.promptInput) {
+      CreatorUI.promptInput.value = state.prompt || "";
+    }
+
+    // Language
+    if (window.LanguageState && state.language) {
+      LanguageState.set(state.language);
+    }
+
+    // Scene
+    if (window.SceneRegistry && state.scene) {
+      SceneRegistry.apply(state.scene);
+    }
+
+    // Characters
+    if (
+      window.CharacterRegistry &&
+      state.characters
+    ) {
+      CharacterRegistry.bindings =
+        JSON.parse(JSON.stringify(state.characters));
+      console.log("Characters restored");
+    }
+
+    // Preset
+    if (window.PromptPresets && state.preset) {
+      PromptPresets.apply(state.preset);
+    }
+
+    console.log("Project loaded");
+  }
+};
+
+
+/* ======================
+   STORAGE LAYER
+   ====================== */
+window.ProjectStorage = {
+  loadAll() {
+    try {
+      return JSON.parse(
+        localStorage.getItem(PROJECT_STORAGE_KEY)
+      ) || [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveAll(projects) {
+    localStorage.setItem(
+      PROJECT_STORAGE_KEY,
+      JSON.stringify(projects)
+    );
+  },
+
+  save(name, state) {
+    const projects = this.loadAll();
+    projects.push({
+      name,
+      state
+    });
+    this.saveAll(projects);
+  },
+
+  remove(index) {
+    const projects = this.loadAll();
+    projects.splice(index, 1);
+    this.saveAll(projects);
+  }
+};
+
+
+/* ======================
+   CREATOR UI EXTENSION
+   ====================== */
+(function () {
+  const waitUI = setInterval(() => {
+    if (!window.CreatorUI?.container) return;
+    clearInterval(waitUI);
+
+    const wrap = document.createElement("div");
+    wrap.style.marginTop = "12px";
+
+    const title = document.createElement("div");
+    title.innerText = "💾 Projects";
+    title.style.fontWeight = "700";
+    title.style.marginBottom = "6px";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.innerText = "💾 Save Project";
+    saveBtn.style.width = "100%";
+    saveBtn.style.marginBottom = "6px";
+
+    const loadSelect = document.createElement("select");
+    loadSelect.style.width = "100%";
+    loadSelect.style.marginBottom = "6px";
+
+    const loadBtn = document.createElement("button");
+    loadBtn.innerText = "📂 Load Selected";
+    loadBtn.style.width = "100%";
+
+    function refreshList() {
+      loadSelect.innerHTML = "";
+      ProjectStorage.loadAll().forEach(
+        (p, i) => {
+          const opt = document.createElement("option");
+          opt.value = i;
+          opt.innerText =
+            p.name +
+            " — " +
+            new Date(
+              p.state.timestamp
+            ).toLocaleString();
+          loadSelect.appendChild(opt);
+        }
+      );
+    }
+
+    saveBtn.onclick = () => {
+      const name =
+        prompt("Project name?") ||
+        "Untitled";
+      ProjectStorage.save(
+        name,
+        ProjectManager.getState()
+      );
+      refreshList();
+    };
+
+    loadBtn.onclick = () => {
+      const index = loadSelect.value;
+      const project =
+        ProjectStorage.loadAll()[index];
+      if (project) {
+        ProjectManager.applyState(project.state);
+      }
+    };
+
+    refreshList();
+
+    wrap.appendChild(title);
+    wrap.appendChild(saveBtn);
+    wrap.appendChild(loadSelect);
+    wrap.appendChild(loadBtn);
+
+    CreatorUI.container.appendChild(wrap);
+  }, 300);
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("5.5 — Save / Load Projects ready");
+</script>
 
 </body>
 </html>
