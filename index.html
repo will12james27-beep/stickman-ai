@@ -14455,6 +14455,109 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 G.6 — Ripple Mode Toggle
+   Enable / Disable auto resolve
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  if (!window.TimelineRipple) {
+    window.TimelineRipple = {
+      enabled: true
+    };
+  }
+
+  function getBeatDataList() {
+    return window.SceneDirector && SceneDirector.beats
+      ? SceneDirector.beats
+      : [];
+  }
+
+  function snapTime(value) {
+    if (!window.TimelineGrid || !TimelineGrid.enabled) return value;
+    const step = TimelineGrid.step || 0.25;
+    return Math.round(value / step) * step;
+  }
+
+  function resolveOverlapsIfEnabled() {
+    if (!TimelineRipple.enabled) return;
+
+    const beats = getBeatDataList()
+      .filter(b => typeof b.start === 'number')
+      .sort((a, b) => a.start - b.start);
+
+    for (let i = 0; i < beats.length - 1; i++) {
+      const a = beats[i];
+      const b = beats[i + 1];
+
+      const aEnd = (a.start || 0) + (a.duration || 1);
+
+      if (aEnd > b.start) {
+        b.start = Math.max(
+          snapTime(aEnd),
+          b.start
+        );
+      }
+    }
+  }
+
+  /* ---------- UI TOGGLE ---------- */
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .ep-ripple-toggle {
+      position: fixed;
+      bottom: 52px;
+      right: 12px;
+      background: rgba(0,0,0,0.55);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 10px;
+      color: #fff;
+      cursor: pointer;
+      z-index: 9999;
+      user-select: none;
+    }
+    .ep-ripple-toggle.off {
+      background: rgba(120,0,0,0.6);
+    }
+  `;
+  document.head.appendChild(style);
+
+  const toggle = document.createElement('div');
+  toggle.className = 'ep-ripple-toggle';
+  document.body.appendChild(toggle);
+
+  function renderToggle() {
+    toggle.textContent = TimelineRipple.enabled
+      ? 'Ripple: ON'
+      : 'Ripple: OFF';
+
+    toggle.classList.toggle(
+      'off',
+      !TimelineRipple.enabled
+    );
+  }
+
+  toggle.onclick = () => {
+    TimelineRipple.enabled = !TimelineRipple.enabled;
+    renderToggle();
+  };
+
+  renderToggle();
+
+  function loop() {
+    resolveOverlapsIfEnabled();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+
+})();
+</script>
 
 </body>
 </html>
