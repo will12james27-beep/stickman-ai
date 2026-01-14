@@ -12577,6 +12577,45 @@ window.applyMotionProfile = function (value, charId, type) {
   }
 };
 </script>
+<script>
+/* =========================
+   23 D.10 — Controlled Micro Variation
+   Alive Polish Layer
+   SAFE MODE: append-only
+   ========================= */
+
+// simple seeded pseudo-random (deterministic per character)
+function seededRandom(seed) {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+window.applyMicroVariation = function (value, charId, type) {
+  if (!charId) return value;
+
+  const seedBase = charId.charCodeAt(0) || 1;
+  let strength = 0;
+
+  switch (type) {
+    case 'reaction':
+      strength = 0.08; // ±8%
+      break;
+    case 'shake':
+      strength = 0.12; // ±12%
+      break;
+    case 'timing':
+      strength = 0.06; // ±6%
+      break;
+    default:
+      return value;
+  }
+
+  const r = seededRandom(seedBase * (value + 1));
+  const variation = 1 + (r * 2 - 1) * strength;
+
+  return value * variation;
+};
+</script>
 
 </body>
 </html>
