@@ -12253,6 +12253,66 @@ window.SceneDirector = {
   }
 };
 </script>
+<script>
+/* =========================
+   23 D.2 — Timeline State Sync
+   SceneDirector ↔ Global State
+   SAFE MODE: append-only
+   ========================= */
+
+window.TimelineState = {
+  status: 'idle',   // idle | playing | paused | ended
+  currentBeat: -1,
+  totalBeats: 0
+};
+
+// patch SceneDirector without breaking it
+(function () {
+  const D = window.SceneDirector;
+  if (!D) return;
+
+  const _play = D.play.bind(D);
+  const _pause = D.pause.bind(D);
+  const _resume = D.resume.bind(D);
+  const _next = D._next.bind(D);
+  const _load = D.load.bind(D);
+
+  D.load = function (beatsArray) {
+    _load(beatsArray);
+    TimelineState.totalBeats = this.beats.length;
+    TimelineState.currentBeat = -1;
+    TimelineState.status = 'idle';
+  };
+
+  D.play = function () {
+    TimelineState.status = 'playing';
+    _play();
+  };
+
+  D.pause = function () {
+    TimelineState.status = 'paused';
+    _pause();
+  };
+
+  D.resume = function () {
+    TimelineState.status = 'playing';
+    _resume();
+  };
+
+  D._next = function () {
+    if (!this.playing) return;
+
+    if (this.index >= this.beats.length) {
+      TimelineState.status = 'ended';
+      this.playing = false;
+      return;
+    }
+
+    TimelineState.currentBeat = this.index;
+    _next();
+  };
+})();
+</script>
 
 </body>
 </html>
