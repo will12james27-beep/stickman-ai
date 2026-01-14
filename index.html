@@ -10851,6 +10851,55 @@ document.addEventListener("timeline:shotChange", e => {
   });
 });
 </script>
+<script>
+/* =====================================================
+   23 C.2 — Character Registry & Reuse (SAFE MODE)
+   Append-only. Existing code untouched.
+   ===================================================== */
+
+/* ---------- Get Or Create Character ---------- */
+function getOrCreateCharacter(config) {
+  if (!config || !config.id) return;
+
+  if (window.Characters && Characters[config.id]) {
+    return Characters[config.id];
+  }
+
+  return spawnCharacter(config);
+}
+
+/* ---------- Update Character ---------- */
+function updateCharacter(character, config) {
+  if (!character || !config) return;
+
+  if (typeof config.x === "number") {
+    character.state.x = config.x;
+    character.el.style.left = config.x + "%";
+  }
+
+  if (typeof config.y === "number") {
+    character.state.y = config.y;
+    character.el.style.bottom = config.y + "%";
+  }
+
+  if (config.visible === false) {
+    character.el.style.display = "none";
+  } else {
+    character.el.style.display = "block";
+  }
+}
+
+/* ---------- Apply Characters Per Shot ---------- */
+document.addEventListener("timeline:shotChange", e => {
+  const shot = e.detail;
+  if (!shot.data || !shot.data.characters) return;
+
+  shot.data.characters.forEach(cfg => {
+    const character = getOrCreateCharacter(cfg);
+    updateCharacter(character, cfg);
+  });
+});
+</script>
 
 </body>
 </html>
