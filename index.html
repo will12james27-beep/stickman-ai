@@ -19069,6 +19069,165 @@ window.processPromptLanguage = function (prompt) {
    ====================== */
 console.log("5.3 — Multi-language system ready");
 </script>
+<script>
+/* ==========================================
+   5.4 — AI Voice / TTS (EN + UZ)
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   VOICE REGISTRY
+   ====================== */
+window.VoiceRegistry = {
+  voices: [],
+  ready: false,
+
+  load() {
+    this.voices = speechSynthesis.getVoices();
+    if (this.voices.length) {
+      this.ready = true;
+      console.log("Voices loaded:", this.voices.length);
+    }
+  },
+
+  getVoiceFor(characterId) {
+    const lang = LanguageState?.current === "UZ" ? "uz" : "en";
+
+    // try exact language
+    let v = this.voices.find(v =>
+      v.lang.toLowerCase().startsWith(lang)
+    );
+
+    // fallback
+    if (!v) v = this.voices[0];
+
+    return v || null;
+  }
+};
+
+speechSynthesis.onvoiceschanged = () => {
+  VoiceRegistry.load();
+};
+VoiceRegistry.load();
+
+
+/* ======================
+   SPEAK CORE
+   ====================== */
+window.speakLine = function ({
+  characterId,
+  text,
+  onStart,
+  onEnd
+}) {
+  if (!VoiceRegistry.ready) {
+    console.warn("Voices not ready");
+    onEnd && onEnd();
+    return;
+  }
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.voice = VoiceRegistry.getVoiceFor(characterId);
+  utter.lang =
+    LanguageState.current === "UZ" ? "uz-UZ" : "en-US";
+
+  utter.rate = 1;
+  utter.pitch = 1;
+
+  utter.onstart = () => {
+    // mouth sync ON
+    if (window.MouthSync?.setSpeaking) {
+      MouthSync.setSpeaking(characterId, true);
+    }
+    onStart && onStart();
+  };
+
+  utter.onend = () => {
+    // mouth sync OFF
+    if (window.MouthSync?.setSpeaking) {
+      MouthSync.setSpeaking(characterId, false);
+    }
+    onEnd && onEnd();
+  };
+
+  speechSynthesis.speak(utter);
+};
+
+
+/* ======================
+   HOOK INTO DIALOGUE FLOW
+   ====================== */
+(function () {
+  const wait = setInterval(() => {
+    if (!window.DialogueEngine) return;
+    clearInterval(wait);
+
+    const originalPlay = DialogueEngine.playLine;
+
+    DialogueEngine.playLine = function (line) {
+      const { speaker, text, duration } = line;
+
+      speakLine({
+        characterId: speaker,
+        text,
+        onEnd: () => {
+          originalPlay.call(this, {
+            ...line,
+            duration: duration || 0
+          });
+        }
+      });
+    };
+
+    console.log("DialogueEngine TTS hook attached");
+  }, 300);
+})();
+
+
+/* ======================
+   CREATOR UI — VOICE TOGGLE
+   ====================== */
+(function () {
+  const waitUI = setInterval(() => {
+    if (!window.CreatorUI?.container) return;
+    clearInterval(waitUI);
+
+    const label = document.createElement("div");
+    label.innerText = "🔊 Voice / TTS";
+    label.style.fontWeight = "700";
+    label.style.marginTop = "10px";
+
+    const btn = document.createElement("button");
+    btn.innerText = "🔈 Test Voice";
+    Object.assign(btn.style, {
+      width: "100%",
+      marginTop: "6px",
+      padding: "8px",
+      borderRadius: "8px",
+      cursor: "pointer"
+    });
+
+    btn.onclick = () => {
+      speakLine({
+        characterId: "test",
+        text:
+          LanguageState.current === "UZ"
+            ? "Salom, bu ovoz sinovi"
+            : "Hello, this is a voice test"
+      });
+    };
+
+    CreatorUI.container.appendChild(label);
+    CreatorUI.container.appendChild(btn);
+  }, 300);
+})();
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("5.4 — AI Voice / TTS system ready");
+</script>
 
 </body>
 </html>
