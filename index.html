@@ -18218,6 +18218,150 @@ console.log(
   "4.8 — Subtitle + Global Caption System ready"
 );
 </script>
+<script>
+/* ==========================================
+   4.9 — Music / Beat Sync + Energy Control
+   SAFE MODE — APPEND ONLY
+   ========================================== */
+
+/* ======================
+   MUSIC ENGINE
+   ====================== */
+window.MusicEngine = {
+  audio: null,
+  enabled: true,
+  baseVolume: 0.4,
+
+  init(src) {
+    if (this.audio) return;
+
+    const audio = document.createElement("audio");
+    audio.src = src || "";
+    audio.loop = true;
+    audio.volume = this.baseVolume;
+    audio.preload = "auto";
+
+    document.body.appendChild(audio);
+    this.audio = audio;
+  },
+
+  play() {
+    if (!this.enabled || !this.audio) return;
+    this.audio.play().catch(() => {});
+  },
+
+  pause() {
+    if (!this.audio) return;
+    this.audio.pause();
+  },
+
+  setVolume(v) {
+    if (!this.audio) return;
+    this.audio.volume = Math.max(0, Math.min(1, v));
+  },
+
+  pulse(strength = 0.2, duration = 200) {
+    if (!this.audio) return;
+
+    const original = this.audio.volume;
+    this.audio.volume = Math.min(1, original + strength);
+
+    setTimeout(() => {
+      this.audio.volume = original;
+    }, duration);
+  }
+};
+
+
+/* ======================
+   ENERGY PRESETS
+   ====================== */
+window.EnergyPresets = {
+  calm: {
+    volume: 0.25
+  },
+  normal: {
+    volume: 0.4
+  },
+  hype: {
+    volume: 0.6,
+    pulse: true
+  }
+};
+
+
+/* ======================
+   ENERGY CONTROLLER
+   ====================== */
+window.EnergyController = {
+  apply(preset) {
+    const p =
+      EnergyPresets[preset] ||
+      EnergyPresets.normal;
+
+    MusicEngine.setVolume(p.volume);
+
+    if (p.pulse) {
+      MusicEngine.pulse(0.15, 180);
+    }
+  }
+};
+
+
+/* ======================
+   AUTO SYNC WITH SHOTS
+   ====================== */
+(function () {
+  const originalRenderShot =
+    ShotRenderer.renderShot;
+
+  ShotRenderer.renderShot = function (shot) {
+    originalRenderShot.call(this, shot);
+
+    if (!shot) return;
+
+    // Decide energy based on shot type
+    switch (shot.type) {
+      case "reaction":
+        EnergyController.apply("hype");
+        break;
+      case "close":
+        EnergyController.apply("normal");
+        break;
+      case "wide":
+        EnergyController.apply("calm");
+        break;
+    }
+  };
+})();
+
+
+/* ======================
+   EPISODE HOOKS
+   ====================== */
+window.addEventListener("episode:ended", () => {
+  MusicEngine.pause();
+});
+
+
+/* ======================
+   PUBLIC API
+   ====================== */
+window.startMusic = function (src) {
+  MusicEngine.init(src);
+  MusicEngine.play();
+};
+
+window.stopMusic = function () {
+  MusicEngine.pause();
+};
+
+
+/* ======================
+   DEBUG
+   ====================== */
+console.log("4.9 — Music / Beat Sync ready");
+</script>
 
 </body>
 </html>
