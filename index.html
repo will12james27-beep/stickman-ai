@@ -14160,6 +14160,79 @@ window.applyMicroVariation = function (value, charId, type) {
 
 })();
 </script>
+<script>
+/* =========================
+   23 G.2 — Grid Step Switch
+   Live snap precision control
+   SAFE MODE: append-only
+   ========================= */
+
+(function () {
+
+  if (!window.TimelineGrid) return;
+
+  // inject UI styles (SAFE)
+  const style = document.createElement('style');
+  style.textContent = `
+    .ep-grid-panel {
+      position: fixed;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      gap: 4px;
+      background: rgba(0,0,0,0.55);
+      padding: 6px;
+      border-radius: 6px;
+      z-index: 9999;
+      font-family: system-ui, sans-serif;
+    }
+    .ep-grid-btn {
+      font-size: 10px;
+      padding: 4px 6px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .ep-grid-btn.active {
+      background: #4caf50;
+      color: #000;
+      font-weight: bold;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // create panel
+  const panel = document.createElement('div');
+  panel.className = 'ep-grid-panel';
+  document.body.appendChild(panel);
+
+  function renderButtons() {
+    panel.innerHTML = '';
+
+    TimelineGrid.steps.forEach(step => {
+      const btn = document.createElement('div');
+      btn.className = 'ep-grid-btn';
+      btn.textContent = step + 's';
+
+      if (TimelineGrid.step === step) {
+        btn.classList.add('active');
+      }
+
+      btn.onclick = () => {
+        TimelineGrid.step = step;
+        renderButtons();
+      };
+
+      panel.appendChild(btn);
+    });
+  }
+
+  renderButtons();
+
+})();
+</script>
 
 </body>
 </html>
